@@ -1,25 +1,28 @@
-//  클라이언트 연결 1개를 서버 내부에서 표현하는 세션 객체이다.
-//  힙에서 관리하기 쉽게 구조체로 정의한다.
+// Server/header/server/Session.h
 
 #pragma once
 
 #include <string>
 #include <mutex>
 
-//  세션 객체이다.
-struct Session {
-    //  클라이언트 소켓 번호이다.
-    int fd = -1;
+// 클라이언트 연결 상태 객체
+class Session {
+public:
+    // 기본 생성자 (SessionManager 호환용)
+    Session()
+        : fd(-1), isLogin(false), userId(0) {}
 
-    //  로그인한 사용자 ID이다.
-    int userId = 0;
+    // fd 초기화 생성자
+    Session(int fd_)
+        : fd(fd_), isLogin(false), userId(0) {}
 
-    //  로그인 여부이다.
-    bool isLoggedIn = false;
+public:
+    int fd;                 // 소켓 FD
 
-    //  수신 버퍼이다.
-    std::string readBuffer;
+    bool isLogin;           // 로그인 여부
+    int userId;             // 유저 ID
 
-    //  세션 단위 잠금이다.
-    std::mutex mtx;
+    std::string readBuffer; // 수신 버퍼
+
+    std::mutex mtx;         // 동기화용
 };

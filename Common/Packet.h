@@ -1,29 +1,28 @@
-//  클라이언트 요청을 서버 내부에서 다루기 위한 패킷 구조체이다.
-//  현재는 단순 텍스트 프로토콜을 사용하지만 나중에 JSON으로 쉽게 교체할 수 있게 분리한다.
+// Common/Packet.h
+
 #pragma once
 
 #include <string>
 
-//  패킷 종류를 구분하기 위한 열거형이다.
+// 패킷 종류
 enum class PacketType {
-    UNKNOWN,
-    AUTH_LOGIN,
-    ORDER_CREATE,
-    CHAT_SEND,
-    RIDER_UPDATE
+    UNKNOWN = 0,
+
+    AUTH_LOGIN = 100,
+    ORDER_CREATE = 200,
+    CHAT_SEND = 300,
+    RIDER_UPDATE = 400
 };
 
-//  서버 내부에서 사용하는 패킷 구조체이다.
+// 서버 내부 패킷 구조
 struct Packet {
-    //  요청을 보낸 소켓 번호이다.
-    int clientFd = -1;
+    int clientFd = -1;          // 소켓 FD
 
-    //  패킷 타입이다.
     PacketType type = PacketType::UNKNOWN;
 
-    //  원본 문자열이다.
-    std::string raw;
+    std::string raw;            // 원본 (디버깅용)
+    std::string payload;        // 현재 사용 데이터
 
-    //  단순 payload 문자열이다.
-    std::string payload;
+    // 추가 (나중 JSON용)
+    std::string jsonBody;       // JSON 문자열 (확장용)
 };

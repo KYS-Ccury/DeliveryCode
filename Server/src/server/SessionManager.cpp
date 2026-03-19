@@ -8,8 +8,7 @@ void SessionManager::addSession(int fd) {
     std::lock_guard<std::mutex> lock(m_mtx);
 
     //  새 세션 객체를 힙에 생성한다.
-    auto session = std::make_shared<Session>();
-    session->fd = fd;
+    auto session = std::make_shared<Session>(fd);
 
     //  저장소에 등록한다.
     m_sessions[fd] = session;
