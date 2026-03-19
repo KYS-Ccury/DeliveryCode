@@ -3,6 +3,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 #include "../handlers/IHandler.h"
 #include "../handlers/AuthHandler.h"
 #include "../handlers/OrderHandler.h"
@@ -22,6 +23,9 @@ public:
     void route(const Packet& packet);
 
 private:
+    //  패킷 타입별 핸들러 매핑이다.
+    std::unordered_map<PacketType, IHandler*> m_routes;
+
     //  각 기능별 핸들러 객체이다.
     std::unique_ptr<AuthHandler>  m_authHandler;
     std::unique_ptr<OrderHandler> m_orderHandler;
