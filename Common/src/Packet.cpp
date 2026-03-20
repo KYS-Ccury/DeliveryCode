@@ -1,4 +1,13 @@
 #include "Packet.h"
+#include <string>      // std::string
+#include <vector>      // std::vector
+#include <cstring>     // std::memcpy
+#include <arpa/inet.h>  // htons, htonl
+#include <iostream>    // std::cerr, std::endl
+#include <cerrno>      // errno, EAGAIN
+#include "../../Server/network/header/Session.h"
+#include <thread>  // ★ 추가
+#include <chrono>  // ★ 추가
 
 // ★ 수정됨: 크로스 플랫폼(윈도우<->리눅스) 완벽 호환을 위한 엔디안 변환 적용
 bool Session::sendPacket(uint8_t clientType, uint16_t protocol, const std::string& jsonBody) {
@@ -30,7 +39,13 @@ bool Session::sendPacket(uint8_t clientType, uint16_t protocol, const std::strin
         
         if (sent <= 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                continue; // 송신 버퍼 꽉 참, 계속 시도
+                // ★ 수정: CPU 폭주(100% 점유) 방지를 위해 아주 잠깐 휴식
+                // 1ms만 쉬어도 OS가 네트워크 버퍼를 비울 시간을 충분히 벌어줍니다.
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                
+                // (선택) sleep_for 대신 std::this_thread::yield(); 를 쓰면 
+                // 시간 지정 없이 "나 잠시 빠질게" 하고 바로 대기열로 넘어갑니다.
+                continue; 
             }
             std::cerr << "[Session] 데이터 전송 에러 FD: " << client_fd << std::endl;
             return false;

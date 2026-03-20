@@ -1,32 +1,91 @@
 #include "CustomerHandler.h"
+#include "Session.h"
+#include "Packet.h"          // CmdCustomer, Status 네임스페이스 포함
 #include "MariaDBManager.h"
-// nlohmann/json 같은 JSON 라이브러리 사용 권장
-#include <nlohmann/json.hpp> 
+#include <nlohmann/json.hpp>
+#include <iostream>
+#include "Types.h"
 
 using json = nlohmann::json;
 
 void CustomerHandler::process(Session* session, uint16_t protocol, const std::string& jsonBody) {
-    // 1. 가변 길이 Body 파싱 (JSON)
-    json parsedData = json::parse(jsonBody);
+    // 1차적으로 로그 출력 (디버깅 용도)
+    std::cout << "[CustomerHandler] Protocol: " << protocol << " 처리 시작" << std::endl;
 
-    // 2. 2바이트 프로토콜(명령어)에 따른 처리
-    if (protocol == CMD_CUSTOMER_ORDER) {
-        std::string menuId = parsedData["menu_id"];
-        int count = parsedData["count"];
+    switch (protocol) {
+        case CmdCustomer::REQ_STORE_LIST:
+            handleStoreList(session, jsonBody);
+            break;
 
-        // 3. DB 처리
-        auto& db = MariaDBManager::getInstance();
-        bool success = db.query("INSERT INTO orders ...");
+        case CmdCustomer::REQ_CREATE_ORDER:
+            handleCreateOrder(session, jsonBody);
+            break;
 
-        // 4. 처리 결과 응답 생성 및 전송
-        json responseJson;
-        responseJson["status"] = success ? "OK" : "FAIL";
-        std::string responseStr = responseJson.dump();
+        case CmdCustomer::REQ_ORDER_HISTORY:
+            handleOrderHistory(session, jsonBody);
+            break;
 
-        // 7바이트 응답 헤더 생성 후 Session을 통해 Send
-        session->sendPacket(1, CMD_CUSTOMER_ORDER_RES, responseStr);
+        default:
+            std::cerr << "[Customer] 알 수 없는 프로토콜: " << protocol << std::endl;
+            // 필요 시 클라이언트에게 에러 프로토콜 전송
+            break;
     }
 }
+
+
+
+///////////////////////////참고만 하고 따로 파일 분리시켜서 만들기 바람...........
+
+// ---------------------------------------------------------
+// [기능 구현] 1. 매장 목록 조회
+// ---------------------------------------------------------
+void CustomerHandler::handleStoreList(Session* session, const std::string& jsonBody) {
+    auto& db = MariaDBManager::getInstance();
+    
+    // 예시 SQL: 실제 테이블 구조에 맞게 수정 필요
+    // DBResult rows = db.executeQuery("SELECT id, name, category FROM stores");
+    
+    json res;
+    res["status"] = Status::SUCCESS;
+    res["stores"] = json::array(); // 여기에 DB 결과 루프 돌며 push_back
+    
+    session->sendPacket(static_cast<uint8_t>(ClientType::CUSTOMER), 
+                        CmdCustomer::REQ_STORE_LIST, res.dump());
+}
+
+// ---------------------------------------------------------
+// [기능 구현] 2. 주문 생성
+// ---------------------------------------------------------
+void CustomerHandler::handleCreateOrder(Session* session, const std::string& jsonBody) {
+    try {
+        json reqData = json::parse(jsonBody);
+        auto& db = MariaDBManager::getInstance();
+
+        // 비즈니스 로직 (예: INSERT INTO orders...)
+        // bool success = db.executeUpdate("INSERT ...");
+
+        json res;
+        res["status"] = Status::SUCCESS;
+        res["order_id"] = 12345; // db.getLastInsertId() 등 활용
+
+        session->sendPacket(static_cast<uint8_t>(ClientType::CUSTOMER), 
+                            CmdCustomer::REQ_CREATE_ORDER, res.dump());
+
+    } catch (const std::exception& e) {
+        std::cerr << "[handleCreateOrder] JSON Error: " << e.what() << std::endl;
+    }
+}
+
+// ---------------------------------------------------------
+// [기능 구현] 3. 주문 내역 조회
+// ---------------------------------------------------------
+void CustomerHandler::handleOrderHistory(Session* session, const std::string& jsonBody) {
+    // 주문 내역 로직 구현...
+    std::cout << "주문 내역 조회 로직 실행" << std::endl;
+}
+
+
+
 
 //////////// 마리아 DB 참고 예시 ////////////////////////
 // #include "MariaDBManager.h"

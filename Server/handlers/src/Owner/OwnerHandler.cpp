@@ -1,57 +1,85 @@
 #include "OwnerHandler.h"
 #include "Session.h"
+#include "Packet.h"          // CmdOwner, ClientType, Status 포함
 #include "MariaDBManager.h"
-#include <iostream>
 #include <nlohmann/json.hpp>
+#include <iostream>
+#include "Types.h"
 
 using json = nlohmann::json;
-
-// 가상의 사장님용 프로토콜 상수
-constexpr uint16_t CMD_OWNER_ACCEPT_ORDER = 2001;
-constexpr uint16_t CMD_OWNER_SOLD_OUT    = 2002;
 
 void OwnerHandler::process(Session* session, uint16_t protocol, const std::string& jsonBody) {
     std::cout << "[OwnerHandler] 사장님 요청 수신 - 프로토콜: " << protocol << std::endl;
 
-    try {
-        json reqJson = jsonBody.empty() ? json{} : json::parse(jsonBody);
-        json resJson;
-        // MariaDBManager& db = MariaDBManager::getInstance();
+    switch (protocol) {
+        case CmdOwner::REQ_ACCEPT_ORDER: // 주문 수락 (305)
+            handleAcceptOrder(session, jsonBody);
+            break;
 
-        switch (protocol) {
-            case CMD_OWNER_ACCEPT_ORDER: {
-                std::string orderId = reqJson["order_id"];
-                int estimatedTime = reqJson["estimated_time"]; // 예상 조리 시간
-                
-                // DB 연동: 주문 상태를 '조리 중'으로 업데이트
-                // db.query("UPDATE orders SET status='COOKING' WHERE id=" + orderId);
-                
-                resJson["status"] = "SUCCESS";
-                resJson["message"] = "주문 접수 완료";
-                break;
-            }
-            case CMD_OWNER_SOLD_OUT: {
-                std::string menuId = reqJson["menu_id"];
-                
-                // DB 연동: 해당 메뉴 품절 처리
-                resJson["status"] = "SUCCESS";
-                resJson["message"] = "품절 처리 완료";
-                break;
-            }
-            default:
-                resJson["status"] = "ERROR";
-                resJson["message"] = "알 수 없는 사장님 프로토콜";
-                break;
-        }
+        case CmdOwner::REQ_UPDATE_MENU:  // 품절 처리를 메뉴 수정(303)으로 매핑
+            handleSoldOut(session, jsonBody);
+            break;
 
-        // 응답 전송 (클라이언트 타입 2: 사장님)
-        // session->sendPacket(2, protocol + 1, resJson.dump());
-
-    } catch (const std::exception& e) {
-        std::cerr << "[OwnerHandler] 예외 발생: " << e.what() << std::endl;
+        default:
+            std::cerr << "[Owner] 알 수 없는 사장님 프로토콜: " << protocol << std::endl;
+            // 에러 응답 로직 추가 가능
+            break;
     }
 }
 
+// ---------------------------------------------------------
+// [기능 구현] 1. 주문 수락 (기능 개발 중)
+// ---------------------------------------------------------
+void OwnerHandler::handleAcceptOrder(Session* session, const std::string& jsonBody) {
+    try {
+        json req = jsonBody.empty() ? json{} : json::parse(jsonBody);
+        // auto& db = MariaDBManager::getInstance();
+
+        // value()를 사용하면 키가 없을 때의 기본값을 지정할 수 있어 안전합니다.
+        std::string orderId = req.value("order_id", "");
+        int estimatedTime = req.value("estimated_time", 0); // 예상 조리 시간
+
+        // DB 연동 (개발 예정): 
+        // std::string updateQuery = "UPDATE orders SET status='COOKING' WHERE id=" + orderId;
+        // db.executeUpdate(updateQuery);
+
+        json res;
+        res["status"] = Status::SUCCESS;
+        res["message"] = "주문 접수 완료";
+
+        // 응답 전송 (클라이언트 타입 2: 사장님)
+        session->sendPacket(static_cast<uint8_t>(ClientType::OWNER), 
+                            CmdOwner::REQ_ACCEPT_ORDER, res.dump());
+
+    } catch (const std::exception& e) {
+        std::cerr << "[handleAcceptOrder] JSON 예외 발생: " << e.what() << std::endl;
+    }
+}
+
+// ---------------------------------------------------------
+// [기능 구현] 2. 메뉴 품절 처리 (기능 개발 중)
+// ---------------------------------------------------------
+void OwnerHandler::handleSoldOut(Session* session, const std::string& jsonBody) {
+    try {
+        json req = jsonBody.empty() ? json{} : json::parse(jsonBody);
+        // auto& db = MariaDBManager::getInstance();
+
+        std::string menuId = req.value("menu_id", "");
+
+        // DB 연동 (개발 예정): 해당 메뉴 상태를 품절로 업데이트
+        // db.executeUpdate("UPDATE menus SET is_soldout=1 WHERE id=" + menuId);
+
+        json res;
+        res["status"] = Status::SUCCESS;
+        res["message"] = "품절 처리 완료";
+
+        session->sendPacket(static_cast<uint8_t>(ClientType::OWNER), 
+                            CmdOwner::REQ_UPDATE_MENU, res.dump());
+
+    } catch (const std::exception& e) {
+        std::cerr << "[handleSoldOut] JSON 예외 발생: " << e.what() << std::endl;
+    }
+}
 
 
 //////////// 마리아 DB 참고 예시 ////////////////////////

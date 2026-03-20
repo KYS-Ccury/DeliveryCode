@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include <mutex> // 멀티 스레드 환경 보호용
+#include <memory>
 
 class Session;
 class ThreadPool;
@@ -18,7 +19,7 @@ private:
     int epoll_fd;
     ThreadPool* pool;
 
-    std::map<int, Session*> sessions;
+    std::map<int, std::shared_ptr<Session>> sessions;
     std::mutex session_mutex; // ★ 추가: 세션 맵 보호용 뮤텍스
 
     bool setupServer();

@@ -1,4 +1,13 @@
 [main branch 업데이트 내역]
+ver 0.0.1
+----
+파일명 : Server 폴더 통째 및 Common
+내용 : 서버 시작 --- 
+
+
+
+
+[main branch 업데이트 내역]
 ver 0.0.0
 ----
 파일명 : .gitignore 

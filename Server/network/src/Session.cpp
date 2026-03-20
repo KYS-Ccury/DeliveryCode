@@ -4,6 +4,7 @@
 #include <cstring>
 #include <cerrno> // errno, EAGAIN, EWOULDBLOCK 사용
 #include <sys/socket.h>
+#include <arpa/inet.h>  // ntohs, ntohl 함수 사용을 위해 필수!
 
 Session::Session(int fd) 
     : client_fd(fd), state(State::READING_HEADER), 

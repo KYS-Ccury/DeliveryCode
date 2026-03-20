@@ -12,13 +12,9 @@ EpollServer::EpollServer(int port, ThreadPool* pool)
 }
 
 EpollServer::~EpollServer() {
-    // 1. 모든 세션(클라이언트) 연결 종료 및 메모리 해제
-    for (auto& pair : sessions) {
-        delete pair.second; // Session 소멸자에서 close(client_fd) 호출됨
-    }
+    // ★ 수정: delete 호출 불필요. map을 비우면 스마트 포인터가 알아서 Session을 소멸시킴
     sessions.clear();
 
-    // 2. 서버 소켓 및 epoll FD 닫기
     if (server_fd != -1) close(server_fd);
     if (epoll_fd != -1)  close(epoll_fd);
 }
@@ -109,7 +105,8 @@ void EpollServer::acceptConnection() {
         // 뮤텍스로 보호하며 세션 추가
         {
             std::lock_guard<std::mutex> lock(session_mutex);
-            sessions[client_fd] = new Session(client_fd);
+            // ★ 수정: new 대신 std::make_shared 사용
+            sessions[client_fd] = std::make_shared<Session>(client_fd);
         }
     }
 }
@@ -129,12 +126,10 @@ void EpollServer::closeConnection(int client_fd) {
     std::lock_guard<std::mutex> lock(session_mutex);
     epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);
     
-    auto it = sessions.find(client_fd);
-    if (it != sessions.end()) {
-        delete it->second;
-        sessions.erase(it);
-    }
+    // ★ 수정: delete 불필요. map에서 지우기만 하면 됨
+    sessions.erase(client_fd); 
 }
+
 
 void EpollServer::start() {
     setupServer();
@@ -150,23 +145,26 @@ void EpollServer::start() {
                 acceptConnection();
             } 
             else if (events[i].events & EPOLLIN) {
-                // ★ 핵심 3: 메인 스레드는 읽지 않는다! 스레드 풀로 넘겨버린다.
-                Session* session = nullptr;
+                // ★ 수정: Session* 대신 std::shared_ptr<Session> 사용
+                std::shared_ptr<Session> session = nullptr; 
                 {
                     std::lock_guard<std::mutex> lock(session_mutex);
-                    if (sessions.find(active_fd) != sessions.end()) {
-                        session = sessions[active_fd];
+                    auto it = sessions.find(active_fd);
+                    if (it != sessions.end()) {
+                        session = it->second; // 참조 카운트 증가
                     }
                 }
 
                 if (session) {
-                    // 워커 스레드가 백그라운드에서 읽기 시작함
+                    // ★ 람다 캡처 [session]: 
+                    // 스마트 포인터가 값으로 복사되어 캡처되므로, 이 람다가 큐에 있거나
+                    // 실행되는 동안에는 누군가 closeConnection을 호출해도 Session 메모리가 유지됩니다.
                     pool->enqueue([this, session, active_fd]() {
-                        // 세션에서 데이터를 다 읽었으면 (EAGAIN 도달 시 true 반환)
+                        // 내부 로직은 기존과 동일 (스마트 포인터는 포인터처럼 화살표(->) 사용 가능)
                         if (session->readFromSocket(this->pool)) {
-                            this->rearmSocket(active_fd); // 다시 감시 활성화
+                            this->rearmSocket(active_fd); 
                         } else {
-                            this->closeConnection(active_fd); // 에러/종료 시 접속 끊기
+                            this->closeConnection(active_fd); 
                         }
                     });
                 }

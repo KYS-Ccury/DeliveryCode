@@ -30,8 +30,6 @@ public:
     ~Session();
 
     // 반환값을 bool로 변경: false 반환 시 EpollServer가 연결을 끊음
-    bool handleRead(ThreadPool* pool);
-    
-    // 클라이언트에게 데이터를 보내는 함수 (추가)
+    bool readFromSocket(ThreadPool* pool); // handleRead를 readFromSocket으로 변경
     bool sendPacket(uint8_t clientType, uint16_t protocol, const std::string& jsonBody);
 };

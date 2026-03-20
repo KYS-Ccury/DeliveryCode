@@ -1,3 +1,4 @@
+#pragma once
 #include <vector>
 #include <queue>
 #include <thread>
@@ -7,6 +8,7 @@
 #include <functional>
 #include <stdexcept>
 #include <iostream>
+#include <memory> // std::make_shared, std::shared_ptr 사용을 위해 필수
 
 class ThreadPool {
 private:
@@ -17,6 +19,7 @@ private:
     bool stop;
 
 public:
+    // 생성자
     ThreadPool(size_t num_threads) : stop(false) {
         for (size_t i = 0; i < num_threads; ++i) {
             workers.emplace_back([this] {
@@ -35,11 +38,9 @@ public:
                         this->tasks.pop();
                     }
                     
-                    // ★ 수정 포인트 1: 스레드 사망 방지를 위한 예외 처리
                     try {
                         task();
                     } catch (const std::exception& e) {
-                        // 실제 환경에서는 이곳에 에러 로그를 남깁니다.
                         std::cerr << "Thread Task Exception: " << e.what() << std::endl;
                     } catch (...) {
                         std::cerr << "Thread Task Unknown Exception" << std::endl;
@@ -49,12 +50,26 @@ public:
         }
     }
 
-    // ★ 수정 포인트 2: 어떤 형태의 함수든 넣고 std::future로 결과를 받을 수 있게 템플릿 적용
+    // 소멸자 (위치 수정)
+    ~ThreadPool() {
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex);
+            stop = true;
+        }
+        condition.notify_all();
+        for (std::thread &worker : workers) {
+            if (worker.joinable())
+                worker.join();
+        }
+    }
+
+    // 작업 추가 함수 (위치 수정 및 C++17 문법 반영)
     template<class F, class... Args>
     auto enqueue(F&& f, Args&&... args) 
-        -> std::future<typename std::result_of<F(Args...)>::type> {
+        // C++17 이상에서는 std::result_of 대신 std::invoke_result_t 를 권장합니다.
+        -> std::future<std::invoke_result_t<F, Args...>> {
             
-        using return_type = typename std::result_of<F(Args...)>::type;
+        using return_type = std::invoke_result_t<F, Args...>;
 
         auto task = std::make_shared< std::packaged_task<return_type()> >(
             std::bind(std::forward<F>(f), std::forward<Args>(args)...)
@@ -69,17 +84,5 @@ public:
         }
         condition.notify_one();
         return res;
-    }
-
-    ~ThreadPool() {
-        {
-            std::unique_lock<std::mutex> lock(queue_mutex);
-            stop = true;
-        }
-        condition.notify_all();
-        for (std::thread &worker : workers) {
-            if (worker.joinable())
-                worker.join();
-        }
     }
 };

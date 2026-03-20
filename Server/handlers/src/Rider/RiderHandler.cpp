@@ -1,73 +1,78 @@
 #include "RiderHandler.h"
 #include "Session.h"
+#include "Packet.h"          // CmdRider, ClientType, Status 포함
 #include "MariaDBManager.h"
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include "Types.h"
 
 using json = nlohmann::json;
 
-constexpr uint16_t CMD_RIDER_UPDATE_GPS = 3001;
-constexpr uint16_t CMD_RIDER_PICKUP     = 3002;
-
 void RiderHandler::process(Session* session, uint16_t protocol, const std::string& jsonBody) {
-    try {
-        json reqJson = jsonBody.empty() ? json{} : json::parse(jsonBody);
-        json resJson;
+    // 너무 잦은 로그(GPS 등)는 콘솔 부하를 주므로, 필요에 따라 분기 처리하거나 주석 처리하는 것이 좋습니다.
+    // std::cout << "[RiderHandler] 라이더 요청 수신 - 프로토콜: " << protocol << std::endl;
 
-        switch (protocol) {
-            case CMD_RIDER_UPDATE_GPS: {
-                // 초당 수없이 들어오는 GPS 데이터 (가장 가벼워야 함)
-                std::string riderId = reqJson["rider_id"];
-                double lat = reqJson["latitude"];
-                double lng = reqJson["longitude"];
-                
-                // DB Update 또는 메모리 캐시(Redis 등)에 위치 업데이트
-                // GPS 갱신은 굳이 매번 응답 패킷을 주지 않고 넘길 수도 있습니다.
-                return; // 응답 없이 종료
-            }
-            case CMD_RIDER_PICKUP: {
-                std::string orderId = reqJson["order_id"];
-                
-                // DB 연동: 픽업 완료 처리
-                resJson["status"] = "SUCCESS";
-                resJson["message"] = "픽업 확인, 배달을 시작합니다.";
-                break;
-            }
-            default:
-                resJson["status"] = "ERROR";
-                break;
-        }
+    switch (protocol) {
+        case CmdRider::REQ_SEND_GPS:      // 위치 전송 (407)
+            handleUpdateGps(session, jsonBody);
+            break;
 
-        // 응답 전송 (클라이언트 타입 3: 라이더)
-        // session->sendPacket(3, protocol + 1, resJson.dump());
+        case CmdRider::REQ_PICKUP_DONE:   // 픽업 완료 (403)
+            handlePickupDone(session, jsonBody);
+            break;
 
-    } catch (const std::exception& e) {
-        std::cerr << "[RiderHandler] 예외 발생: " << e.what() << std::endl;
+        default:
+            std::cerr << "[Rider] 알 수 없는 라이더 프로토콜: " << protocol << std::endl;
+            break;
     }
 }
 
+// ---------------------------------------------------------
+// [기능 구현] 1. 라이더 GPS 위치 업데이트 (기능 개발 중)
+// ---------------------------------------------------------
+void RiderHandler::handleUpdateGps(Session* session, const std::string& jsonBody) {
+    try {
+        json req = jsonBody.empty() ? json{} : json::parse(jsonBody);
 
+        // 초당 수없이 들어오는 GPS 데이터 (가장 가벼워야 함)
+        std::string riderId = req.value("rider_id", "");
+        double lat = req.value("latitude", 0.0);
+        double lng = req.value("longitude", 0.0);
 
+        // DB Update 또는 메모리 캐시(Redis 등)에 위치 업데이트 구현 예정
+        // auto& db = MariaDBManager::getInstance();
+        // db.executeUpdate("UPDATE riders SET lat=..., lng=... WHERE id=" + riderId);
 
-//////////// 마리아 DB 참고 예시 ////////////////////////
-// #include "MariaDBManager.h"
+        // 작성하신 대로 GPS 갱신은 네트워크 비용 절감을 위해 응답 패킷 없이 바로 리턴
+        return; 
 
-// // 1. SELECT 예시 (고객 정보 조회)
-// auto& db = MariaDBManager::getInstance();
-// std::string query = "SELECT name, phone FROM users WHERE login_id = 'test_user'";
-// DBResult rows = db.executeQuery(query);
+    } catch (const std::exception& e) {
+        std::cerr << "[handleUpdateGps] JSON 예외 발생: " << e.what() << std::endl;
+    }
+}
 
-// if (!rows.empty()) {
-//     std::string userName = rows[0]["name"];
-//     std::string userPhone = rows[0]["phone"];
-// }
+// ---------------------------------------------------------
+// [기능 구현] 2. 픽업 완료 처리 (기능 개발 중)
+// ---------------------------------------------------------
+void RiderHandler::handlePickupDone(Session* session, const std::string& jsonBody) {
+    try {
+        json req = jsonBody.empty() ? json{} : json::parse(jsonBody);
+        
+        std::string orderId = req.value("order_id", "");
 
-// // 2. UPDATE 예시 (사장님이 주문을 수락하여 상태 변경)
-// std::string updateQuery = "UPDATE orders SET status = 'ACCEPTED' WHERE order_id = 123";
-// bool success = db.executeUpdate(updateQuery);
+        // DB 연동 구현 예정: 픽업 완료 처리 (상태를 'DELIVERING' 등으로 변경)
+        // auto& db = MariaDBManager::getInstance();
+        // db.executeUpdate("UPDATE orders SET status='DELIVERING' WHERE order_id=" + orderId);
 
-// // 3. INSERT 예시 (새로운 주문 생성 후 PK 받아오기)
-// std::string insertQuery = "INSERT INTO orders (customer_id, restaurant_id, total_price) VALUES (1, 10, 15000)";
-// if (db.executeUpdate(insertQuery)) {
-//     uint64_t newOrderId = db.getLastInsertId(); // 생성된 order_id (예: 124) 획득
-// }
+        json res;
+        res["status"] = Status::SUCCESS;
+        res["message"] = "픽업 확인, 배달을 시작합니다.";
+
+        // 응답 전송 (클라이언트 타입 3: 라이더)
+        session->sendPacket(static_cast<uint8_t>(ClientType::RIDER), 
+                            CmdRider::REQ_PICKUP_DONE, res.dump());
+
+    } catch (const std::exception& e) {
+        std::cerr << "[handlePickupDone] JSON 예외 발생: " << e.what() << std::endl;
+    }
+}
