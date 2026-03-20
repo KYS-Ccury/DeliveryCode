@@ -15,7 +15,9 @@ protected:
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
     DECLARE_MESSAGE_MAP()
+    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 private:
+    HBRUSH m_hBrushBg = nullptr;
     CString m_strRegionNews;
     CString m_strDispatchType;
 
@@ -40,7 +42,9 @@ protected:
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
     DECLARE_MESSAGE_MAP()
+    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 private:
+    HBRUSH m_hBrushBg = nullptr;
     CListCtrl m_listSettlement;
 
     afx_msg LRESULT OnSocketRecv(WPARAM w, LPARAM l);
@@ -62,7 +66,9 @@ protected:
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
     DECLARE_MESSAGE_MAP()
+    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 private:
+    HBRUSH m_hBrushBg = nullptr;
     int   m_nTodayBaseSec = 0;
     DWORD m_dwOpenTime    = 0;
 
@@ -86,7 +92,9 @@ protected:
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
     DECLARE_MESSAGE_MAP()
+    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 private:
+    HBRUSH m_hBrushBg = nullptr;
     CListCtrl m_listHistory;
 
     afx_msg LRESULT OnSocketRecv(WPARAM w, LPARAM l);

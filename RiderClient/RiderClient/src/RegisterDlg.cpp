@@ -6,6 +6,7 @@
 IMPLEMENT_DYNAMIC(RegisterDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(RegisterDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_BTN_CHECK_ID, &RegisterDlg::OnBtnCheckId)
     ON_BN_CLICKED(IDC_BTN_NEXT,     &RegisterDlg::OnBtnNext)
     ON_BN_CLICKED(IDC_BTN_PREV,     &RegisterDlg::OnBtnPrev)
@@ -265,4 +266,11 @@ void RegisterDlg::ShowDlgItem(UINT nID, BOOL bShow)
 {
     CWnd* pWnd = GetDlgItem(nID);
     if (pWnd) pWnd->ShowWindow(bShow ? SW_SHOW : SW_HIDE);
+}
+HBRUSH RegisterDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
 }

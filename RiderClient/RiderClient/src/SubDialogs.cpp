@@ -9,6 +9,7 @@
 IMPLEMENT_DYNAMIC(SettingsDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(SettingsDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_BTN_REGION_NEWS,   &SettingsDlg::OnBtnRegionNews)
     ON_BN_CLICKED(IDC_BTN_DISPATCH_TYPE, &SettingsDlg::OnBtnDispatchType)
     ON_BN_CLICKED(IDOK,                  &SettingsDlg::OnBtnSave)
@@ -125,6 +126,7 @@ void SettingsDlg::LoadSettings()
 IMPLEMENT_DYNAMIC(SettlementDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(SettlementDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_MESSAGE(WM_SOCKET_RECV, &SettlementDlg::OnSocketRecv)
 END_MESSAGE_MAP()
 
@@ -230,6 +232,7 @@ void SettlementDlg::ParseAndFillList(const CString& payload)
 IMPLEMENT_DYNAMIC(DriveTimeDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(DriveTimeDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_WM_TIMER()
 END_MESSAGE_MAP()
 
@@ -321,6 +324,7 @@ void DriveTimeDlg::CalcWeekRange(CString& outRange)
 IMPLEMENT_DYNAMIC(TodayHistoryDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(TodayHistoryDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_MESSAGE(WM_SOCKET_RECV, &TodayHistoryDlg::OnSocketRecv)
 END_MESSAGE_MAP()
 
@@ -449,4 +453,32 @@ void SettingsDlg::DoDataExchange(CDataExchange* pDX)
 void DriveTimeDlg::DoDataExchange(CDataExchange* pDX)
 {
     CDialogEx::DoDataExchange(pDX);
+}
+HBRUSH SettingsDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
+}
+HBRUSH SettlementDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
+}
+HBRUSH DriveTimeDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
+}
+HBRUSH TodayHistoryDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
 }

@@ -111,6 +111,7 @@
 #define IDC_BTN_SEND                    1092
 
 // ── MyPageDlg ────────────────────────────────────────────────
+#define IDC_BTN_RIDER_NAME              1099
 #define IDC_STATIC_RIDER_NAME           1100
 #define IDC_STATIC_RIDER_REGION         1101
 #define IDC_STATIC_TODAY_CNT            1102

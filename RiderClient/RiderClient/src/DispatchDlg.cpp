@@ -6,6 +6,7 @@
 IMPLEMENT_DYNAMIC(DispatchDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(DispatchDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_BTN_ACCEPT, &DispatchDlg::OnBtnAccept)
     ON_BN_CLICKED(IDC_BTN_REJECT, &DispatchDlg::OnBtnReject)
     ON_WM_TIMER()
@@ -31,9 +32,9 @@ BOOL DispatchDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
 
-    // 진행바 범위 설정 (30 → 0)
-    m_progressTimer.SetRange(0, 30);
-    m_progressTimer.SetPos(30);
+    // 진행바 범위 설정 (60 → 0)
+    m_progressTimer.SetRange(0, 60);
+    m_progressTimer.SetPos(60);
 
     // 푸시 데이터 파싱 후 컨트롤 채우기
     ParsePushData();
@@ -167,4 +168,11 @@ void DispatchDlg::OnCancel()
 {
     KillTimer(1);
     DoReject(false);
+}
+HBRUSH DispatchDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
 }

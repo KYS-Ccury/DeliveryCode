@@ -9,6 +9,7 @@
 IMPLEMENT_DYNAMIC(LoginDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(LoginDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_BTN_LOGIN,     &LoginDlg::OnBtnLogin)
     ON_BN_CLICKED(IDC_BTN_REGISTER,  &LoginDlg::OnBtnRegister)
     ON_BN_CLICKED(IDC_BTN_FIND_ID,   &LoginDlg::OnBtnFindId)
@@ -31,6 +32,8 @@ void LoginDlg::DoDataExchange(CDataExchange* pDX)
     DDX_Control(pDX, IDC_EDIT_ID,       m_editId);
     DDX_Control(pDX, IDC_EDIT_PW,       m_editPw);
     DDX_Control(pDX, IDC_CHECK_SAVEID,  m_checkSaveId);
+    DDX_Control(pDX, IDC_BTN_LOGIN,    m_btnLogin);
+    DDX_Control(pDX, IDC_BTN_REGISTER, m_btnRegister);
 }
 
 BOOL LoginDlg::OnInitDialog()
@@ -252,4 +255,11 @@ void LoginDlg::OpenMainDlg()
     m_editPw.SetWindowText(_T(""));
     ShowWindow(SW_SHOW);
     m_editPw.SetFocus();
+}
+HBRUSH LoginDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
 }

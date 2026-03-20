@@ -6,6 +6,7 @@
 IMPLEMENT_DYNAMIC(ChatDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(ChatDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_BTN_SEND,   &ChatDlg::OnBtnSend)
     ON_MESSAGE(WM_CHAT_RECV,      &ChatDlg::OnChatRecv)
     ON_MESSAGE(WM_SOCKET_RECV,    &ChatDlg::OnSocketRecv)
@@ -326,4 +327,11 @@ void ChatDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDIS)
         }
         pDC->DrawText(msg.sentAt, &timeRect, DT_SINGLELINE | DT_LEFT);
     }
+}
+HBRUSH ChatDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
 }

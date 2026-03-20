@@ -7,6 +7,7 @@
 IMPLEMENT_DYNAMIC(DeliveryPhotoDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(DeliveryPhotoDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_BTN_SELECT_PHOTO,  &DeliveryPhotoDlg::OnBtnSelectPhoto)
     ON_BN_CLICKED(IDC_BTN_SKIP_PHOTO,    &DeliveryPhotoDlg::OnBtnSkipPhoto)
     ON_BN_CLICKED(IDC_BTN_CONFIRM_PHOTO, &DeliveryPhotoDlg::OnBtnConfirmPhoto)
@@ -121,4 +122,11 @@ LRESULT DeliveryPhotoDlg::OnSocketRecv(WPARAM /*w*/, LPARAM lParam)
 void DeliveryPhotoDlg::DoDataExchange(CDataExchange* pDX)
 {
     CDialogEx::DoDataExchange(pDX);
+}
+HBRUSH DeliveryPhotoDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
 }

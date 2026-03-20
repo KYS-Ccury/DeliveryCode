@@ -227,6 +227,7 @@
     <ClCompile Include="src\PrepareDeliveryDlg.cpp" />
     <ClCompile Include="src\RegisterDlg.cpp" />
     <ClCompile Include="src\RiderApp.cpp" />
+    <ClCompile Include="src\RoundButton.cpp" />
     <ClCompile Include="src\SocketManager.cpp" />
     <ClCompile Include="src\SubDialogs.cpp" />
   </ItemGroup>

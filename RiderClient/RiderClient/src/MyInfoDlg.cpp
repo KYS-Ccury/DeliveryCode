@@ -9,6 +9,7 @@
 IMPLEMENT_DYNAMIC(MyInfoDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(MyInfoDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_BTN_VEHICLE,     &MyInfoDlg::OnBtnVehicle)
     ON_BN_CLICKED(IDC_BTN_CHANGE_PW,   &MyInfoDlg::OnBtnChangePw)
     ON_BN_CLICKED(IDC_BTN_CHANGE_ACCT, &MyInfoDlg::OnBtnChangeAcct)
@@ -108,6 +109,7 @@ LRESULT MyInfoDlg::OnSocketRecv(WPARAM /*w*/, LPARAM lParam)
 IMPLEMENT_DYNAMIC(ChangePwDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(ChangePwDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_BTN_PW_CONFIRM, &ChangePwDlg::OnBtnConfirm)
     ON_MESSAGE(WM_SOCKET_RECV,        &ChangePwDlg::OnSocketRecv)
 END_MESSAGE_MAP()
@@ -193,6 +195,7 @@ LRESULT ChangePwDlg::OnSocketRecv(WPARAM /*w*/, LPARAM lParam)
 IMPLEMENT_DYNAMIC(ChangeAcctDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(ChangeAcctDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_BTN_ACCT_CHANGE, &ChangeAcctDlg::OnBtnChange)
     ON_MESSAGE(WM_SOCKET_RECV,         &ChangeAcctDlg::OnSocketRecv)
 END_MESSAGE_MAP()
@@ -354,4 +357,25 @@ void ChangeAcctDlg::DoDataExchange(CDataExchange* pDX)
     DDX_Control(pDX, IDC_EDIT_BANK,    m_editBank);
     DDX_Control(pDX, IDC_EDIT_HOLDER,  m_editHolder);
     DDX_Control(pDX, IDC_EDIT_ACCOUNT, m_editAccount);
+}
+HBRUSH MyInfoDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
+}
+HBRUSH ChangePwDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
+}
+HBRUSH ChangeAcctDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
 }

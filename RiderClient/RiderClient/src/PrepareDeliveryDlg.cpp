@@ -6,6 +6,7 @@
 IMPLEMENT_DYNAMIC(PrepareDeliveryDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(PrepareDeliveryDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_BTN_NEXT,    &PrepareDeliveryDlg::OnBtnNext)
     ON_BN_CLICKED(IDC_BTN_PREV,    &PrepareDeliveryDlg::OnBtnPrev)
     ON_MESSAGE(WM_SOCKET_RECV,     &PrepareDeliveryDlg::OnSocketRecv)
@@ -233,4 +234,11 @@ LRESULT PrepareDeliveryDlg::OnSocketRecv(WPARAM /*w*/, LPARAM lParam)
     // 현재 PrepareDelivery에서는 서버 응답 별도 처리 없음
     // (자동 승인 타이머로 처리)
     return 0;
+}
+HBRUSH PrepareDeliveryDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
 }

@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <afxdialogex.h>
 #include <afxcmn.h>
+#include "RoundButton.h"
 
 struct OrderListItem {
     int     orderId     = 0;
@@ -23,9 +24,14 @@ protected:
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
     DECLARE_MESSAGE_MAP()
+    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 private:
-    CListCtrl m_listOrders;
-    CTabCtrl  m_tabList;
+    HBRUSH       m_hBrushBg    = nullptr;
+    CRoundButton m_btnAcceptItem;
+    CRoundButton m_btnRejectItem;
+    CRoundButton m_btnRefresh;
+    CListCtrl    m_listOrders;
+    CTabCtrl     m_tabList;
     CArray<OrderListItem, OrderListItem&> m_items;
 
     afx_msg void    OnBtnRefresh();

@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <afxdialogex.h>
 #include <afxcmn.h>
+#include "RoundButton.h"
 
 enum class DeliveryStep {
     IDLE = 0,
@@ -23,12 +24,18 @@ protected:
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
     DECLARE_MESSAGE_MAP()
+    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 private:
-    CStatic m_staticMap;
-    CButton m_checkNewDispatch;
+    HBRUSH       m_hBrushBg     = nullptr;
+    CStatic      m_staticMap;
+    CButton      m_checkNewDispatch;
+    CRoundButton m_btnStartDrive;
+    CRoundButton m_btnStepAction;
+    CRoundButton m_btnMyPage;
+    CRoundButton m_btnDeliveryList;
 
-    DeliveryStep m_step       = DeliveryStep::IDLE;
-    bool         m_bDriving   = false;
+    DeliveryStep m_step        = DeliveryStep::IDLE;
+    bool         m_bDriving    = false;
     DWORD        m_dwStartTime = 0;
 
     afx_msg void    OnBtnStartDrive();

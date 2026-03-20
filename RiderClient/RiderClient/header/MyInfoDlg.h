@@ -14,7 +14,9 @@ protected:
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
     DECLARE_MESSAGE_MAP()
+    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 private:
+    HBRUSH m_hBrushBg = nullptr;
     afx_msg void    OnBtnVehicle();
     afx_msg void    OnBtnChangePw();
     afx_msg void    OnBtnChangeAcct();
@@ -34,7 +36,9 @@ protected:
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
     DECLARE_MESSAGE_MAP()
+    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 private:
+    HBRUSH m_hBrushBg = nullptr;
     CEdit m_editCurPw;
     CEdit m_editNewPw;
     CEdit m_editNewPwConfirm;
@@ -56,7 +60,9 @@ protected:
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
     DECLARE_MESSAGE_MAP()
+    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 private:
+    HBRUSH m_hBrushBg = nullptr;
     CEdit m_editBank;
     CEdit m_editHolder;
     CEdit m_editAccount;

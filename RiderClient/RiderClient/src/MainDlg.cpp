@@ -11,6 +11,7 @@
 IMPLEMENT_DYNAMIC(MainDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(MainDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_BTN_START_DRIVE,    &MainDlg::OnBtnStartDrive)
     ON_BN_CLICKED(IDC_BTN_MY_PAGE,        &MainDlg::OnBtnMyPage)
     ON_BN_CLICKED(IDC_BTN_DELIVERY_LIST,  &MainDlg::OnBtnDeliveryList)
@@ -37,6 +38,10 @@ void MainDlg::DoDataExchange(CDataExchange* pDX)
     CDialogEx::DoDataExchange(pDX);
     DDX_Control(pDX, IDC_STATIC_MAP,        m_staticMap);
     DDX_Control(pDX, IDC_CHECK_NEW_DISPATCH, m_checkNewDispatch);
+    DDX_Control(pDX, IDC_BTN_START_DRIVE,    m_btnStartDrive);
+    DDX_Control(pDX, IDC_BTN_STEP_ACTION,    m_btnStepAction);
+    DDX_Control(pDX, IDC_BTN_MY_PAGE,        m_btnMyPage);
+    DDX_Control(pDX, IDC_BTN_DELIVERY_LIST,  m_btnDeliveryList);
 }
 
 BOOL MainDlg::OnInitDialog()
@@ -491,4 +496,11 @@ LRESULT MainDlg::OnServerDisconn(WPARAM /*w*/, LPARAM /*l*/)
         MessageBox(_T("서버와의 연결이 끊어졌습니다.\n네트워크 상태를 확인해주세요."),
                    _T("연결 오류"), MB_OK | MB_ICONWARNING);
     return 0;
+}
+HBRUSH MainDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
 }

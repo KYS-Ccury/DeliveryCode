@@ -7,6 +7,7 @@
 IMPLEMENT_DYNAMIC(PickupCodeDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(PickupCodeDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_BTN_NUMBER_PICKUP,  &PickupCodeDlg::OnBtnNumberPickup)
     ON_BN_CLICKED(IDC_BTN_QR_PICKUP,      &PickupCodeDlg::OnBtnQRPickup)
     ON_BN_CLICKED(IDC_BTN_CONFIRM_CODE,   &PickupCodeDlg::OnBtnConfirmCode)
@@ -187,4 +188,11 @@ void PickupCodeDlg::OnKeyA()  { PressKey(_T('A')); }
 void PickupCodeDlg::DoDataExchange(CDataExchange* pDX)
 {
     CDialogEx::DoDataExchange(pDX);
+}
+HBRUSH PickupCodeDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
 }

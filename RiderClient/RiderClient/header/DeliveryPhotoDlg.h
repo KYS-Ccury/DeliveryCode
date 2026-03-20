@@ -11,7 +11,9 @@ protected:
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
     DECLARE_MESSAGE_MAP()
+    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 private:
+    HBRUSH m_hBrushBg = nullptr;
     CString m_strPhotoPath;
 
     afx_msg void    OnBtnSelectPhoto();

@@ -8,13 +8,15 @@
 IMPLEMENT_DYNAMIC(MyPageDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(MyPageDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_BTN_TODAY_HISTORY, &MyPageDlg::OnBtnTodayHistory)
     ON_BN_CLICKED(IDC_BTN_SETTLEMENT,    &MyPageDlg::OnBtnSettlement)
     ON_BN_CLICKED(IDC_BTN_DRIVE_TIME,    &MyPageDlg::OnBtnDriveTime)
-    ON_BN_CLICKED(IDC_BTN_MY_INFO,       &MyPageDlg::OnBtnMyInfo)
     ON_BN_CLICKED(IDC_BTN_SETTINGS,      &MyPageDlg::OnBtnSettings)
     ON_BN_CLICKED(IDC_BTN_LOGOUT,        &MyPageDlg::OnBtnLogout)
+    ON_BN_CLICKED(IDC_BTN_RIDER_NAME,    &MyPageDlg::OnClickRiderName)
     ON_MESSAGE(WM_SOCKET_RECV,            &MyPageDlg::OnSocketRecv)
+    ON_BN_CLICKED(IDCANCEL,              &MyPageDlg::OnBtnBack)
 END_MESSAGE_MAP()
 
 MyPageDlg::MyPageDlg(CWnd* pParent) : CDialogEx(IDD_MYPAGE_DLG, pParent) {}
@@ -31,7 +33,7 @@ BOOL MyPageDlg::OnInitDialog()
     CString nameText;
     nameText.Format(_T("%s 라이더님  >"),
                     static_cast<LPCTSTR>(s.name.IsEmpty() ? s.loginId : s.name));
-    SetDlgItemText(IDC_STATIC_RIDER_NAME, nameText);
+    SetDlgItemText(IDC_BTN_RIDER_NAME, nameText);
 
     // 배달지역 표시
     SetDlgItemText(IDC_STATIC_RIDER_REGION, s.deliveryRegion);
@@ -78,7 +80,8 @@ void MyPageDlg::OnBtnDriveTime()
     dlg.DoModal();
 }
 
-void MyPageDlg::OnBtnMyInfo()
+// OO라이더님 > 레이블 클릭 시 내 정보 화면 열기
+void MyPageDlg::OnClickRiderName()
 {
     MyInfoDlg dlg(this);
     dlg.DoModal();
@@ -148,4 +151,16 @@ void MyPageDlg::ParseTodaySummary(const CString& payload)
 void MyPageDlg::DoDataExchange(CDataExchange* pDX)
 {
     CDialogEx::DoDataExchange(pDX);
+}
+HBRUSH MyPageDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
+}
+
+void MyPageDlg::OnBtnBack()
+{
+    EndDialog(IDCANCEL);
 }

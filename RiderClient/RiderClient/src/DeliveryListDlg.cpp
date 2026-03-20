@@ -7,6 +7,7 @@
 IMPLEMENT_DYNAMIC(DeliveryListDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(DeliveryListDlg, CDialogEx)
+    ON_WM_CTLCOLOR()
     ON_BN_CLICKED(IDC_BTN_REFRESH,      &DeliveryListDlg::OnBtnRefresh)
     ON_BN_CLICKED(IDC_BTN_ACCEPT_ITEM,  &DeliveryListDlg::OnBtnAcceptItem)
     ON_BN_CLICKED(IDC_BTN_REJECT_ITEM,  &DeliveryListDlg::OnBtnRejectItem)
@@ -357,4 +358,11 @@ void DeliveryListDlg::ParseOrderListResponse(const CString& payload)
     }
 
     PopulateList();
+}
+HBRUSH DeliveryListDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+    pDC->SetBkColor(RGB(225, 248, 242));
+    pDC->SetTextColor(RGB(30, 60, 50));
+    return m_hBrushBg;
 }

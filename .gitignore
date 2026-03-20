@@ -30,3 +30,51 @@ Makefile
 /client/build/
 /server/bin/
 /client/bin/
+
+# --- [ Visual Studio 프로젝트 작업 파일 ] ---
+.vs/
+**/.vs/
+*.aps
+*.suo
+*.user
+*.ncb
+*.openeddf
+*.classview
+*.db
+*.VC.db
+*.sln.doclayouts
+*.slnx.sqlite
+
+# --- [ 빌드 결과물 및 임시 폴더 ] ---
+# 모든 프로젝트 내의 x64, Debug, Release 폴더 제외
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+**/x64/
+**/Debug/
+**/Release/
+
+# 구체적인 파일 확장자
+*.exe
+*.pdb
+*.ilk
+*.obj
+*.pch
+*.tlog
+*.lastbuildstate
+*.idb
+*.iobj
+*.ipdb
+*.log
+*.recipe
+*.res
+
+# --- [ 하위 프로젝트별 예외 처리 ] ---
+# RiderClient, CustomerClient 내부의 빌드 폴더들
+/RiderClient/RiderClient/x64/
+/RiderClient/x64/
+/CustomerClient/CustomerClient/x64/
+/CustomerClient/x64/
+/Owner/Owner/x64/
+/Owner/.vs/

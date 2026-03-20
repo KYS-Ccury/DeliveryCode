@@ -23,7 +23,9 @@ protected:
     virtual BOOL OnInitDialog() override;
     virtual BOOL PreTranslateMessage(MSG* pMsg) override;
     DECLARE_MESSAGE_MAP()
+    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 private:
+    HBRUSH m_hBrushBg = nullptr;
     CListBox m_listChat;
     CEdit    m_editInput;
     int      m_orderId     = 0;
