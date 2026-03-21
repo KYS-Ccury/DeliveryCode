@@ -1,7 +1,10 @@
-﻿#include "pch.h"
+﻿// DispatchDlg.cpp - Accept/Reject dispatch with JSON protocol
+#include "pch.h"
 #include "DispatchDlg.h"
 #include "Protocol.h"
 #include "AppContext.h"
+#include "json.hpp"
+using json = nlohmann::json;
 
 IMPLEMENT_DYNAMIC(DispatchDlg, CDialogEx)
 
@@ -13,14 +16,8 @@ BEGIN_MESSAGE_MAP(DispatchDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 DispatchDlg::DispatchDlg(const CString& pushData, CWnd* pParent)
-    : CDialogEx(IDD_DISPATCH_DLG, pParent)
-    , m_pushData(pushData)
-{
-}
-
-DispatchDlg::~DispatchDlg()
-{
-}
+    : CDialogEx(IDD_DISPATCH_DLG, pParent), m_pushData(pushData) {}
+DispatchDlg::~DispatchDlg() {}
 
 void DispatchDlg::DoDataExchange(CDataExchange* pDX)
 {
@@ -31,148 +28,108 @@ void DispatchDlg::DoDataExchange(CDataExchange* pDX)
 BOOL DispatchDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
-
-    // 진행바 범위 설정 (60 → 0)
     m_progressTimer.SetRange(0, 60);
     m_progressTimer.SetPos(60);
-
-    // 푸시 데이터 파싱 후 컨트롤 채우기
     ParsePushData();
-
     SetDlgItemText(IDC_STATIC_PICKUP, m_pickupAddr);
     SetDlgItemText(IDC_STATIC_DEST,   m_destAddr);
-
     CString feeStr;
-    feeStr.Format(_T("배달료  %d원"), m_deliveryFee);
+    feeStr.Format(_T("배달료: %d원"), m_deliveryFee);
     SetDlgItemText(IDC_STATIC_FEE, feeStr);
-
     UpdateTimerUI();
-
-    // 1초 타이머 시작
     SetTimer(1, 1000, nullptr);
-
     return TRUE;
 }
 
-// ─────────────────────────────────────────────
-// 푸시 데이터 파싱
-// 형식: "700|orderId|storeName|pickupAddr|destAddr|deliveryFee"
-// ─────────────────────────────────────────────
+// Push format: "700|orderId|storeName|pickupAddr|destAddr|deliveryFee"
 void DispatchDlg::ParsePushData()
 {
-    // 앞의 "700|" 제거
     CString data = m_pushData;
     int p = data.Find(_T('|'));
-    if (p >= 0) data = data.Mid(p + 1);  // orderId|...
+    if (p >= 0) data = data.Mid(p + 1);
 
     auto nextField = [&](CString& out) {
         int pipe = data.Find(_T('|'));
-        if (pipe >= 0) {
-            out  = data.Left(pipe);
-            data = data.Mid(pipe + 1);
-        } else {
-            out  = data;
-            data = _T("");
-        }
+        if (pipe >= 0) { out = data.Left(pipe); data = data.Mid(pipe + 1); }
+        else           { out = data; data = _T(""); }
     };
 
     CString tmp;
-    nextField(tmp);  m_orderId     = _ttoi(tmp);
-    nextField(tmp);  m_storeName   = tmp;
-    nextField(tmp);  m_pickupAddr  = tmp;
-    nextField(tmp);  m_destAddr    = tmp;
-    nextField(tmp);  m_deliveryFee = _ttoi(tmp);
+    nextField(tmp); m_orderId     = _ttoi(tmp);
+    nextField(tmp); m_storeName   = tmp;
+    nextField(tmp); m_pickupAddr  = tmp;
+    nextField(tmp); m_destAddr    = tmp;
+    nextField(tmp); m_deliveryFee = _ttoi(tmp);
 
-    // Fill currentOrder in advance
-    CurrentOrder& ord    = AppContext::Get().currentOrder;
-    ord.orderId          = m_orderId;
-    ord.pickupAddress    = m_pickupAddr;
-    ord.deliveryAddress  = m_destAddr;
-    ord.deliveryFee      = m_deliveryFee;
+    CurrentOrder& ord   = AppContext::Get().currentOrder;
+    ord.orderId         = m_orderId;
+    ord.pickupAddress   = m_pickupAddr;
+    ord.deliveryAddress = m_destAddr;
+    ord.deliveryFee     = m_deliveryFee;
 }
 
-// ─────────────────────────────────────────────
-// 타이머 UI 갱신
-// ─────────────────────────────────────────────
 void DispatchDlg::UpdateTimerUI()
 {
-    CString timerStr;
-    timerStr.Format(_T("배차수락 · %d초"), m_remainSec);
-    SetDlgItemText(IDC_STATIC_TIMER, timerStr);
-
+    CString s; s.Format(_T("배차수락 · %d초"), m_remainSec);
+    SetDlgItemText(IDC_STATIC_TIMER, s);
     m_progressTimer.SetPos(m_remainSec);
 }
 
-// ─────────────────────────────────────────────
-// 1초 타이머
-// ─────────────────────────────────────────────
 void DispatchDlg::OnTimer(UINT_PTR nIDEvent)
 {
     if (nIDEvent == 1) {
-        --m_remainSec;
-        UpdateTimerUI();
-        if (m_remainSec <= 0) {
-            KillTimer(1);
-            DoReject(true);  // 시간 초과 → 자동 거절
-        }
+        if (--m_remainSec <= 0) { KillTimer(1); DoReject(true); }
+        else UpdateTimerUI();
     }
     CDialogEx::OnTimer(nIDEvent);
 }
 
-// ─────────────────────────────────────────────
-// 수락 버튼
-// ─────────────────────────────────────────────
+// Accept: JSON {"order_id": N}
 void DispatchDlg::OnBtnAccept()
 {
     KillTimer(1);
+    json req; req["order_id"] = m_orderId;
+    AppContext::Get().socket.SendPacket(CMD_RIDER_ACCEPT, req.dump());
 
-    CString payload;
-    payload.Format(_T("%d"), m_orderId);
-    AppContext::Get().socket.SendPacket(CMD_RIDER_ACCEPT, payload);
-
-    // currentOrder의 orderCode는 서버 응답에서 채워지거나
-    // 서버 미연결 시 임시값 사용
     if (AppContext::Get().currentOrder.orderCode.IsEmpty()) {
-        CString code;
-        code.Format(_T("ORD%04d"), m_orderId);
+        CString code; code.Format(_T("ORD%06d"), m_orderId);
         AppContext::Get().currentOrder.orderCode = code;
     }
     AppContext::Get().currentOrder.status = _T("PICKUP_MOVING");
-
     EndDialog(IDOK);
 }
 
-// ─────────────────────────────────────────────
-// 거절 버튼
-// ─────────────────────────────────────────────
-void DispatchDlg::OnBtnReject()
-{
-    KillTimer(1);
-    DoReject(false);
-}
+void DispatchDlg::OnBtnReject() { KillTimer(1); DoReject(false); }
 
-// ─────────────────────────────────────────────
-// 거절 공통 처리
-// ─────────────────────────────────────────────
+// Reject: JSON {"order_id": N, "reason": "MANUAL"/"TIMEOUT"}
 void DispatchDlg::DoReject(bool bTimeout)
 {
-    CString payload;
-    payload.Format(_T("%d|%s"), m_orderId, bTimeout ? _T("TIMEOUT") : _T("MANUAL"));
-    AppContext::Get().socket.SendPacket(CMD_RIDER_REJECT, payload);
-
+    json req;
+    req["order_id"] = m_orderId;
+    req["reason"]   = bTimeout ? "TIMEOUT" : "MANUAL";
+    AppContext::Get().socket.SendPacket(CMD_RIDER_REJECT, req.dump());
     AppContext::Get().currentOrder.Clear();
     EndDialog(IDCANCEL);
 }
 
-void DispatchDlg::OnCancel()
-{
-    KillTimer(1);
-    DoReject(false);
-}
+void DispatchDlg::OnCancel() { KillTimer(1); DoReject(false); }
+
 HBRUSH DispatchDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
     HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
-    pDC->SetBkColor(RGB(225, 248, 242));
-    pDC->SetTextColor(RGB(30, 60, 50));
-    return m_hBrushBg;
+
+    if (nCtlColor == CTLCOLOR_DLG || nCtlColor == CTLCOLOR_STATIC) {
+        if (!m_hBrushBg)
+            m_hBrushBg = CreateSolidBrush(RGB(225, 248, 242));
+        pDC->SetBkColor(RGB(225, 248, 242));
+        pDC->SetTextColor(RGB(10, 10, 10));
+        return m_hBrushBg;
+    }
+    if (nCtlColor == CTLCOLOR_EDIT || nCtlColor == CTLCOLOR_LISTBOX) {
+        pDC->SetBkColor(RGB(255, 255, 255));
+        pDC->SetTextColor(RGB(10, 10, 10));
+        return (HBRUSH)GetStockObject(WHITE_BRUSH);
+    }
+    // Buttons: do NOT override - let Windows draw button text normally
+    return hbr;
 }

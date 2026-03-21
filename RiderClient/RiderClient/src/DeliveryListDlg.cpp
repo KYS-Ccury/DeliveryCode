@@ -1,8 +1,11 @@
-﻿#include "pch.h"
+﻿// DeliveryListDlg.cpp - Dispatch list with JSON protocol
+#include "pch.h"
 #include "DeliveryListDlg.h"
 #include "Protocol.h"
 #include "AppContext.h"
 #include "DispatchDlg.h"
+#include "json.hpp"
+using json = nlohmann::json;
 
 IMPLEMENT_DYNAMIC(DeliveryListDlg, CDialogEx)
 
@@ -17,14 +20,8 @@ BEGIN_MESSAGE_MAP(DeliveryListDlg, CDialogEx)
     ON_WM_TIMER()
 END_MESSAGE_MAP()
 
-DeliveryListDlg::DeliveryListDlg(CWnd* pParent)
-    : CDialogEx(IDD_DELIVERY_LIST_DLG, pParent)
-{
-}
-
-DeliveryListDlg::~DeliveryListDlg()
-{
-}
+DeliveryListDlg::DeliveryListDlg(CWnd* pParent) : CDialogEx(IDD_DELIVERY_LIST_DLG, pParent) {}
+DeliveryListDlg::~DeliveryListDlg() {}
 
 void DeliveryListDlg::DoDataExchange(CDataExchange* pDX)
 {
@@ -36,106 +33,65 @@ void DeliveryListDlg::DoDataExchange(CDataExchange* pDX)
 BOOL DeliveryListDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
-
-    // 탭 추가
     TC_ITEM ti = {};
     ti.mask = TCIF_TEXT;
-    ti.pszText = const_cast<LPTSTR>(_T("Current"));
+    ti.pszText = const_cast<LPTSTR>(_T("배차 대기"));
     m_tabList.InsertItem(0, &ti);
-    ti.pszText = const_cast<LPTSTR>(_T("History"));
+    ti.pszText = const_cast<LPTSTR>(_T("이전 내역"));
     m_tabList.InsertItem(1, &ti);
 
-    // 소켓 알림 윈도우
     AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
-
     InitListCtrl();
     RefreshCurrentList();
-
-    // 경과시간 1초 갱신 타이머
     SetTimer(1, 1000, nullptr);
-
     return TRUE;
 }
 
-// ─────────────────────────────────────────────
-// CListCtrl 컬럼 초기화
-// ─────────────────────────────────────────────
 void DeliveryListDlg::InitListCtrl()
 {
     m_listOrders.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
     m_listOrders.DeleteAllItems();
-
-    // 기존 컬럼 삭제
     while (m_listOrders.DeleteColumn(0)) {}
 
     if (m_tabList.GetCurSel() == 0) {
-        // 현재 요청 컬럼
-        m_listOrders.InsertColumn(0, _T("Elapsed"),  LVCFMT_LEFT, 80);
-        m_listOrders.InsertColumn(1, _T("Store"),    LVCFMT_LEFT, 120);
-        m_listOrders.InsertColumn(2, _T("Pickup"),    LVCFMT_LEFT, 150);
-        m_listOrders.InsertColumn(3, _T("Dest"),    LVCFMT_LEFT, 150);
-        m_listOrders.InsertColumn(4, _T("Fee"),    LVCFMT_RIGHT, 70);
+        m_listOrders.InsertColumn(0, _T("경과"),  LVCFMT_LEFT,  70);
+        m_listOrders.InsertColumn(1, _T("가게명"),    LVCFMT_LEFT, 110);
+        m_listOrders.InsertColumn(2, _T("픽업주소"),   LVCFMT_LEFT, 140);
+        m_listOrders.InsertColumn(3, _T("배달주소"),     LVCFMT_LEFT, 140);
+        m_listOrders.InsertColumn(4, _T("배달료"),      LVCFMT_RIGHT, 70);
     } else {
-        // 이전 내역 컬럼
-        m_listOrders.InsertColumn(0, _T("Date/Time"), LVCFMT_LEFT, 130);
-        m_listOrders.InsertColumn(1, _T("OrderCode"),  LVCFMT_LEFT, 90);
-        m_listOrders.InsertColumn(2, _T("Store"),    LVCFMT_LEFT, 120);
-        m_listOrders.InsertColumn(3, _T("Fee"),    LVCFMT_RIGHT, 70);
-        m_listOrders.InsertColumn(4, _T("Status"),      LVCFMT_LEFT, 70);
+        m_listOrders.InsertColumn(0, _T("날짜/시간"), LVCFMT_LEFT, 120);
+        m_listOrders.InsertColumn(1, _T("주문코드"), LVCFMT_LEFT,  90);
+        m_listOrders.InsertColumn(2, _T("가게명"),     LVCFMT_LEFT, 110);
+        m_listOrders.InsertColumn(3, _T("배달료"),       LVCFMT_RIGHT, 70);
+        m_listOrders.InsertColumn(4, _T("상태"),    LVCFMT_LEFT,  60);
     }
 }
 
-// ─────────────────────────────────────────────
-// 현재 요청 목록 서버 요청
-// ─────────────────────────────────────────────
+// CMD_RIDER_ORDER_LIST (400), body="{}"
 void DeliveryListDlg::RefreshCurrentList()
 {
-    bool bSent = AppContext::Get().socket.SendPacket(CMD_RIDER_ORDER_LIST);
+    bool bSent = AppContext::Get().socket.SendPacket(CMD_RIDER_ORDER_LIST, "{}");
     if (!bSent) {
-        // 서버 미연결 시 더미 데이터
         m_items.RemoveAll();
-
-        OrderListItem item1;
-        item1.orderId     = 1001;
-        item1.storeName   = _T("Chicken Sangmu");
-        item1.pickupAddr  = _T("Sangmu-daero 123");
-        item1.destAddr    = _T("Chipyeong 456");
-        item1.deliveryFee = 3500;
-        item1.elapsedSec  = 130;
-        m_items.Add(item1);
-
-        OrderListItem item2;
-        item2.orderId     = 1002;
-        item2.storeName   = _T("PizzaHut Sangmu");
-        item2.pickupAddr  = _T("Sangmu-jungang 45");
-        item2.destAddr    = _T("Mareuk 789");
-        item2.deliveryFee = 4000;
-        item2.elapsedSec  = 330;
-        m_items.Add(item2);
-
+        OrderListItem i1; i1.orderId=1001; i1.storeName=_T("상무치킨");
+        i1.pickupAddr=_T("상무대로 123"); i1.destAddr=_T("치평동 456");
+        i1.deliveryFee=3500; i1.elapsedSec=130; m_items.Add(i1);
+        OrderListItem i2; i2.orderId=1002; i2.storeName=_T("피자헛 상무점");
+        i2.pickupAddr=_T("상무중앙로 45"); i2.destAddr=_T("마륵동 789");
+        i2.deliveryFee=4000; i2.elapsedSec=330; m_items.Add(i2);
         PopulateList();
     }
 }
 
-// ─────────────────────────────────────────────
-// 현재 요청 목록 → CListCtrl 채우기
-// ─────────────────────────────────────────────
 void DeliveryListDlg::PopulateList()
 {
     m_listOrders.DeleteAllItems();
-
     for (INT_PTR i = 0; i < m_items.GetSize(); i++) {
         const OrderListItem& item = m_items[i];
-
-        // 경과시간 포맷: mm분 ss초
-        int m = item.elapsedSec / 60;
-        int s = item.elapsedSec % 60;
-        CString elapsed;
-        elapsed.Format(_T("%dm %02ds"), m, s);
-
-        CString fee;
-        fee.Format(_T("%dW"), item.deliveryFee);
-
+        int m = item.elapsedSec / 60, s = item.elapsedSec % 60;
+        CString elapsed; elapsed.Format(_T("%d분 %02d초"), m, s);
+        CString fee; fee.Format(_T("%d원"), item.deliveryFee);
         int nRow = m_listOrders.InsertItem((int)i, elapsed);
         m_listOrders.SetItemText(nRow, 1, item.storeName);
         m_listOrders.SetItemText(nRow, 2, item.pickupAddr);
@@ -145,224 +101,160 @@ void DeliveryListDlg::PopulateList()
     }
 }
 
-// ─────────────────────────────────────────────
-// 이전 내역 목록 서버 요청
-// ─────────────────────────────────────────────
+// CMD_RIDER_MY_LIST (405), body="{}"
 void DeliveryListDlg::PopulateHistoryList()
 {
-    bool bSent = AppContext::Get().socket.SendPacket(CMD_RIDER_MY_LIST);
+    bool bSent = AppContext::Get().socket.SendPacket(CMD_RIDER_MY_LIST, "{}");
     if (!bSent) {
-        // 서버 미연결 시 더미 데이터
         m_listOrders.DeleteAllItems();
         struct { LPCTSTR dt; LPCTSTR code; LPCTSTR store; int fee; } dummy[] = {
-            { _T("03/20 19:35"), _T("2783JBCD"), _T("Chicken Sangmu"), 3500 },
-            { _T("03/20 17:55"), _T("7824SJFE"), _T("PizzaHut Sangmu"),   4000 },
-            { _T("03/20 15:10"), _T("0128VPLW"), _T("BurgerKing Sangmu"), 3000 },
+            { _T("03/20 19:35"), _T("ORD000001"), _T("상무치킨"), 3500 },
+            { _T("03/20 17:55"), _T("ORD000002"), _T("피자헛 상무점"), 4000 },
+            { _T("03/20 15:10"), _T("ORD000003"), _T("BurgerKing Sangmu"), 3000 },
         };
         for (int i = 0; i < 3; i++) {
-            CString fee;
-            fee.Format(_T("%dW"), dummy[i].fee);
+            CString fee; fee.Format(_T("%d원"), dummy[i].fee);
             int nRow = m_listOrders.InsertItem(i, dummy[i].dt);
             m_listOrders.SetItemText(nRow, 1, dummy[i].code);
             m_listOrders.SetItemText(nRow, 2, dummy[i].store);
             m_listOrders.SetItemText(nRow, 3, fee);
-            m_listOrders.SetItemText(nRow, 4, _T("Done"));
+            m_listOrders.SetItemText(nRow, 4, _T("완료"));
         }
     }
 }
 
-// ─────────────────────────────────────────────
-// 경과시간 1초 갱신
-// ─────────────────────────────────────────────
 void DeliveryListDlg::UpdateElapsedTime()
 {
     if (m_tabList.GetCurSel() != 0) return;
-
     for (INT_PTR i = 0; i < m_items.GetSize(); i++) {
         m_items[i].elapsedSec++;
-        int m = m_items[i].elapsedSec / 60;
-        int s = m_items[i].elapsedSec % 60;
-        CString elapsed;
-        elapsed.Format(_T("%dm %02ds"), m, s);
+        int m = m_items[i].elapsedSec / 60, s = m_items[i].elapsedSec % 60;
+        CString elapsed; elapsed.Format(_T("%d분 %02d초"), m, s);
         m_listOrders.SetItemText((int)i, 0, elapsed);
     }
 }
 
-// ─────────────────────────────────────────────
-// 새로고침 버튼
-// ─────────────────────────────────────────────
 void DeliveryListDlg::OnBtnRefresh()
 {
-    if (m_tabList.GetCurSel() == 0) {
-        m_items.RemoveAll();
-        RefreshCurrentList();
-    } else {
-        PopulateHistoryList();
-    }
+    if (m_tabList.GetCurSel() == 0) { m_items.RemoveAll(); RefreshCurrentList(); }
+    else PopulateHistoryList();
 }
 
-// ─────────────────────────────────────────────
-// 수락 버튼 (선택 항목 → DispatchDlg)
-// ─────────────────────────────────────────────
 void DeliveryListDlg::OnBtnAcceptItem()
 {
     int nSel = m_listOrders.GetNextItem(-1, LVNI_SELECTED);
-    if (nSel < 0) {
-        MessageBox(_T("Select an item to accept."), _T("Notice"), MB_OK | MB_ICONINFORMATION);
-        return;
-    }
-
+    if (nSel < 0) { MessageBox(_T("항목을 선택하세요."), _T("알림"), MB_OK); return; }
     if (nSel >= (int)m_items.GetSize()) return;
-
     const OrderListItem& item = m_items[nSel];
-
-    // DispatchDlg용 pushData 생성
     CString pushData;
     pushData.Format(_T("700|%d|%s|%s|%s|%d"),
-                    item.orderId,
-                    static_cast<LPCTSTR>(item.storeName),
+                    item.orderId, static_cast<LPCTSTR>(item.storeName),
                     static_cast<LPCTSTR>(item.pickupAddr),
-                    static_cast<LPCTSTR>(item.destAddr),
-                    item.deliveryFee);
-
+                    static_cast<LPCTSTR>(item.destAddr), item.deliveryFee);
     DispatchDlg dlg(pushData, this);
     if (dlg.DoModal() == IDOK) {
-        // 수락 완료 → 목록에서 제거
-        m_items.RemoveAt(nSel);
-        PopulateList();
-        EndDialog(IDOK);  // MainDlg에 배차 수락 알림
+        m_items.RemoveAt(nSel); PopulateList(); EndDialog(IDOK);
     }
 }
 
-// ─────────────────────────────────────────────
-// 거절 버튼
-// ─────────────────────────────────────────────
 void DeliveryListDlg::OnBtnRejectItem()
 {
     int nSel = m_listOrders.GetNextItem(-1, LVNI_SELECTED);
     if (nSel < 0 || nSel >= (int)m_items.GetSize()) return;
-
-    CString payload;
-    payload.Format(_T("%d|MANUAL"), m_items[nSel].orderId);
-    AppContext::Get().socket.SendPacket(CMD_RIDER_REJECT, payload);
-
-    m_items.RemoveAt(nSel);
-    PopulateList();
+    json req; req["order_id"] = m_items[nSel].orderId; req["reason"] = "MANUAL";
+    AppContext::Get().socket.SendPacket(CMD_RIDER_REJECT, req.dump());
+    m_items.RemoveAt(nSel); PopulateList();
 }
 
-// ─────────────────────────────────────────────
-// 더블클릭 → 수락 처리
-// ─────────────────────────────────────────────
-void DeliveryListDlg::OnDblclkList(NMHDR* /*pNMHDR*/, LRESULT* pResult)
+void DeliveryListDlg::OnDblclkList(NMHDR*, LRESULT* pResult)
 {
-    if (m_tabList.GetCurSel() == 0)
-        OnBtnAcceptItem();
+    if (m_tabList.GetCurSel() == 0) OnBtnAcceptItem();
     *pResult = 0;
 }
 
-// ─────────────────────────────────────────────
-// 탭 전환
-// ─────────────────────────────────────────────
-void DeliveryListDlg::OnTabSelChange(NMHDR* /*pNMHDR*/, LRESULT* pResult)
+void DeliveryListDlg::OnTabSelChange(NMHDR*, LRESULT* pResult)
 {
     InitListCtrl();
-    if (m_tabList.GetCurSel() == 0)
-        RefreshCurrentList();
-    else
-        PopulateHistoryList();
+    if (m_tabList.GetCurSel() == 0) RefreshCurrentList();
+    else PopulateHistoryList();
     *pResult = 0;
 }
 
-// ─────────────────────────────────────────────
-// 타이머
-// ─────────────────────────────────────────────
 void DeliveryListDlg::OnTimer(UINT_PTR nIDEvent)
 {
     if (nIDEvent == 1) UpdateElapsedTime();
     CDialogEx::OnTimer(nIDEvent);
 }
 
-// ─────────────────────────────────────────────
-// 외부에서 배차 항목 추가 (MainDlg의 OnDispatchPush에서 호출)
-// ─────────────────────────────────────────────
 void DeliveryListDlg::AddDispatchItem(const OrderListItem& item)
 {
     m_items.Add(const_cast<OrderListItem&>(item));
-    if (m_tabList.GetCurSel() == 0)
-        PopulateList();
+    if (m_tabList.GetCurSel() == 0) PopulateList();
 }
 
-// ─────────────────────────────────────────────
-// 서버 수신 처리
-// "400|OK|orderId,storeName,pickup,dest,fee;..." 형식
-// ─────────────────────────────────────────────
-LRESULT DeliveryListDlg::OnSocketRecv(WPARAM /*w*/, LPARAM lParam)
+// Recv 400: {"status":2000,"orders":[{order_id,store_name,pickup_addr,dest_addr,delivery_fee,elapsed_sec},...]}
+// Recv 405: {"status":2000,"records":[{order_id,order_code,store_name,delivery_fee,status,created_at},...]}
+LRESULT DeliveryListDlg::OnSocketRecv(WPARAM, LPARAM lParam)
 {
-    CString* pMsg = reinterpret_cast<CString*>(lParam);
-    if (!pMsg) return 0;
-    CString msg = *pMsg;
-    delete pMsg;
+    RecvPacket* pPkt = reinterpret_cast<RecvPacket*>(lParam);
+    if (!pPkt) return 0;
+    UINT16      protocol = pPkt->protocol;
+    std::string body     = pPkt->body;
+    delete pPkt;
 
-    int pipePos = msg.Find(_T('|'));
-    if (pipePos < 0) return 0;
-    int cmd = _ttoi(msg.Left(pipePos));
+    auto toCS = [](const std::string& s) -> CString {
+        CA2T ws(s.c_str(), CP_UTF8); return CString(ws);
+    };
 
-    if (cmd == CMD_RIDER_ORDER_LIST) {
-        CString payload = msg.Mid(pipePos + 1);
-        int ok = payload.Find(_T('|'));
-        if (ok >= 0 && payload.Left(ok) == _T("OK"))
-            ParseOrderListResponse(payload.Mid(ok + 1));
-    } else if (cmd == CMD_RIDER_MY_LIST) {
-        // 이전 내역 파싱은 PopulateHistoryList 서버 응답 버전에서 처리
-    }
+    try {
+        json res = json::parse(body);
+        if (res.value("status", 0) != STATUS_SUCCESS) return 0;
+
+        if (protocol == CMD_RIDER_ORDER_LIST) {
+            m_items.RemoveAll();
+            for (const auto& o : res["orders"]) {
+                OrderListItem item;
+                item.orderId     = o.value("order_id",     0);
+                item.storeName   = toCS(o.value("store_name",  ""));
+                item.pickupAddr  = toCS(o.value("pickup_addr", ""));
+                item.destAddr    = toCS(o.value("dest_addr",   ""));
+                item.deliveryFee = o.value("delivery_fee",  0);
+                item.elapsedSec  = o.value("elapsed_sec",   0);
+                m_items.Add(item);
+            }
+            PopulateList();
+        } else if (protocol == CMD_RIDER_MY_LIST) {
+            m_listOrders.DeleteAllItems();
+            int row = 0;
+            for (const auto& r : res["records"]) {
+                CString fee; fee.Format(_T("%d원"), r.value("delivery_fee", 0));
+                int nRow = m_listOrders.InsertItem(row++, toCS(r.value("created_at", "")));
+                m_listOrders.SetItemText(nRow, 1, toCS(r.value("order_code",  "")));
+                m_listOrders.SetItemText(nRow, 2, toCS(r.value("store_name",  "")));
+                m_listOrders.SetItemText(nRow, 3, fee);
+                m_listOrders.SetItemText(nRow, 4, toCS(r.value("status", "")));
+            }
+        }
+    } catch (...) {}
     return 0;
 }
 
-// ─────────────────────────────────────────────
-// 서버 응답 파싱
-// 항목 구분: ';'  /  필드 구분: ','
-// "orderId,storeName,pickup,dest,fee"
-// ─────────────────────────────────────────────
-void DeliveryListDlg::ParseOrderListResponse(const CString& payload)
-{
-    m_items.RemoveAll();
-
-    CString data = payload;
-    while (!data.IsEmpty()) {
-        int semi = data.Find(_T(';'));
-        CString row = (semi >= 0) ? data.Left(semi) : data;
-        data = (semi >= 0) ? data.Mid(semi + 1) : _T("");
-
-        if (row.IsEmpty()) continue;
-
-        OrderListItem item;
-        auto nextField = [&](CString& out) {
-            int comma = row.Find(_T(','));
-            if (comma >= 0) {
-                out = row.Left(comma);
-                row = row.Mid(comma + 1);
-            } else {
-                out = row; row = _T("");
-            }
-        };
-
-        CString tmp;
-        nextField(tmp);  item.orderId     = _ttoi(tmp);
-        nextField(tmp);  item.storeName   = tmp;
-        nextField(tmp);  item.pickupAddr  = tmp;
-        nextField(tmp);  item.destAddr    = tmp;
-        nextField(tmp);  item.deliveryFee = _ttoi(tmp);
-        item.elapsedSec = 0;
-
-        m_items.Add(item);
-    }
-
-    PopulateList();
-}
 HBRUSH DeliveryListDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
     HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
-    pDC->SetBkColor(RGB(225, 248, 242));
-    pDC->SetTextColor(RGB(30, 60, 50));
-    return m_hBrushBg;
+
+    if (nCtlColor == CTLCOLOR_DLG || nCtlColor == CTLCOLOR_STATIC) {
+        if (!m_hBrushBg)
+            m_hBrushBg = CreateSolidBrush(RGB(225, 248, 242));
+        pDC->SetBkColor(RGB(225, 248, 242));
+        pDC->SetTextColor(RGB(10, 10, 10));
+        return m_hBrushBg;
+    }
+    if (nCtlColor == CTLCOLOR_EDIT || nCtlColor == CTLCOLOR_LISTBOX) {
+        pDC->SetBkColor(RGB(255, 255, 255));
+        pDC->SetTextColor(RGB(10, 10, 10));
+        return (HBRUSH)GetStockObject(WHITE_BRUSH);
+    }
+    // Buttons: do NOT override - let Windows draw button text normally
+    return hbr;
 }

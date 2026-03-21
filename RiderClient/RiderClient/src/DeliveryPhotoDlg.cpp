@@ -1,8 +1,10 @@
-﻿// DeliveryPhotoDlg.cpp  –  전달 사진 선택(CFileDialog) + 전달완료
+﻿// DeliveryPhotoDlg.cpp - Delivery complete with JSON protocol
 #include "pch.h"
 #include "DeliveryPhotoDlg.h"
 #include "Protocol.h"
 #include "AppContext.h"
+#include "json.hpp"
+using json = nlohmann::json;
 
 IMPLEMENT_DYNAMIC(DeliveryPhotoDlg, CDialogEx)
 
@@ -15,118 +17,106 @@ BEGIN_MESSAGE_MAP(DeliveryPhotoDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 DeliveryPhotoDlg::DeliveryPhotoDlg(CWnd* pParent)
-    : CDialogEx(IDD_DELIVERY_PHOTO_DLG, pParent)
-{
-}
+    : CDialogEx(IDD_DELIVERY_PHOTO_DLG, pParent) {}
+DeliveryPhotoDlg::~DeliveryPhotoDlg() {}
 
-DeliveryPhotoDlg::~DeliveryPhotoDlg()
-{
-}
+void DeliveryPhotoDlg::DoDataExchange(CDataExchange* pDX) { CDialogEx::DoDataExchange(pDX); }
 
 BOOL DeliveryPhotoDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
     AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
-
-    // 전달 완료 버튼 비활성화 (사진 첨부 또는 건너뛰기 선택 전)
     GetDlgItem(IDC_BTN_CONFIRM_PHOTO)->EnableWindow(FALSE);
-
     return TRUE;
 }
 
-// ─────────────────────────────────────────────
-// 사진 선택 (CFileDialog)
-// ─────────────────────────────────────────────
 void DeliveryPhotoDlg::OnBtnSelectPhoto()
 {
-    CFileDialog dlg(TRUE,           // bOpenFileDialog
-                    _T("jpg"),      // lpszDefExt
-                    nullptr,        // lpszFileName
+    CFileDialog dlg(TRUE, _T("jpg"), nullptr,
                     OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
-                    _T("이미지 파일 (*.jpg;*.jpeg;*.png)|*.jpg;*.jpeg;*.png|모든 파일 (*.*)|*.*||"),
-                    this);
-
+                    _T("이미지 파일 (*.jpg;*.jpeg;*.png)|*.jpg;*.jpeg;*.png|모든 파일 (*.*)|*.*||"), this);
     if (dlg.DoModal() == IDOK) {
         m_strPhotoPath = dlg.GetPathName();
         SetDlgItemText(IDC_STATIC_PHOTO_PATH, m_strPhotoPath);
-        SetDlgItemText(IDC_STATIC_QR_VIEW,    _T("[사진 첨부됨]\n") + m_strPhotoPath);
+        SetDlgItemText(IDC_STATIC_QR_VIEW, _T("[사진 첨부됨]"));
         GetDlgItem(IDC_BTN_CONFIRM_PHOTO)->EnableWindow(TRUE);
     }
 }
 
-// ─────────────────────────────────────────────
-// 건너뛰기 (사진 없이 전달 완료)
-// ─────────────────────────────────────────────
 void DeliveryPhotoDlg::OnBtnSkipPhoto()
 {
     m_strPhotoPath.Empty();
     SetDlgItemText(IDC_STATIC_PHOTO_PATH, _T("(사진 없음)"));
-    SetDlgItemText(IDC_STATIC_QR_VIEW,    _T("(사진 없이 완료)"));
+    SetDlgItemText(IDC_STATIC_QR_VIEW, _T("(사진 없이 완료)"));
     GetDlgItem(IDC_BTN_CONFIRM_PHOTO)->EnableWindow(TRUE);
 }
 
-// ─────────────────────────────────────────────
-// 전달 완료 확인
-// ─────────────────────────────────────────────
+// Send: JSON {"order_id": N}
 void DeliveryPhotoDlg::OnBtnConfirmPhoto()
 {
-    // 서버에 배달 완료 패킷 전송
-    // 실제로는 사진 파일을 바이너리로 전송하지만,
-    // 현재는 파일 경로만 전송 (서버 연결 시 확장)
-    CString payload;
-    payload.Format(_T("%d|%s"),
-                   AppContext::Get().currentOrder.orderId,
-                   m_strPhotoPath.IsEmpty() ? _T("NOPHOTO")
-                                            : static_cast<LPCTSTR>(m_strPhotoPath));
-
-    bool bSent = AppContext::Get().socket.SendPacket(CMD_RIDER_DELIVERY_DONE, payload);
-
-    if (!bSent) {
-        // 서버 미연결 시 즉시 완료 처리
-        MessageBox(_T("전달이 완료되었습니다!\n수고하셨습니다."),
-                   _T("전달 완료"), MB_OK | MB_ICONINFORMATION);
-        EndDialog(IDOK);
+    int orderId = AppContext::Get().currentOrder.orderId;
+    if (orderId <= 0) {
+        MessageBox(_T("유효하지 않은 주문입니다."), _T("오류"), MB_OK | MB_ICONWARNING);
         return;
     }
-    // 서버 응답은 OnSocketRecv에서 처리
+    json req;
+    req["order_id"] = orderId;
+    if (!m_strPhotoPath.IsEmpty()) {
+        CT2A pathUtf8(m_strPhotoPath, CP_UTF8);
+        req["photo_path"] = std::string(pathUtf8);
+    }
+
+    bool bSent = AppContext::Get().socket.SendPacket(CMD_RIDER_DELIVERY_DONE, req.dump());
+    if (!bSent) {
+        MessageBox(_T("배달이 완료되었습니다! 수고하셨습니다."), _T("완료"), MB_OK | MB_ICONINFORMATION);
+        EndDialog(IDOK);
+    }
 }
 
-// ─────────────────────────────────────────────
-// 서버 응답: "404|OK" → 배달 완료 확인
-// ─────────────────────────────────────────────
-LRESULT DeliveryPhotoDlg::OnSocketRecv(WPARAM /*w*/, LPARAM lParam)
+// Recv: {"status":2000,"delivery_fee":3000,"message":"..."}
+LRESULT DeliveryPhotoDlg::OnSocketRecv(WPARAM, LPARAM lParam)
 {
-    CString* pMsg = reinterpret_cast<CString*>(lParam);
-    if (!pMsg) return 0;
-    CString msg = *pMsg;
-    delete pMsg;
+    RecvPacket* pPkt = reinterpret_cast<RecvPacket*>(lParam);
+    if (!pPkt) return 0;
+    UINT16      protocol = pPkt->protocol;
+    std::string body     = pPkt->body;
+    delete pPkt;
 
-    int p = msg.Find(_T('|'));
-    if (p < 0) return 0;
-    int cmd = _ttoi(msg.Left(p));
+    if (protocol != CMD_RIDER_DELIVERY_DONE) return 0;
 
-    if (cmd == CMD_RIDER_DELIVERY_DONE) {
-        CString rest = msg.Mid(p + 1);
-        if (rest.Left(2) == _T("OK")) {
-            MessageBox(_T("전달이 완료되었습니다!\n수고하셨습니다."),
-                       _T("전달 완료"), MB_OK | MB_ICONINFORMATION);
+    try {
+        json res = json::parse(body);
+        if (res.value("status", 0) == STATUS_SUCCESS) {
+            std::string msg = res.value("message", "Delivery completed! Great job.");
+            CA2T wMsg(msg.c_str(), CP_UTF8);
+            MessageBox(CString(wMsg), _T("완료"), MB_OK | MB_ICONINFORMATION);
             EndDialog(IDOK);
         } else {
-            MessageBox(_T("서버 처리 중 오류가 발생했습니다.\n다시 시도해주세요."),
-                       _T("오류"), MB_OK | MB_ICONWARNING);
+            std::string err = res.value("message", "Server error. Please retry.");
+            CA2T wErr(err.c_str(), CP_UTF8);
+            MessageBox(CString(wErr), _T("오류"), MB_OK | MB_ICONWARNING);
+            GetDlgItem(IDC_BTN_CONFIRM_PHOTO)->EnableWindow(TRUE);
         }
-    }
+    } catch (...) {}
     return 0;
 }
 
-void DeliveryPhotoDlg::DoDataExchange(CDataExchange* pDX)
-{
-    CDialogEx::DoDataExchange(pDX);
-}
 HBRUSH DeliveryPhotoDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
     HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
-    pDC->SetBkColor(RGB(225, 248, 242));
-    pDC->SetTextColor(RGB(30, 60, 50));
-    return m_hBrushBg;
+
+    if (nCtlColor == CTLCOLOR_DLG || nCtlColor == CTLCOLOR_STATIC) {
+        if (!m_hBrushBg)
+            m_hBrushBg = CreateSolidBrush(RGB(225, 248, 242));
+        pDC->SetBkColor(RGB(225, 248, 242));
+        pDC->SetTextColor(RGB(10, 10, 10));
+        return m_hBrushBg;
+    }
+    if (nCtlColor == CTLCOLOR_EDIT || nCtlColor == CTLCOLOR_LISTBOX) {
+        pDC->SetBkColor(RGB(255, 255, 255));
+        pDC->SetTextColor(RGB(10, 10, 10));
+        return (HBRUSH)GetStockObject(WHITE_BRUSH);
+    }
+    // Buttons: do NOT override - let Windows draw button text normally
+    return hbr;
 }

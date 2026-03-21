@@ -1,11 +1,34 @@
-﻿#include "pch.h"
+﻿// SubDialogs.cpp - SettingsDlg, SettlementDlg, DriveTimeDlg, TodayHistoryDlg
+// Fixed: OnCtlColor text visibility, JSON protocol for SendPacket calls
+#include "pch.h"
 #include "SubDialogs.h"
 #include "Protocol.h"
 #include "AppContext.h"
+#include "json.hpp"
+using json = nlohmann::json;
 
-// ══════════════════════════════════════════════════════════════
+// Shared OnCtlColor helper macro - avoids code duplication
+#define IMPL_CTLCOLOR(ClassName) \
+HBRUSH ClassName::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor) \
+{ \
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor); \
+    if (nCtlColor == CTLCOLOR_DLG || nCtlColor == CTLCOLOR_STATIC) { \
+        if (!m_hBrushBg) m_hBrushBg = CreateSolidBrush(RGB(225, 248, 242)); \
+        pDC->SetBkColor(RGB(225, 248, 242)); \
+        pDC->SetTextColor(RGB(10, 10, 10)); \
+        return m_hBrushBg; \
+    } \
+    if (nCtlColor == CTLCOLOR_EDIT || nCtlColor == CTLCOLOR_LISTBOX) { \
+        pDC->SetBkColor(RGB(255, 255, 255)); \
+        pDC->SetTextColor(RGB(10, 10, 10)); \
+        return (HBRUSH)GetStockObject(WHITE_BRUSH); \
+    } \
+    return hbr; \
+}
+
+// ================================================================
 //  SettingsDlg
-// ══════════════════════════════════════════════════════════════
+// ================================================================
 IMPLEMENT_DYNAMIC(SettingsDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(SettingsDlg, CDialogEx)
@@ -18,21 +41,20 @@ END_MESSAGE_MAP()
 SettingsDlg::SettingsDlg(CWnd* pParent) : CDialogEx(IDD_SETTINGS_DLG, pParent) {}
 SettingsDlg::~SettingsDlg() {}
 
+void SettingsDlg::DoDataExchange(CDataExchange* pDX)
+{
+    CDialogEx::DoDataExchange(pDX);
+}
+
 BOOL SettingsDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
     LoadSettings();
-
-    // 소식받기 지역 에디트 초기값 설정
-    SetDlgItemText(IDC_EDIT_REGION_NEWS, m_strRegionNews);
-
-    // 배차 방식 Static 표시
+    SetDlgItemText(IDC_EDIT_REGION_NEWS,     m_strRegionNews);
     SetDlgItemText(IDC_STATIC_DISPATCH_TYPE, m_strDispatchType);
-
     return TRUE;
 }
 
-// 소식받기 지역 변경
 void SettingsDlg::OnBtnRegionNews()
 {
     CString strNew;
@@ -46,7 +68,6 @@ void SettingsDlg::OnBtnRegionNews()
     MessageBox(_T("소식받기 지역이 변경되었습니다."), _T("완료"), MB_OK | MB_ICONINFORMATION);
 }
 
-// 배차 방식 선택 팝업
 void SettingsDlg::OnBtnDispatchType()
 {
     CMenu menu;
@@ -55,27 +76,16 @@ void SettingsDlg::OnBtnDispatchType()
     menu.AppendMenu(MF_STRING, 1002, _T("수동배차 (요청을 직접 수락/거절)"));
 
     CWnd* pBtn = GetDlgItem(IDC_BTN_DISPATCH_TYPE);
-    CRect rc;
-    pBtn->GetWindowRect(&rc);
+    CRect rc; pBtn->GetWindowRect(&rc);
 
-    int sel = menu.TrackPopupMenu(
-        TPM_LEFTALIGN | TPM_RETURNCMD | TPM_NONOTIFY,
-        rc.left, rc.bottom, this);
-
-    if (sel == 1001) {
-        m_strDispatchType = _T("자동배차");
-    } else if (sel == 1002) {
-        m_strDispatchType = _T("수동배차");
-    }
-    if (sel != 0)
-        SetDlgItemText(IDC_STATIC_DISPATCH_TYPE, m_strDispatchType);
+    int sel = menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RETURNCMD | TPM_NONOTIFY,
+                                  rc.left, rc.bottom, this);
+    if (sel == 1001)      m_strDispatchType = _T("자동배차 (가까운 주문 자동 수락)");
+    else if (sel == 1002) m_strDispatchType = _T("수동배차 (요청을 직접 수락/거절)");
+    if (sel != 0) SetDlgItemText(IDC_STATIC_DISPATCH_TYPE, m_strDispatchType);
 }
 
-void SettingsDlg::OnBtnSave()
-{
-    SaveSettings();
-    EndDialog(IDOK);
-}
+void SettingsDlg::OnBtnSave() { SaveSettings(); EndDialog(IDOK); }
 
 void SettingsDlg::SaveSettings()
 {
@@ -83,7 +93,6 @@ void SettingsDlg::SaveSettings()
     RegCreateKeyEx(HKEY_CURRENT_USER, _T("Software\\BaeminRider\\Settings"),
                    0, nullptr, REG_OPTION_NON_VOLATILE, KEY_WRITE, nullptr, &hKey, nullptr);
     if (!hKey) return;
-
     auto writeStr = [&](LPCTSTR name, const CString& val) {
         RegSetValueEx(hKey, name, 0, REG_SZ,
                       reinterpret_cast<const BYTE*>(static_cast<LPCTSTR>(val)),
@@ -99,9 +108,8 @@ void SettingsDlg::LoadSettings()
     HKEY hKey = nullptr;
     if (RegOpenKeyEx(HKEY_CURRENT_USER, _T("Software\\BaeminRider\\Settings"),
                      0, KEY_READ, &hKey) != ERROR_SUCCESS) {
-        // 기본값
         m_strRegionNews   = AppContext::Get().session.deliveryRegion;
-        m_strDispatchType = _T("수동배차");
+        m_strDispatchType = _T("수동배차 (요청을 직접 수락/거절)");
         return;
     }
     auto readStr = [&](LPCTSTR name, CString& out, LPCTSTR def) {
@@ -110,19 +118,20 @@ void SettingsDlg::LoadSettings()
         if (RegQueryValueEx(hKey, name, nullptr, &type,
                             reinterpret_cast<LPBYTE>(buf), &size) == ERROR_SUCCESS)
             out = buf;
-        else
-            out = def;
+        else out = def;
     };
     readStr(_T("RegionNews"),   m_strRegionNews,
             static_cast<LPCTSTR>(AppContext::Get().session.deliveryRegion));
-    readStr(_T("DispatchType"), m_strDispatchType, _T("수동배차"));
+    readStr(_T("DispatchType"), m_strDispatchType, _T("수동배차 (요청을 직접 수락/거절)"));
     RegCloseKey(hKey);
 }
 
+IMPL_CTLCOLOR(SettingsDlg)
 
-// ══════════════════════════════════════════════════════════════
+
+// ================================================================
 //  SettlementDlg
-// ══════════════════════════════════════════════════════════════
+// ================================================================
 IMPLEMENT_DYNAMIC(SettlementDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(SettlementDlg, CDialogEx)
@@ -142,34 +151,33 @@ void SettlementDlg::DoDataExchange(CDataExchange* pDX)
 BOOL SettlementDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
-
     AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
 
-    // 컬럼 설정
     m_listSettlement.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-    m_listSettlement.InsertColumn(0, _T("날짜"),      LVCFMT_LEFT,  100);
-    m_listSettlement.InsertColumn(1, _T("배달건수"),  LVCFMT_CENTER, 80);
-    m_listSettlement.InsertColumn(2, _T("배달료 합계"), LVCFMT_RIGHT, 100);
-    m_listSettlement.InsertColumn(3, _T("상태"),       LVCFMT_CENTER, 80);
+    m_listSettlement.InsertColumn(0, _T("날짜"),        LVCFMT_LEFT,   100);
+    m_listSettlement.InsertColumn(1, _T("배달건수"),       LVCFMT_CENTER,  80);
+    m_listSettlement.InsertColumn(2, _T("배달료 합계"),   LVCFMT_RIGHT,  100);
+    m_listSettlement.InsertColumn(3, _T("상태"),      LVCFMT_CENTER,  80);
 
     RequestSettlement();
     return TRUE;
 }
 
+// CMD_RIDER_MY_LIST (405), {"summary_only":false}
 void SettlementDlg::RequestSettlement()
 {
-    bool bSent = AppContext::Get().socket.SendPacket(CMD_RIDER_MY_LIST);
+    json req; req["summary_only"] = false;
+    bool bSent = AppContext::Get().socket.SendPacket(CMD_RIDER_MY_LIST, req.dump());
     if (!bSent) {
-        // 서버 미연결 시 더미 데이터
         struct { LPCTSTR date; int cnt; int fee; LPCTSTR status; } dummy[] = {
             { _T("2026-03-20"), 3, 10500, _T("정산예정") },
             { _T("2026-03-19"), 4, 14000, _T("정산예정") },
-            { _T("2026-03-18"), 2,  7000, _T("정산완료") },
+            { _T("2026-03-18"), 2,  7000, _T("완료") },
         };
         for (int i = 0; i < 3; i++) {
             CString cntStr, feeStr;
-            cntStr.Format(_T("%d건"),   dummy[i].cnt);
-            feeStr.Format(_T("%d원"),   dummy[i].fee);
+            cntStr.Format(_T("%d"), dummy[i].cnt);
+            feeStr.Format(_T("%d원"), dummy[i].fee);
             int nRow = m_listSettlement.InsertItem(i, dummy[i].date);
             m_listSettlement.SetItemText(nRow, 1, cntStr);
             m_listSettlement.SetItemText(nRow, 2, feeStr);
@@ -178,57 +186,44 @@ void SettlementDlg::RequestSettlement()
     }
 }
 
-LRESULT SettlementDlg::OnSocketRecv(WPARAM /*w*/, LPARAM lParam)
+// Recv 405: {"status":2000,"records":[{order_id,store_name,delivery_fee,created_at,...},...]}
+LRESULT SettlementDlg::OnSocketRecv(WPARAM, LPARAM lParam)
 {
-    CString* pMsg = reinterpret_cast<CString*>(lParam);
-    if (!pMsg) return 0;
-    CString msg = *pMsg;
-    delete pMsg;
+    RecvPacket* pPkt = reinterpret_cast<RecvPacket*>(lParam);
+    if (!pPkt) return 0;
+    UINT16      protocol = pPkt->protocol;
+    std::string body     = pPkt->body;
+    delete pPkt;
 
-    int p = msg.Find(_T('|'));
-    if (p < 0) return 0;
-    int cmd = _ttoi(msg.Left(p));
-    if (cmd == CMD_RIDER_MY_LIST)
-        ParseAndFillList(msg.Mid(p + 1));
+    if (protocol != CMD_RIDER_MY_LIST) return 0;
+
+    try {
+        json res = json::parse(body);
+        if (res.value("status", 0) != STATUS_SUCCESS) return 0;
+
+        m_listSettlement.DeleteAllItems();
+        int row = 0;
+        for (const auto& r : res["records"]) {
+            CA2T storeW(r.value("store_name","").c_str(), CP_UTF8);
+            CA2T dateW(r.value("created_at","").c_str(), CP_UTF8);
+            CString feeStr;
+            feeStr.Format(_T("%d원"), r.value("delivery_fee", 0));
+            int nRow = m_listSettlement.InsertItem(row++, CString(dateW));
+            m_listSettlement.SetItemText(nRow, 1, CString(storeW));
+            m_listSettlement.SetItemText(nRow, 2, feeStr);
+            CA2T statusW(r.value("status","Done").c_str(), CP_UTF8);
+            m_listSettlement.SetItemText(nRow, 3, CString(statusW));
+        }
+    } catch (...) {}
     return 0;
 }
 
-// payload: "date,cnt,fee,status;date,cnt,fee,status;..."
-void SettlementDlg::ParseAndFillList(const CString& payload)
-{
-    m_listSettlement.DeleteAllItems();
-    CString data = payload;
-    int row = 0;
-
-    while (!data.IsEmpty()) {
-        int semi = data.Find(_T(';'));
-        CString item = (semi >= 0) ? data.Left(semi) : data;
-        data = (semi >= 0) ? data.Mid(semi + 1) : _T("");
-        if (item.IsEmpty()) continue;
-
-        CString date, cnt, fee, status;
-        auto next = [&](CString& out) {
-            int c = item.Find(_T(','));
-            out = (c >= 0) ? item.Left(c) : item;
-            item = (c >= 0) ? item.Mid(c + 1) : _T("");
-        };
-        next(date); next(cnt); next(fee); next(status);
-
-        CString cntStr, feeStr;
-        cntStr.Format(_T("%s건"), static_cast<LPCTSTR>(cnt));
-        feeStr.Format(_T("%s원"), static_cast<LPCTSTR>(fee));
-
-        int nRow = m_listSettlement.InsertItem(row++, date);
-        m_listSettlement.SetItemText(nRow, 1, cntStr);
-        m_listSettlement.SetItemText(nRow, 2, feeStr);
-        m_listSettlement.SetItemText(nRow, 3, status);
-    }
-}
+IMPL_CTLCOLOR(SettlementDlg)
 
 
-// ══════════════════════════════════════════════════════════════
+// ================================================================
 //  DriveTimeDlg
-// ══════════════════════════════════════════════════════════════
+// ================================================================
 IMPLEMENT_DYNAMIC(DriveTimeDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(DriveTimeDlg, CDialogEx)
@@ -239,31 +234,27 @@ END_MESSAGE_MAP()
 DriveTimeDlg::DriveTimeDlg(CWnd* pParent) : CDialogEx(IDD_DRIVETIME_DLG, pParent) {}
 DriveTimeDlg::~DriveTimeDlg() {}
 
+void DriveTimeDlg::DoDataExchange(CDataExchange* pDX)
+{
+    CDialogEx::DoDataExchange(pDX);
+}
+
 BOOL DriveTimeDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
 
-    // 오늘 날짜 표시
     SYSTEMTIME st = {};
     GetLocalTime(&st);
     CString dateStr;
-    dateStr.Format(_T("%d월 %d일"), st.wMonth, st.wDay);
+    dateStr.Format(_T("%d/%d"), st.wMonth, st.wDay);
     SetDlgItemText(IDC_STATIC_TODAY_DATE, dateStr);
 
-    // 주간 범위 표시
     CString weekRange;
     CalcWeekRange(weekRange);
     SetDlgItemText(IDC_STATIC_WEEK_RANGE, weekRange);
 
-    // 세션의 운행 시작 시각 기준으로 현재 오늘 운행시간 계산
-    if (AppContext::Get().session.isOnline) {
-        // 대략적 추정: 이미 운행 중이면 다이얼로그 열린 시간 기준 누적
-        m_nTodayBaseSec = 0;
-    } else {
-        m_nTodayBaseSec = 0;
-    }
-    m_dwOpenTime = GetTickCount();
-
+    m_nTodayBaseSec = 0;
+    m_dwOpenTime    = GetTickCount();
     UpdateDriveTimeUI();
     SetTimer(1, 1000, nullptr);
     return TRUE;
@@ -277,13 +268,10 @@ void DriveTimeDlg::OnTimer(UINT_PTR nIDEvent)
 
 void DriveTimeDlg::UpdateDriveTimeUI()
 {
-    // 다이얼로그 열린 이후 경과 + 기본 누적
     int elapsed = m_nTodayBaseSec;
     if (AppContext::Get().session.isOnline)
         elapsed += (int)((GetTickCount() - m_dwOpenTime) / 1000);
-
     SetDlgItemText(IDC_STATIC_TODAY_TIME, FormatSeconds(elapsed));
-    // 주간은 오늘 * 5일 가정 (실제는 서버 데이터로 대체)
     SetDlgItemText(IDC_STATIC_WEEK_TIME,  FormatSeconds(elapsed * 5));
 }
 
@@ -292,10 +280,8 @@ CString DriveTimeDlg::FormatSeconds(int totalSec)
     int h = totalSec / 3600;
     int m = (totalSec % 3600) / 60;
     CString result;
-    if (h > 0)
-        result.Format(_T("%d시간 %d분"), h, m);
-    else
-        result.Format(_T("%d분"), m);
+    if (h > 0) result.Format(_T("%d시간 %d분"), h, m);
+    else        result.Format(_T("%d분"), m);
     return result;
 }
 
@@ -303,24 +289,19 @@ void DriveTimeDlg::CalcWeekRange(CString& outRange)
 {
     SYSTEMTIME st = {};
     GetLocalTime(&st);
-    // 이번 주 월요일 ~ 일요일
-    int wday = st.wDayOfWeek;  // 0=일, 1=월 ...
+    int wday = st.wDayOfWeek;
     int daysToMon = (wday == 0) ? -6 : 1 - wday;
-
-    SYSTEMTIME mon = st;
-    mon.wDay += daysToMon;
-    SYSTEMTIME sun = mon;
-    sun.wDay += 6;
-
-    outRange.Format(_T("%d월 %d일 - %d월 %d일"),
-                    mon.wMonth, mon.wDay,
-                    sun.wMonth, sun.wDay);
+    SYSTEMTIME mon = st; mon.wDay += daysToMon;
+    SYSTEMTIME sun = mon; sun.wDay += 6;
+    outRange.Format(_T("%d/%d - %d/%d"), mon.wMonth, mon.wDay, sun.wMonth, sun.wDay);
 }
 
+IMPL_CTLCOLOR(DriveTimeDlg)
 
-// ══════════════════════════════════════════════════════════════
+
+// ================================================================
 //  TodayHistoryDlg
-// ══════════════════════════════════════════════════════════════
+// ================================================================
 IMPLEMENT_DYNAMIC(TodayHistoryDlg, CDialogEx)
 
 BEGIN_MESSAGE_MAP(TodayHistoryDlg, CDialogEx)
@@ -340,145 +321,87 @@ void TodayHistoryDlg::DoDataExchange(CDataExchange* pDX)
 BOOL TodayHistoryDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
-
     AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
 
-    // 오늘 날짜 표시
     SYSTEMTIME st = {};
     GetLocalTime(&st);
     CString dateStr;
-    dateStr.Format(_T("%d월 %d일"), st.wMonth, st.wDay);
+    dateStr.Format(_T("%d/%d"), st.wMonth, st.wDay);
     SetDlgItemText(IDC_STATIC_TODAY_DATE, dateStr);
 
-    // 컬럼 설정
     m_listHistory.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-    m_listHistory.InsertColumn(0, _T("주문코드"),  LVCFMT_LEFT,  90);
-    m_listHistory.InsertColumn(1, _T("가게명"),    LVCFMT_LEFT,  130);
-    m_listHistory.InsertColumn(2, _T("시간"),      LVCFMT_LEFT,  70);
-    m_listHistory.InsertColumn(3, _T("배달료"),    LVCFMT_RIGHT, 70);
+    m_listHistory.InsertColumn(0, _T("주문코드"), LVCFMT_LEFT,  90);
+    m_listHistory.InsertColumn(1, _T("가게명"),      LVCFMT_LEFT, 130);
+    m_listHistory.InsertColumn(2, _T("시간"),       LVCFMT_LEFT,  70);
+    m_listHistory.InsertColumn(3, _T("배달료"),        LVCFMT_RIGHT, 70);
 
     RequestTodayHistory();
     return TRUE;
 }
 
+// CMD_RIDER_MY_LIST (405), {"summary_only":false,"today_only":true}
 void TodayHistoryDlg::RequestTodayHistory()
 {
-    bool bSent = AppContext::Get().socket.SendPacket(CMD_RIDER_MY_LIST, _T("TODAY"));
+    json req; req["summary_only"] = false; req["today_only"] = true;
+    bool bSent = AppContext::Get().socket.SendPacket(CMD_RIDER_MY_LIST, req.dump());
     if (!bSent) {
-        // 서버 미연결 시 더미 데이터
         struct { LPCTSTR code; LPCTSTR store; LPCTSTR time; int fee; } dummy[] = {
-            { _T("2783JBCD"), _T("맛있는치킨 상무점"), _T("19:35"), 3500 },
-            { _T("7824SJFE"), _T("피자헛 상무역점"),   _T("17:55"), 4000 },
-            { _T("0128VPLW"), _T("버거킹 광주상무점"), _T("15:10"), 3000 },
+            { _T("ORD000001"), _T("상무치킨"), _T("19:35"), 3500 },
+            { _T("ORD000002"), _T("피자헛 상무점"), _T("17:55"), 4000 },
+            { _T("ORD000003"), _T("버거킹 상무점"), _T("15:10"), 3000 },
         };
         int total = 0;
         for (int i = 0; i < 3; i++) {
-            CString feeStr;
-            feeStr.Format(_T("%d원"), dummy[i].fee);
+            CString feeStr; feeStr.Format(_T("%d원"), dummy[i].fee);
             int nRow = m_listHistory.InsertItem(i, dummy[i].code);
             m_listHistory.SetItemText(nRow, 1, dummy[i].store);
             m_listHistory.SetItemText(nRow, 2, dummy[i].time);
             m_listHistory.SetItemText(nRow, 3, feeStr);
             total += dummy[i].fee;
         }
-        // 합계 표시
         CString cntStr, totalStr;
-        cntStr.Format(_T("3건"));
-        totalStr.Format(_T("%d원"), total);
-        SetDlgItemText(IDC_STATIC_TOTAL_CNT,  cntStr);
-        SetDlgItemText(IDC_STATIC_TOTAL_FEE,  totalStr);
+        cntStr.Format(_T("3")); totalStr.Format(_T("%d원"), total);
+        SetDlgItemText(IDC_STATIC_TOTAL_CNT, cntStr);
+        SetDlgItemText(IDC_STATIC_TOTAL_FEE, totalStr);
     }
 }
 
-LRESULT TodayHistoryDlg::OnSocketRecv(WPARAM /*w*/, LPARAM lParam)
+// Recv 405: same as SettlementDlg but filtered to today
+LRESULT TodayHistoryDlg::OnSocketRecv(WPARAM, LPARAM lParam)
 {
-    CString* pMsg = reinterpret_cast<CString*>(lParam);
-    if (!pMsg) return 0;
-    CString msg = *pMsg;
-    delete pMsg;
+    RecvPacket* pPkt = reinterpret_cast<RecvPacket*>(lParam);
+    if (!pPkt) return 0;
+    UINT16      protocol = pPkt->protocol;
+    std::string body     = pPkt->body;
+    delete pPkt;
 
-    int p = msg.Find(_T('|'));
-    if (p < 0) return 0;
-    int cmd = _ttoi(msg.Left(p));
-    if (cmd == CMD_RIDER_MY_LIST)
-        ParseAndFill(msg.Mid(p + 1));
+    if (protocol != CMD_RIDER_MY_LIST) return 0;
+
+    try {
+        json res = json::parse(body);
+        if (res.value("status", 0) != STATUS_SUCCESS) return 0;
+
+        m_listHistory.DeleteAllItems();
+        int row = 0, total = 0;
+        for (const auto& r : res["records"]) {
+            int fee = r.value("delivery_fee", 0);
+            total += fee;
+            CA2T codeW(r.value("order_code","").c_str(), CP_UTF8);
+            CA2T storeW(r.value("store_name","").c_str(), CP_UTF8);
+            CA2T dateW(r.value("created_at","").c_str(), CP_UTF8);
+            CString feeStr; feeStr.Format(_T("%d원"), fee);
+            int nRow = m_listHistory.InsertItem(row++, CString(codeW));
+            m_listHistory.SetItemText(nRow, 1, CString(storeW));
+            m_listHistory.SetItemText(nRow, 2, CString(dateW));
+            m_listHistory.SetItemText(nRow, 3, feeStr);
+        }
+        CString cntStr, totalStr;
+        cntStr.Format(_T("%d"), row);
+        totalStr.Format(_T("%d원"), total);
+        SetDlgItemText(IDC_STATIC_TOTAL_CNT, cntStr);
+        SetDlgItemText(IDC_STATIC_TOTAL_FEE, totalStr);
+    } catch (...) {}
     return 0;
 }
 
-// payload: "code,store,time,fee;..."
-void TodayHistoryDlg::ParseAndFill(const CString& payload)
-{
-    m_listHistory.DeleteAllItems();
-    CString data = payload;
-    int row = 0, total = 0, cnt = 0;
-
-    while (!data.IsEmpty()) {
-        int semi = data.Find(_T(';'));
-        CString item = (semi >= 0) ? data.Left(semi) : data;
-        data = (semi >= 0) ? data.Mid(semi + 1) : _T("");
-        if (item.IsEmpty()) continue;
-
-        CString code, store, timeStr, feeStr;
-        auto next = [&](CString& out) {
-            int c = item.Find(_T(','));
-            out = (c >= 0) ? item.Left(c) : item;
-            item = (c >= 0) ? item.Mid(c + 1) : _T("");
-        };
-        next(code); next(store); next(timeStr); next(feeStr);
-
-        int fee = _ttoi(feeStr);
-        total += fee;
-        cnt++;
-
-        CString feeDisp;
-        feeDisp.Format(_T("%d원"), fee);
-        int nRow = m_listHistory.InsertItem(row++, code);
-        m_listHistory.SetItemText(nRow, 1, store);
-        m_listHistory.SetItemText(nRow, 2, timeStr);
-        m_listHistory.SetItemText(nRow, 3, feeDisp);
-    }
-
-    CString cntStr, totalStr;
-    cntStr.Format(_T("%d건"), cnt);
-    totalStr.Format(_T("%d원"), total);
-    SetDlgItemText(IDC_STATIC_TOTAL_CNT, cntStr);
-    SetDlgItemText(IDC_STATIC_TOTAL_FEE, totalStr);
-}
-
-void SettingsDlg::DoDataExchange(CDataExchange* pDX)
-{
-    CDialogEx::DoDataExchange(pDX);
-}
-
-void DriveTimeDlg::DoDataExchange(CDataExchange* pDX)
-{
-    CDialogEx::DoDataExchange(pDX);
-}
-HBRUSH SettingsDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
-{
-    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
-    pDC->SetBkColor(RGB(225, 248, 242));
-    pDC->SetTextColor(RGB(30, 60, 50));
-    return m_hBrushBg;
-}
-HBRUSH SettlementDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
-{
-    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
-    pDC->SetBkColor(RGB(225, 248, 242));
-    pDC->SetTextColor(RGB(30, 60, 50));
-    return m_hBrushBg;
-}
-HBRUSH DriveTimeDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
-{
-    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
-    pDC->SetBkColor(RGB(225, 248, 242));
-    pDC->SetTextColor(RGB(30, 60, 50));
-    return m_hBrushBg;
-}
-HBRUSH TodayHistoryDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
-{
-    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
-    pDC->SetBkColor(RGB(225, 248, 242));
-    pDC->SetTextColor(RGB(30, 60, 50));
-    return m_hBrushBg;
-}
+IMPL_CTLCOLOR(TodayHistoryDlg)

@@ -1,9 +1,12 @@
-﻿#include "pch.h"
+﻿// MyPageDlg.cpp - My Page screen with JSON protocol
+#include "pch.h"
 #include "MyPageDlg.h"
 #include "Protocol.h"
 #include "AppContext.h"
 #include "MyInfoDlg.h"
 #include "SubDialogs.h"
+#include "json.hpp"
+using json = nlohmann::json;
 
 IMPLEMENT_DYNAMIC(MyPageDlg, CDialogEx)
 
@@ -15,12 +18,14 @@ BEGIN_MESSAGE_MAP(MyPageDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_SETTINGS,      &MyPageDlg::OnBtnSettings)
     ON_BN_CLICKED(IDC_BTN_LOGOUT,        &MyPageDlg::OnBtnLogout)
     ON_BN_CLICKED(IDC_BTN_RIDER_NAME,    &MyPageDlg::OnClickRiderName)
-    ON_MESSAGE(WM_SOCKET_RECV,            &MyPageDlg::OnSocketRecv)
-    ON_BN_CLICKED(IDCANCEL,              &MyPageDlg::OnBtnBack)
+    ON_MESSAGE(WM_SOCKET_RECV,           &MyPageDlg::OnSocketRecv)
+    ON_BN_CLICKED(IDCANCEL,             &MyPageDlg::OnBtnBack)
 END_MESSAGE_MAP()
 
 MyPageDlg::MyPageDlg(CWnd* pParent) : CDialogEx(IDD_MYPAGE_DLG, pParent) {}
 MyPageDlg::~MyPageDlg() {}
+
+void MyPageDlg::DoDataExchange(CDataExchange* pDX) { CDialogEx::DoDataExchange(pDX); }
 
 BOOL MyPageDlg::OnInitDialog()
 {
@@ -28,139 +33,88 @@ BOOL MyPageDlg::OnInitDialog()
     AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
 
     const RiderSession& s = AppContext::Get().session;
-
-    // 라이더 이름 표시: "홍길동 라이더님"
     CString nameText;
-    nameText.Format(_T("%s 라이더님  >"),
+    nameText.Format(_T("%s  >"),
                     static_cast<LPCTSTR>(s.name.IsEmpty() ? s.loginId : s.name));
     SetDlgItemText(IDC_BTN_RIDER_NAME, nameText);
-
-    // 배달지역 표시
     SetDlgItemText(IDC_STATIC_RIDER_REGION, s.deliveryRegion);
-
-    // 오늘 요약 초기화 후 서버 요청
-    SetDlgItemText(IDC_STATIC_TODAY_CNT,    _T("0건"));
-    SetDlgItemText(IDC_STATIC_TODAY_INCOME, _T("0원"));
+    SetDlgItemText(IDC_STATIC_TODAY_CNT,    _T("0"));
+    SetDlgItemText(IDC_STATIC_TODAY_INCOME, _T("0"));
     RequestTodaySummary();
-
     return TRUE;
 }
 
-// ─────────────────────────────────────────────
-// 서버에 오늘 요약 요청
-// ─────────────────────────────────────────────
+// Request today's summary: CMD_RIDER_MY_LIST (405), {"summary_only":true}
 void MyPageDlg::RequestTodaySummary()
 {
-    bool bSent = AppContext::Get().socket.SendPacket(CMD_RIDER_MY_LIST, _T("SUMMARY"));
+    json req; req["summary_only"] = true;
+    bool bSent = AppContext::Get().socket.SendPacket(CMD_RIDER_MY_LIST, req.dump());
     if (!bSent) {
-        // 서버 미연결 시 더미 데이터
-        SetDlgItemText(IDC_STATIC_TODAY_CNT,    _T("3건"));
-        SetDlgItemText(IDC_STATIC_TODAY_INCOME, _T("10,500원"));
+        SetDlgItemText(IDC_STATIC_TODAY_CNT,    _T("3"));
+        SetDlgItemText(IDC_STATIC_TODAY_INCOME, _T("10500"));
     }
 }
 
-// ─────────────────────────────────────────────
-// 버튼 핸들러
-// ─────────────────────────────────────────────
-void MyPageDlg::OnBtnTodayHistory()
-{
-    TodayHistoryDlg dlg(this);
-    dlg.DoModal();
-}
-
-void MyPageDlg::OnBtnSettlement()
-{
-    SettlementDlg dlg(this);
-    dlg.DoModal();
-}
-
-void MyPageDlg::OnBtnDriveTime()
-{
-    DriveTimeDlg dlg(this);
-    dlg.DoModal();
-}
-
-// OO라이더님 > 레이블 클릭 시 내 정보 화면 열기
-void MyPageDlg::OnClickRiderName()
-{
-    MyInfoDlg dlg(this);
-    dlg.DoModal();
-}
-
-void MyPageDlg::OnBtnSettings()
-{
-    SettingsDlg dlg(this);
-    dlg.DoModal();
-}
+void MyPageDlg::OnBtnTodayHistory() { TodayHistoryDlg dlg(this); dlg.DoModal(); }
+void MyPageDlg::OnBtnSettlement()   { SettlementDlg   dlg(this); dlg.DoModal(); }
+void MyPageDlg::OnBtnDriveTime()    { DriveTimeDlg    dlg(this); dlg.DoModal(); }
+void MyPageDlg::OnClickRiderName()  { MyInfoDlg       dlg(this); dlg.DoModal(); }
+void MyPageDlg::OnBtnSettings()     { SettingsDlg     dlg(this); dlg.DoModal(); }
 
 void MyPageDlg::OnBtnLogout()
 {
     if (MessageBox(_T("로그아웃 하시겠습니까?"),
-                   _T("로그아웃"), MB_YESNO | MB_ICONQUESTION) != IDYES)
-        return;
-
-    AppContext::Get().socket.SendPacket(CMD_LOGOUT);
+                   _T("로그아웃"), MB_YESNO | MB_ICONQUESTION) != IDYES) return;
+    AppContext::Get().socket.SendPacket(CMD_LOGOUT, "{}");
     AppContext::Get().session.isLoggedIn = false;
     AppContext::Get().session.Clear();
     AppContext::Get().currentOrder.Clear();
-
-    EndDialog(IDCANCEL);  // MainDlg에 로그아웃 신호
+    EndDialog(IDCANCEL);
 }
 
-// ─────────────────────────────────────────────
-// 서버 응답: "405|OK|count\tincome"
-// ─────────────────────────────────────────────
-LRESULT MyPageDlg::OnSocketRecv(WPARAM /*w*/, LPARAM lParam)
+// Recv 405 summary: {"status":2000,"today_count":3,"today_fee":10500}
+LRESULT MyPageDlg::OnSocketRecv(WPARAM, LPARAM lParam)
 {
-    CString* pMsg = reinterpret_cast<CString*>(lParam);
-    if (!pMsg) return 0;
-    CString msg = *pMsg;
-    delete pMsg;
+    RecvPacket* pPkt = reinterpret_cast<RecvPacket*>(lParam);
+    if (!pPkt) return 0;
+    UINT16      protocol = pPkt->protocol;
+    std::string body     = pPkt->body;
+    delete pPkt;
 
-    int p = msg.Find(_T('|'));
-    if (p < 0) return 0;
-    int cmd = _ttoi(msg.Left(p));
-    if (cmd != CMD_RIDER_MY_LIST) return 0;
+    if (protocol != CMD_RIDER_MY_LIST) return 0;
 
-    CString rest = msg.Mid(p + 1);
-    int ok = rest.Find(_T('|'));
-    if (ok < 0) return 0;
-    if (rest.Left(ok) != _T("OK")) return 0;
-
-    ParseTodaySummary(rest.Mid(ok + 1));
+    try {
+        json res = json::parse(body);
+        if (res.value("status", 0) != STATUS_SUCCESS) return 0;
+        if (res.contains("today_count")) {
+            CString cntStr, incStr;
+            cntStr.Format(_T("%d"), res.value("today_count", 0));
+            incStr.Format(_T("%d"), res.value("today_fee",   0));
+            SetDlgItemText(IDC_STATIC_TODAY_CNT,    cntStr);
+            SetDlgItemText(IDC_STATIC_TODAY_INCOME, incStr);
+        }
+    } catch (...) {}
     return 0;
 }
 
-// payload: "count\tincome"
-void MyPageDlg::ParseTodaySummary(const CString& payload)
-{
-    int tab = payload.Find(_T('\t'));
-    if (tab < 0) return;
+void MyPageDlg::OnBtnBack() { EndDialog(IDCANCEL); }
 
-    int cnt    = _ttoi(payload.Left(tab));
-    int income = _ttoi(payload.Mid(tab + 1));
-
-    CString cntStr, incomeStr;
-    cntStr.Format(_T("%d건"), cnt);
-    incomeStr.Format(_T("%d원"), income);
-
-    SetDlgItemText(IDC_STATIC_TODAY_CNT,    cntStr);
-    SetDlgItemText(IDC_STATIC_TODAY_INCOME, incomeStr);
-}
-
-void MyPageDlg::DoDataExchange(CDataExchange* pDX)
-{
-    CDialogEx::DoDataExchange(pDX);
-}
 HBRUSH MyPageDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
     HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
-    pDC->SetBkColor(RGB(225, 248, 242));
-    pDC->SetTextColor(RGB(30, 60, 50));
-    return m_hBrushBg;
-}
 
-void MyPageDlg::OnBtnBack()
-{
-    EndDialog(IDCANCEL);
+    if (nCtlColor == CTLCOLOR_DLG || nCtlColor == CTLCOLOR_STATIC) {
+        if (!m_hBrushBg)
+            m_hBrushBg = CreateSolidBrush(RGB(225, 248, 242));
+        pDC->SetBkColor(RGB(225, 248, 242));
+        pDC->SetTextColor(RGB(10, 10, 10));
+        return m_hBrushBg;
+    }
+    if (nCtlColor == CTLCOLOR_EDIT || nCtlColor == CTLCOLOR_LISTBOX) {
+        pDC->SetBkColor(RGB(255, 255, 255));
+        pDC->SetTextColor(RGB(10, 10, 10));
+        return (HBRUSH)GetStockObject(WHITE_BRUSH);
+    }
+    // Buttons: do NOT override - let Windows draw button text normally
+    return hbr;
 }

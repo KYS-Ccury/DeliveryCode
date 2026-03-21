@@ -1,1 +1,21 @@
-﻿  RiderClient.vcxproj -> C:\Users\LMS\Desktop\bemin\DeliveryCode\RiderClient\x64\Debug\RiderClient.exe
+﻿  pch.cpp
+  _WIN32_WINNT not defined. Defaulting to _WIN32_WINNT_MAXVER (see WinSDKVer.h)
+  ChatDlg.cpp
+  DeliveryListDlg.cpp
+  DeliveryPhotoDlg.cpp
+  DispatchDlg.cpp
+  LoginDlg.cpp
+  MainDlg.cpp
+  MyInfoDlg.cpp
+  MyPageDlg.cpp
+  PickupCodeDlg.cpp
+  PrepareDeliveryDlg.cpp
+  RegisterDlg.cpp
+  RiderApp.cpp
+  RoundButton.cpp
+  SocketManager.cpp
+  SubDialogs.cpp
+  코드를 생성하고 있습니다...
+  RiderClient.vcxproj -> C:\Users\1101k\OneDrive\바탕 화면\bemin\DeliveryCode\RiderClient\x64\Debug\RiderClient.exe
+  'pwsh.exe'은(는) 내부 또는 외부 명령, 실행할 수 있는 프로그램, 또는
+  배치 파일이 아닙니다.

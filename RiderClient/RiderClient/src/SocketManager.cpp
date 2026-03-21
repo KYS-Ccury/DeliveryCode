@@ -1,18 +1,13 @@
-﻿#include "pch.h"
+// SocketManager.cpp
+// Binary packet protocol matching server Session.cpp
+// Format: [clientType:1B][protocol:2B BE][bodyLength:4B BE][JSON body]
+#include "pch.h"
 #include "SocketManager.h"
 #include "Protocol.h"
-#include <ws2tcpip.h>
 
 #pragma comment(lib, "ws2_32.lib")
 
-// ─────────────────────────────────────────────
-// 생성자 / 소멸자
-// ─────────────────────────────────────────────
 SocketManager::SocketManager()
-    : m_socket(INVALID_SOCKET)
-    , m_hNotifyWnd(nullptr)
-    , m_pRecvThread(nullptr)
-    , m_bRunning(false)
 {
     WSADATA wsa = {};
     WSAStartup(MAKEWORD(2, 2), &wsa);
@@ -24,9 +19,6 @@ SocketManager::~SocketManager()
     WSACleanup();
 }
 
-// ─────────────────────────────────────────────
-// 서버 연결
-// ─────────────────────────────────────────────
 bool SocketManager::Connect(const CString& host, int port)
 {
     if (m_socket != INVALID_SOCKET)
@@ -35,7 +27,6 @@ bool SocketManager::Connect(const CString& host, int port)
     m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (m_socket == INVALID_SOCKET) return false;
 
-    // 타임아웃 설정 (연결 2초)
     DWORD timeout = 2000;
     setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO,
                reinterpret_cast<const char*>(&timeout), sizeof(timeout));
@@ -44,10 +35,8 @@ bool SocketManager::Connect(const CString& host, int port)
     addr.sin_family = AF_INET;
     addr.sin_port   = htons(static_cast<u_short>(port));
 
-    // 호스트 → IP
     CT2A hostA(host);
     if (inet_pton(AF_INET, hostA, &addr.sin_addr) != 1) {
-        // 도메인 이름인 경우 getaddrinfo 사용
         addrinfo hints = {}, *res = nullptr;
         hints.ai_family   = AF_INET;
         hints.ai_socktype = SOCK_STREAM;
@@ -67,21 +56,16 @@ bool SocketManager::Connect(const CString& host, int port)
         return false;
     }
 
-    // 타임아웃 해제 (이후 수신은 블로킹 스레드에서)
     timeout = 0;
     setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO,
                reinterpret_cast<const char*>(&timeout), sizeof(timeout));
 
-    // 수신 스레드 시작
-    m_bRunning    = true;
+    m_bRunning = true;
+    m_recvBuf.clear();
     m_pRecvThread = AfxBeginThread(RecvThread, this, THREAD_PRIORITY_NORMAL);
-
     return true;
 }
 
-// ─────────────────────────────────────────────
-// 연결 해제
-// ─────────────────────────────────────────────
 void SocketManager::Disconnect()
 {
     m_bRunning = false;
@@ -91,93 +75,91 @@ void SocketManager::Disconnect()
         m_socket = INVALID_SOCKET;
     }
     m_pRecvThread = nullptr;
-    m_recvBuffer.clear();
+    m_recvBuf.clear();
 }
 
-// ─────────────────────────────────────────────
-// 패킷 송신
-// 형식: "CMD|payload\n"
-// ─────────────────────────────────────────────
-bool SocketManager::SendPacket(int cmd, const CString& payload)
+// Binary send: [clientType=3][protocol BE][bodyLen BE][JSON body]
+bool SocketManager::SendPacket(UINT16 protocol, const std::string& jsonBody)
 {
     if (m_socket == INVALID_SOCKET) return false;
 
-    CString packet;
-    if (payload.IsEmpty())
-        packet.Format(_T("%d\n"), cmd);
-    else
-        packet.Format(_T("%d|%s\n"), cmd, static_cast<LPCTSTR>(payload));
+    PacketHeader hdr;
+    hdr.clientType = 3;  // RIDER
+    hdr.protocol   = htons(protocol);
+    hdr.bodyLength = htonl(static_cast<UINT32>(jsonBody.size()));
 
-    // UTF-8 변환
-    CT2A utf8(packet, CP_UTF8);
-    std::string data(utf8);
+    // Combine header + body into one send buffer
+    std::string buf;
+    buf.resize(sizeof(PacketHeader) + jsonBody.size());
+    memcpy(&buf[0], &hdr, sizeof(PacketHeader));
+    if (!jsonBody.empty())
+        memcpy(&buf[sizeof(PacketHeader)], jsonBody.data(), jsonBody.size());
 
-    int total = static_cast<int>(data.size());
-    int sent  = 0;
+    size_t sent = 0, total = buf.size();
     while (sent < total) {
-        int ret = send(m_socket,
-                       data.c_str() + sent,
-                       total - sent, 0);
+        int ret = send(m_socket, buf.c_str() + sent,
+                       static_cast<int>(total - sent), 0);
         if (ret == SOCKET_ERROR) return false;
-        sent += ret;
+        sent += static_cast<size_t>(ret);
     }
     return true;
 }
 
-// ─────────────────────────────────────────────
-// 수신 스레드 (블로킹 recv 루프)
-// ─────────────────────────────────────────────
+// Legacy wrapper: CString payload -> send as JSON string body
+bool SocketManager::SendPacket(int cmd, const CString& payload)
+{
+    CT2A utf8(payload, CP_UTF8);
+    std::string bodyStr(utf8);
+    if (!bodyStr.empty() && bodyStr[0] == '{')
+        return SendPacket(static_cast<UINT16>(cmd), bodyStr);
+    std::string jsonBody = "{\"payload\":\"" + bodyStr + "\"}";
+    return SendPacket(static_cast<UINT16>(cmd), jsonBody);
+}
+
 UINT SocketManager::RecvThread(LPVOID pParam)
 {
     SocketManager* pSelf = static_cast<SocketManager*>(pParam);
-    char buf[4096];
+    char buf[8192];
 
     while (pSelf->m_bRunning) {
-        int ret = recv(pSelf->m_socket, buf, sizeof(buf) - 1, 0);
+        int ret = recv(pSelf->m_socket, buf, sizeof(buf), 0);
         if (ret <= 0) {
-            // 연결 끊김
             if (pSelf->m_hNotifyWnd && IsWindow(pSelf->m_hNotifyWnd))
                 PostMessage(pSelf->m_hNotifyWnd, WM_SERVER_DISCONN, 0, 0);
             break;
         }
-        buf[ret] = '\0';
-        pSelf->m_recvBuffer.append(buf, ret);
+        pSelf->m_recvBuf.append(buf, ret);
         pSelf->ProcessRecvBuffer();
     }
     return 0;
 }
 
-// ─────────────────────────────────────────────
-// 수신 버퍼 처리 ('\n' 단위로 파싱)
-// ─────────────────────────────────────────────
 void SocketManager::ProcessRecvBuffer()
 {
     if (!m_hNotifyWnd || !IsWindow(m_hNotifyWnd)) return;
 
-    size_t pos;
-    while ((pos = m_recvBuffer.find('\n')) != std::string::npos) {
-        std::string line = m_recvBuffer.substr(0, pos);
-        m_recvBuffer.erase(0, pos + 1);
-        if (line.empty()) continue;
+    const size_t HEADER_SIZE = sizeof(PacketHeader);  // 7 bytes
 
-        // UTF-8 → CString
-        CA2T wline(line.c_str(), CP_UTF8);
-        CString msg(wline);
+    while (m_recvBuf.size() >= HEADER_SIZE) {
+        PacketHeader hdr;
+        memcpy(&hdr, m_recvBuf.data(), HEADER_SIZE);
 
-        // CMD 번호 추출
-        int pipePos = msg.Find(_T('|'));
-        int cmd     = _ttoi(pipePos >= 0 ? msg.Left(pipePos) : msg);
+        UINT16 protocol   = ntohs(hdr.protocol);
+        UINT32 bodyLength = ntohl(hdr.bodyLength);
+
+        if (m_recvBuf.size() < HEADER_SIZE + bodyLength) break;
+
+        std::string body = m_recvBuf.substr(HEADER_SIZE, bodyLength);
+        m_recvBuf.erase(0, HEADER_SIZE + bodyLength);
+
+        RecvPacket* pPkt  = new RecvPacket();
+        pPkt->protocol    = protocol;
+        pPkt->body        = body;
 
         UINT wmsg = WM_SOCKET_RECV;
-        if (cmd == PUSH_DISPATCH)
-            wmsg = WM_DISPATCH_PUSH;
-        else if (cmd == CMD_CHAT_SEND || cmd == CMD_CHAT_CREATE)
-            wmsg = WM_CHAT_RECV;
+        if (protocol == 408) wmsg = WM_DISPATCH_PUSH;
+        else if (protocol == 604) wmsg = WM_CHAT_RECV;
 
-        // 힙에 복사 → 수신 윈도우에 PostMessage
-        // 수신 측에서 delete 해야 함
-        CString* pMsg = new CString(msg);
-        PostMessage(m_hNotifyWnd, wmsg, 0,
-                    reinterpret_cast<LPARAM>(pMsg));
+        PostMessage(m_hNotifyWnd, wmsg, 0, reinterpret_cast<LPARAM>(pPkt));
     }
 }

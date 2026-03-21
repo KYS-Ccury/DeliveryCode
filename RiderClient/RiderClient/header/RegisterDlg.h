@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <afxdialogex.h>
 
 class RegisterDlg : public CDialogEx {
@@ -13,10 +13,11 @@ protected:
     DECLARE_MESSAGE_MAP()
     afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 private:
-    HBRUSH m_hBrushBg = nullptr;
+    HBRUSH    m_hBrushBg = nullptr;
     CEdit     m_editId;
     CEdit     m_editPw;
     CEdit     m_editPwConfirm;
+    CEdit     m_editPhone;      // IDC_EDIT_PHONE (1008) - exists in resource.h
     CEdit     m_editRegion;
     CComboBox m_cmbVehicle;
 

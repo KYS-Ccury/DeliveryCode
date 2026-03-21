@@ -23,13 +23,16 @@ private:
     PacketHeader currentHeader; 
 
     void resetBuffer();
-    void dispatchPacket(ThreadPool* pool); // 패킷 완성 시 호출할 헬퍼 함수
+    void dispatchPacket(ThreadPool* pool);
 
 public:
     Session(int fd);
     ~Session();
 
+    // ★ 추가: 소켓 fd 반환 (RiderHandler 세션 테이블에서 사용)
+    int getFd() const { return client_fd; }
+
     // 반환값을 bool로 변경: false 반환 시 EpollServer가 연결을 끊음
-    bool readFromSocket(ThreadPool* pool); // handleRead를 readFromSocket으로 변경
+    bool readFromSocket(ThreadPool* pool);
     bool sendPacket(uint8_t clientType, uint16_t protocol, const std::string& jsonBody);
 };

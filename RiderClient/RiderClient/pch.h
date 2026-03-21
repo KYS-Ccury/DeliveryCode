@@ -1,4 +1,6 @@
 #pragma once
+// pch.h - Precompiled Header
+// MFC rule: afxwin.h MUST come before winsock2.h
 #include <afxwin.h>
 #include <afxext.h>
 #include <afxdialogex.h>
@@ -8,6 +10,9 @@
 #include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
 #include <string>
+#include <vector>
+#include <sstream>
+#include <iomanip>
 #include "Resource.h"
 #include "RiderSession.h"
 #include "SocketManager.h"
