@@ -1,55 +1,77 @@
-﻿#pragma once
-#include "afxdialogex.h"
+﻿#pragma once                     // 헤더 중복 포함 방지
+#include "afxdialogex.h"         // MFC 확장 대화 상자 클래스 헤더
+#include <vector>                // 동적 배열(std::vector) 사용을 위한 헤더
+#include "ScrollMenu.h"          // 커스텀 컨트롤인 ScrollMenu 클래스 헤더
 
-#include <vector>
 
-
-// MainHomeDlg 대화 상자
-
+// MainHomeDlg 대화 상자 클래스 선언
 class MainHomeDlg : public CDialogEx
 {
+	// 이 클래스가 실행 중에 자신의 타입 정보를 알 수 있게 함 (IMPLEMENT_DYNAMIC과 짝꿍)
 	DECLARE_DYNAMIC(MainHomeDlg)
 
 public:
-	MainHomeDlg(CWnd* pParent = nullptr);   // 표준 콘스트럭트
-	virtual ~MainHomeDlg();
+	// ─────────────────────────────────────────────
+	//  생성자 및 소멸자
+	// ─────────────────────────────────────────────
+	MainHomeDlg(CWnd* pParent = nullptr);   // 표준 생성자 (부모 윈도우 지정 가능)
+	virtual ~MainHomeDlg();                 // 소멸자 (메모리 해제 시 호출)
 
-// 디어로그 데이터
+// 대화 상자 데이터 (리소스 ID 연결)
 #ifdef AFX_DESIGN_TIME
-	enum { IDD = IDD_MAINHOME_DLG };
+	enum { IDD = IDD_MAINHOME_DLG };        // 이 클래스가 사용할 도면(IDD) 번호
 #endif
 
 protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 지원
+	// ─────────────────────────────────────────────
+	//  상속받은 주요 가상 함수 (Override)
+	// ─────────────────────────────────────────────
+	// UI 컨트롤과 변수를 연결해주는 데이터 교환 함수
+	virtual void DoDataExchange(CDataExchange* pDX);
+
+	// 대화 상자가 나타나기 전 초기 설정을 수행하는 함수
 	virtual BOOL OnInitDialog();
 
+	// 음식카테고리메뉴에 따라 출력되는 매장정보를 가져와 출력
+	void UpdateStoreListUI(CString categoryName);
+
+	// ─────────────────────────────────────────────
+	//  메시지 핸들러 함수 (이벤트 처리)
+	// ─────────────────────────────────────────────
+	// afx_msg: 이 함수가 메시지 맵에 연결될 '메시지 처리용'임을 표시
+
+	// 마우스 휠 조작 시 호출되는 함수
 	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
-	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
-	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
-	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+
+	// 컨트롤이나 배경의 색상을 결정하기 위해 호출되는 함수
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 
-	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	// 사용자가 커스텀 메뉴 버튼을 클릭했을 때 호출되는 사용자 정의 메시지 함수
+	afx_msg LRESULT OnScrollMenuClicked(WPARAM wParam, LPARAM lParam);
 
+	// 메시지 맵을 사용하겠다고 선언 (BEGIN_MESSAGE_MAP과 짝꿍)
 	DECLARE_MESSAGE_MAP()
 
-	int m_nTargetX;      // 최종적으로 도달해야 할 목표 X 좌표 (첫 번째 버튼 기준)
-	int m_nStepX;        // 한 프레임당 이동할 거리
+
 public:
+	// ─────────────────────────────────────────────
+	//  UI 멤버 변수 (컨트롤 및 그래픽 객체)
+	// ─────────────────────────────────────────────
+
+	// 음식카테고리메뉴 목록
+	std::vector<CString> m_vecCategories;
+
+	// IDC_LIST_STOR: 가게 목록을 보여주는 리스트 컨트롤 변수
 	CListCtrl m_listStore;
 
-	// MFC에서는 동적으로 생성한 버튼(new로 만든 버튼)들을 나중에 제어(위치 이동, 삭제 등)하기 위해
-	// 그 버튼들의주소값(포인터)을 저장해둘 보관함이 필요
-	std::vector<CButton*> m_vCatButtons; // 버튼 포인터들을 담을 벡터
-	CBrush m_brushWhite; // 창 전체 배경용
-	CBrush m_brushBack; // 배경색 브러쉬
+	// 화면을 하얀색으로 깨끗하게 밀어버릴 때 사용할 페인트 붓
+	CBrush m_brushWhite;
 
-	// 드래그 상태 관리용 변수
-	bool    m_bDragging = false;  // 초기값 false 필수
-	CPoint  m_ptLastMouse;        // 마우스 위치 저장
+	// 배달 앱 특유의 연회색(통로색)을 칠할 때 사용할 페인트 붓
+	CBrush m_brushBack;
 
-
-
+	// IDC_STATIC_BG: 상단 카테고리 메뉴(전체, 치킨 등)를 관리하는 커스텀 컨트롤 객체
+	CScrollMenu m_wndScrollMenu;
 };
 
 

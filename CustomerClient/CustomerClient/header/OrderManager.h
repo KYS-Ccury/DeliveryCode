@@ -3,6 +3,7 @@
 #include <string>
 #include "CartItem.h"
 #include "OrderInfo.h"
+#include "StoreInfo.h"
 
 // [CUSTOMER/RIDER] 주문 및 배달 상태 관리 매니저 (Singleton)
 class OrderManager
@@ -12,6 +13,13 @@ public:
         static OrderManager instance;
         return instance;
     }
+
+    // 음식카테고리메뉴 목록을 UI에 전달하는 함수
+    std::vector<std::string> GetCategoryList();
+
+    // 전체 가게 목록 가져오기 및 카테고리 필터링
+    void LoadStoreData(); // 초기 데이터 로드 (DB 대용)
+    std::vector<StoreInfo> GetStoresByCategory(const std::string& category);
 
     // --- [고객 기능] ---
     void SetCurrentCategory(const std::string& category);
@@ -49,7 +57,10 @@ private:
     OrderManager();
     ~OrderManager() {}
 
+    std::vector<std::string> m_categoryList; // 음식카테고리메뉴 저장소
+    std::vector<StoreInfo> m_allStores;
     std::vector<CartItem> m_cartList;
     int m_currentStoreID;
     bool m_isDelivery;
+
 };

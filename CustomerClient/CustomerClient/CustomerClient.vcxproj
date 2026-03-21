@@ -201,6 +201,7 @@
     <ClInclude Include="header\OrderInfo.h" />
     <ClInclude Include="header\OrderManager.h" />
     <ClInclude Include="header\PaymentDlg.h" />
+    <ClInclude Include="header\ScrollMenu.h" />
     <ClInclude Include="header\StoreInfo.h" />
     <ClInclude Include="header\StoreListDlg.h" />
     <ClInclude Include="header\UserInfo.h" />
@@ -230,6 +231,7 @@
     <ClCompile Include="src\OrderInfo.cpp" />
     <ClCompile Include="src\OrderManager.cpp" />
     <ClCompile Include="src\PaymentDlg.cpp" />
+    <ClCompile Include="src\ScrollMenu.cpp" />
     <ClCompile Include="src\StoreInfo.cpp" />
     <ClCompile Include="src\StoreListDlg.cpp" />
     <ClCompile Include="src\UserInfo.cpp" />

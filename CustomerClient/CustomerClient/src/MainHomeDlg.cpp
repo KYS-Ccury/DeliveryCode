@@ -1,16 +1,23 @@
 ﻿// MainHomeDlg.cpp : 구현 파일
-//
 
-#include "pch.h"
-#include "CustomerClient.h"
-#include "afxdialogex.h"
-#include "MainHomeDlg.h"
+#include "pch.h"                 // 컴파일 최적화를 위한 헤더
+#include "CustomerClient.h"      // 프로그램 시작파일 InitInstance() 함수포함 헤더
+#include "afxdialogex.h"         // 클래스에 Ex (Extended) 가 붙은 확장클래스를 사용할 수 있게끔 하기위한 헤더
+#include "MainHomeDlg.h"         // 메인파일 헤더
+#include "OrderManager.h"
 
 
 // MainHomeDlg 대화 상자
 
+// 이 클래스가 CDialogEx로부터 상속받았다는 사실을 프로그램이 실행 중에도 기억하게 만듬
 IMPLEMENT_DYNAMIC(MainHomeDlg, CDialogEx)
 
+// ─────────────────────────────────────────────
+//  생성자 및 소멸자
+// ─────────────────────────────────────────────
+
+// CDialogEx 부모클래스를 가지며 소유자로서 pParent 를 지정하고 또 IDD_MAINHOME_DLG 번 리소스도면을 사용할 것을 선언
+// pParent 에 지정된 소유자는 이 창의 부모창이 됨(부모클래스와는 다름)
 MainHomeDlg::MainHomeDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_MAINHOME_DLG, pParent)
 {
@@ -19,63 +26,49 @@ MainHomeDlg::MainHomeDlg(CWnd* pParent /*=nullptr*/)
 
 MainHomeDlg::~MainHomeDlg()
 {
-	// 생성된 버튼 메모리 해제
-	for (auto pBtn : m_vCatButtons) {
-		if (pBtn) {
-			pBtn->DestroyWindow();
-			delete pBtn;
-		}
-	}
-	m_vCatButtons.clear();
 }
 
+// ─────────────────────────────────────────────
+//  DoDataExchange
+// ─────────────────────────────────────────────
+
+// 리소스 뷰에서 만든 UI 아이템"과 "소스 코드에 선언한 변수"를 서로 붙여주는 역할
 void MainHomeDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
-	DDX_Control(pDX, IDC_LIST_STOR, m_listStore);
+	DDX_Control(pDX, IDC_LIST_STOR, m_listStore);     // ?
+	DDX_Control(pDX, IDC_STATIC_BG, m_wndScrollMenu); // 음식카테고리메뉴바와 ID를 매핑
 }
 
+// ─────────────────────────────────────────────
+//  BEGIN_MESSAGE_MAP ~ END_MESSAGE_MAP()
+// ─────────────────────────────────────────────
 
-BEGIN_MESSAGE_MAP(MainHomeDlg, CDialogEx)
-	// 이 줄을 추가하여 윈도우 메시지와 함수를 연결합니다.
-	ON_WM_MOUSEWHEEL()
-
-	ON_WM_LBUTTONDOWN() // 이게 빠져있으면 드래그 시작이 안 됩니다!
-	ON_WM_MOUSEMOVE()   // 이게 빠져있으면 움직임 감지가 안 됩니다!
-	ON_WM_LBUTTONUP()   // 이게 빠져있으면 드래그가 안 끝납니다!
-
-	ON_WM_CTLCOLOR()
-
-	ON_WM_TIMER() // 추가
+// 윈도우 메시지와 함수를 연결
+// (사용자의 행동(이벤트)을 어떤 함수가 처리할지 연결)
+BEGIN_MESSAGE_MAP(MainHomeDlg, CDialogEx)	
+	ON_WM_MOUSEWHEEL()       // 사용자가 마우스 휠을 굴릴 때
+	ON_WM_CTLCOLOR()         // 컨트롤(버튼, 배경 등)에 색을 더해서 그릴 때
+	ON_MESSAGE(WM_SCROLL_MENU_CLICKED, &MainHomeDlg::OnScrollMenuClicked)  // 음식카테고리메뉴의 스크롤바를 사용자가 클릭했을 때
 END_MESSAGE_MAP()
 
 
-// MainHomeDlg 메시지 처리기
+// ─────────────────────────────────────────────
+//  OnInitDialog()
+// ─────────────────────────────────────────────
 
+// 창이 메모리에 생성된 직후, 화면에 보이기 바로 직전에 호출되는 초기화 함수
 BOOL MainHomeDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
 
-	//// 다이얼로그 배경을 그릴 때 자식 컨트롤 영역은 제외하고 그리게 설정 (깜빡임 방지)
-    ModifyStyle(0, WS_CLIPCHILDREN); 
+	// 깜빡임 방지(WS_CLIPCHILDREN) 설정 + 크기 조절 막기(WS_DLGFRAME 적용, WS_THICKFRAME 제거)
+	ModifyStyle(WS_THICKFRAME, WS_CLIPCHILDREN | WS_DLGFRAME);
 
-	// TODO: 여기에 추가 초기화 작업을 추가합니다.
+	// 화면 중앙으로 정렬
+	CenterWindow();
 
-	// 사용자가 마우스로 테두리 잡고 크기 조절 못하게 방어
-	// 리소스 뷰 UI 쪽에서 테두리가 다이어로그 프레임이라 창 크기 변환은 안 되게 되어 있지만
-	// 나중에 실수로 속성창에서 테두리를 건드리더라도 프로그램이 실행될 때는
-	// (기능적으로) 무조건 크기 조절이 안 되게 막아주는 안전장치
-	ModifyStyle(WS_THICKFRAME, WS_DLGFRAME);
 
-	// 창 크기를 600x1000으로 고정 (픽셀 단위)
-	// 화면 중앙에 배치하려면 마지막 인자에 SWP_SHOWWINDOW 등을 조합할 수 있습니다.
-	// 위치와 크기 제어 (가장 많이 씀)
-	// SWP_NOMOVE: 창의 위치(X, Y)를 무시합니다. 현재 위치를 고수합니다.
-	// SWP_NOSIZE: 창의 크기(cx, cy)를 무시합니다. 현재 크기를 고수합니다.
-	// SWP_NOZORDER: 순서(hWndInsertAfter)를 무시합니다. 현재 겹침 순서를 유지합니다.
-	//SetWindowPos(NULL, 0, 0, 600, 1000, SWP_NOMOVE | SWP_NOZORDER);
-	//SetWindowPos(NULL, 0, 0, 600, 1000, SWP_NOZORDER); // NOMOVE를 빼면 0,0 위치로 감
-	CenterWindow(); // 그 후 화면 중앙으로 정렬
 
 	// 리스트 컨트롤 스타일 설정 (줄 무늬, 행 전체 선택)
 	m_listStore.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
@@ -86,367 +79,169 @@ BOOL MainHomeDlg::OnInitDialog()
 	m_listStore.InsertColumn(2, _T("별점/최소주문"), LVCFMT_RIGHT, 140);
 	m_listStore.InsertColumn(3, _T("거리"), LVCFMT_CENTER, 60);
 
-	// 샘플 데이터 한 줄 넣어보기
-	int nIndex = m_listStore.InsertItem(0, _T("마왕족발 대구점"));
-	m_listStore.SetItemText(nIndex, 1, _T("20~30분"));
-	m_listStore.SetItemText(nIndex, 2, _T("★4.9 / 15,000원"));
-	m_listStore.SetItemText(nIndex, 3, _T("0.8km"));
+	// 테스트용 매장 데이터 로드
+	OrderManager::GetInstance().LoadStoreData();
 
 
-	// 1. 카테고리 이름 배열
-	CString categories[] = { _T("전체"), _T("족발/보쌈"), _T("찜/탕"), _T("일식"), _T("치킨"), _T("피자"), _T("중식"), _T("양식") };
 
-	CRect rectBase;
-	GetDlgItem(IDC_STATIC_BG)->GetWindowRect(&rectBase);
-	ScreenToClient(&rectBase);
+	// 음식카테고리메뉴바에 들어갈 데이터 목록 가져오기 (std::string -> CString 변환)
+	auto rawCategories = OrderManager::GetInstance().GetCategoryList();
 
-	//// ★ 왼쪽 여백을 기존의 2배인 40px로 설정
-	//int startX = rectBase.left + 40;
-
-	//// OnInitDialog() 내부 버튼 생성 부분
-	//for (int i = 0; i < 8; i++) {
-	//	CButton* pBtn = new CButton();
-
-	//	// 버튼 너비 100, 높이 40
-	//	// rectBase.top + 5 를 해서 회색 바 안에서 살짝 아래로 내려오게 조절합니다.
-	//	int btnTop = rectBase.top + 5;
-	//	int btnBottom = btnTop + 40;
-
-	//	pBtn->Create(categories[i], WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-	//		CRect(startX, btnTop, startX + 100, btnBottom),
-	//		this, 2000 + i);
-
-	//	m_vCatButtons.push_back(pBtn);
-
-	//	// 간격: 버튼(100) + 여백(30) = 130px
-	//	startX += 130;
-	//}
-
-	int startMargin = 40;     // 왼쪽 여백
-	int btnWidth = 115;       // 버튼 너비를 살짝 키움 (기존 100)
-	int gap = 20;             // 버튼 사이 간격을 줄임 (기존 30)
-	int unitSize = btnWidth + gap; // 115 + 20 = 135px (이게 스냅 기준이 됩니다)
-
-	int startX = startMargin;
-
-	for (int i = 0; i < 8; i++) {
-		CButton* pBtn = new CButton();
-
-		int btnTop = rectBase.top + 5;
-		int btnBottom = btnTop + 40;
-
-		// 계산된 startX를 사용
-		pBtn->Create(categories[i], WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-			CRect(startX, btnTop, startX + btnWidth, btnBottom),
-			this, 2000 + i);
-
-		m_vCatButtons.push_back(pBtn);
-
-		// 다음 버튼 위치: 현재 위치 + unitSize
-		startX += unitSize;
+	m_vecCategories.clear();
+	for (const auto& cat : rawCategories) {
+		// CA2T: ANSI 문자열(std::string)을 TCHAR(CString)로 변환해주는 번역기
+		m_vecCategories.push_back(CString(CA2T(cat.c_str())));
 	}
 
+	// 목록의 첫 번째 아이템으로 초기 화면 로드
+	if (!m_vecCategories.empty())
+	{
+		UpdateStoreListUI(m_vecCategories[0]);
+	}
 
+	// 스크롤 메뉴바에 데이터 설정 - 음식카테고리 메뉴(전체, 치킨, 피자 등)
+	m_wndScrollMenu.SetMenuItems(m_vecCategories);
 
-	m_brushBack.CreateSolidBrush(RGB(230, 245, 245)); // 아주 연한 회색 (배달 앱 느낌)
-	m_brushWhite.CreateSolidBrush(RGB(255, 255, 255)); // 완전 하얀색
+	// 추후 배경이나 버튼같은것에 색상을 입히기 위한 준비
+	m_brushBack.CreateSolidBrush(RGB(230, 245, 245)); // 배달 앱 특유의 깔끔한 연회색 페인트를 준비
+	m_brushWhite.CreateSolidBrush(RGB(255, 255, 255)); // 글자 뒤나 배경을 칠할 하얀색 페인트를 준비
+
+	// 1. GetDlgItem 함수로 IDC_STATIC_BG 컨트롤의 주소를 가져와 "이 영역은 더러워졌으니(Invalid) 다시 그려라"라고 시스템에 요청
+	// 2. 시스템은 화면을 다시 그리기 위해 'WM_CTLCOLOR' 메시지를 이 다이얼로그에 보냄
+	// 3. 메시지 맵에 등록된 OnCtlColor 함수가 실행되면서 우리가 설정한 배경색(연회색 붓)을 시스템에 전달
+	// 4. 결과적으로 해당 컨트롤이 우리가 원하는 색으로 다시 칠해짐
 	GetDlgItem(IDC_STATIC_BG)->Invalidate();
 
 	return TRUE;  // 컨트롤에 대한 포커스를 설정하지 않으면 TRUE를 반환합니다.
 }
 
+// ─────────────────────────────────────────────
+//  그 외 핸들러
+// ─────────────────────────────────────────────
+
+// 휠 핸들러 구현
 BOOL MainHomeDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 {
-	// 1. 이동 거리 계산 (휠 한 번에 보통 30px 이동)
-	int deltaX = (zDelta > 0) ? 40 : -40; // 조금 더 시원하게 이동하게 40으로 조절
-	if (m_vCatButtons.empty()) return FALSE;
+	// 마우스 커서 아래에 있는 윈도우를 찾음
+	// CRect 객체를 하나 만들면 내부적으로 4개의 멤버 변수를 가짐
+	// left: 왼쪽 X 좌표
+	// top : 위쪽 Y 좌표
+	// right : 오른쪽 X 좌표
+	// bottom : 아래쪽 Y 좌표
+	CRect rect;
 
-	// 2. 현재 버튼 위치 파악
-	CButton* pFirst = m_vCatButtons.front();
-	CButton* pLast = m_vCatButtons.back();
-	CRect rF, rL;
-	pFirst->GetWindowRect(&rF); ScreenToClient(&rF);
-	pLast->GetWindowRect(&rL); ScreenToClient(&rL);
+	// 화면 전체에서 메뉴 바(자식 창) 가 차지하고 있는 사각형 영역(rect)이 어디인지 좌표를 따옴
+	m_wndScrollMenu.GetWindowRect(&rect);
 
-	// 3. 한계선 체크 (40px ~ 560px로 수정)
-	if (deltaX > 0 && rF.left + deltaX > 40) deltaX = 40 - rF.left;
-	else if (deltaX < 0 && rL.right + deltaX < 560) deltaX = 560 - rL.right;
-
-	// 4. 실제 이동
-	if (deltaX != 0) {
-		for (auto pBtn : m_vCatButtons) {
-			CRect r;
-			pBtn->GetWindowRect(&r); ScreenToClient(&r);
-			pBtn->SetWindowPos(NULL, r.left + deltaX, r.top, 0, 0,
-				SWP_NOSIZE | SWP_NOZORDER | SWP_NOCOPYBITS);
-		}
-
-		// 배경 영역만 새로고침
-		CRect rectStatic;
-		GetDlgItem(IDC_STATIC_BG)->GetWindowRect(&rectStatic);
-		ScreenToClient(&rectStatic);
-		InvalidateRect(&rectStatic, TRUE);
-		UpdateWindow();
-
-		// --- [휠 중지 감지 및 스냅 시작] ---
-		// 휠을 돌리는 동안에는 계속 타이머를 죽이고 다시 생성합니다.
-		// 유저가 휠을 멈추면 200ms 후에 애니메이션 로직이 작동합니다.
-		KillTimer(2);
-		SetTimer(2, 200, NULL);
+	// pt는 현재 마우스 커서의 위치
+	// 지금 마우스가 메뉴 바 영역 안에 들어와 있니? 라고 묻는 조건문
+	if (rect.PtInRect(pt))
+	{
+		// 자식 컨트롤(m_wndScrollMenu)의 OnMouseWheel을 직접 호출
+		// 마우스가 메뉴 바 위에 있다면, 본체(MainHomeDlg)가 휠 신호를 처리하지 않고 메뉴 바 객체(m_wndScrollMenu)에게 신호를 직접 전달
+		// 이 덕분에 메뉴 바가 다른 영역과 분리되어 마우스 휠로 좌우로 움직일 수 있게 됨
+		return m_wndScrollMenu.OnMouseWheel(nFlags, zDelta, pt);
 	}
 
+	// 만약 마우스가 메뉴 바 바깥에 있다면 윈도우 기본 동작(아무 일도 안 하거나 본체 스크롤)을 수행하라고 부모 클래스에게 넘김
 	return CDialogEx::OnMouseWheel(nFlags, zDelta, pt);
 }
 
-// 카테고리 메뉴가 화면 밖으로 무한히 도망가지 못하도록 하는 한계선
-void MainHomeDlg::OnMouseMove(UINT nFlags, CPoint point)
-{
-	if (m_bDragging && (nFlags & MK_LBUTTON))
-	{
-		// 1. 마우스 이동량 계산
-		int deltaX = point.x - m_ptLastMouse.x;
-		m_ptLastMouse = point;
-
-		// [속도 제한] 한 프레임에 너무 많이 움직이지 못하게 락 (잔상 방지 핵심)
-		if (deltaX > 25) deltaX = 25;
-		if (deltaX < -25) deltaX = -25;
-
-		if (deltaX == 0 || m_vCatButtons.empty()) return;
-
-		// 2. 한계선 체크 (40px ~ 540px)
-		CButton* pFirst = m_vCatButtons.front();
-		CButton* pLast = m_vCatButtons.back();
-		CRect rF, rL;
-		pFirst->GetWindowRect(&rF); ScreenToClient(&rF);
-		pLast->GetWindowRect(&rL); ScreenToClient(&rL);
-
-		//if (deltaX > 0 && rF.left + deltaX > 40) deltaX = 40 - rF.left;
-		//else if (deltaX < 0 && rL.right + deltaX < 540) deltaX = 540 - rL.right;
-		
-		// 왼쪽 끝 한계: 첫 번째 버튼의 왼쪽이 40을 넘지 못하게
-		if (deltaX > 0 && rF.left + deltaX > 40)
-			deltaX = 40 - rF.left;
-
-		// 오른쪽 끝 한계: 마지막 버튼의 오른쪽이 560(600-40)보다 작아지지 않게
-		else if (deltaX < 0 && rL.right + deltaX < 560)
-			deltaX = 560 - rL.right;
-
-		// 3. 실제 이동 및 즉시 갱신
-		if (deltaX != 0)
-		{
-			for (auto pBtn : m_vCatButtons) {
-				CRect r;
-				pBtn->GetWindowRect(&r); ScreenToClient(&r);
-
-				// SWP_NOCOPYBITS 스타일을 추가하면 잔상이 덜 남습니다.
-				pBtn->SetWindowPos(NULL, r.left + deltaX, r.top, 0, 0,
-					SWP_NOSIZE | SWP_NOZORDER | SWP_NOCOPYBITS);
-			}
-
-			// 4. 버튼 통로(Static) 영역만 강제로 새로고침
-			CRect rectStatic;
-			GetDlgItem(IDC_STATIC_BG)->GetWindowRect(&rectStatic);
-			ScreenToClient(&rectStatic);
-
-			// TRUE로 설정해 배경까지 싹 지우고 다시 그리게 합니다.
-			InvalidateRect(&rectStatic, TRUE);
-			UpdateWindow();
-		}
-	}
-	CDialogEx::OnMouseMove(nFlags, point);
-}
-
-void MainHomeDlg::OnLButtonDown(UINT nFlags, CPoint point)
-{
-    // 1. 클릭한 위치의 자식 윈도우 확인
-    CWnd* pWndChild = ChildWindowFromPoint(point);
-    
-    if (pWndChild && pWndChild != this) 
-    {
-        // 클릭된 게 배경(IDC_STATIC_BG)이 아니라 '진짜 버튼'인지 확인
-        if (pWndChild->GetDlgCtrlID() != IDC_STATIC_BG) 
-        {
-            // 진짜 버튼(장바구니, 카테고리 버튼 등)이면 드래그 하지 않고 종료
-            CDialogEx::OnLButtonDown(nFlags, point);
-            return;
-        }
-    }
-
-    // 2. 배경(IDC_STATIC_BG)을 눌렀거나 빈 공간일 때만 드래그 실행
-    CRect rectTarget;
-    GetDlgItem(IDC_STATIC_BG)->GetWindowRect(&rectTarget);
-    ScreenToClient(&rectTarget);
-
-    if (rectTarget.PtInRect(point)) 
-    {
-        m_bDragging = true;
-        m_ptLastMouse = point;
-        SetCapture(); 
-    }
-
-    CDialogEx::OnLButtonDown(nFlags, point);
-}
-
-//void MainHomeDlg::OnLButtonUp(UINT nFlags, CPoint point)
-//{
-//	if (m_bDragging)
-//	{
-//		m_bDragging = false;
-//		 ReleaseCapture(); // <-- 여기도 주석 처리!
-//	}
-//	CDialogEx::OnLButtonUp(nFlags, point);
-//}
-
-//void MainHomeDlg::OnLButtonUp(UINT nFlags, CPoint point)
-//{
-//	if (m_bDragging)
-//	{
-//		m_bDragging = false;
-//		ReleaseCapture();
-//
-//		if (!m_vCatButtons.empty())
-//		{
-//			CRect rFirst;
-//			m_vCatButtons.front()->GetWindowRect(&rFirst);
-//			ScreenToClient(&rFirst);
-//
-//			int startMargin = 40;
-//			int unitSize = 130;
-//
-//			// 1. 가장 가까운 스냅 지점 계산
-//			int offset = rFirst.left - startMargin;
-//			int nIndex = (offset >= 0) ? (offset + unitSize / 2) / unitSize : (offset - unitSize / 2) / unitSize;
-//
-//			m_nTargetX = startMargin + (nIndex * unitSize);
-//
-//			// 2. 타이머 시작 (10ms 간격으로 호출)
-//			if (rFirst.left != m_nTargetX) {
-//				SetTimer(1, 10, NULL);
-//			}
-//		}
-//	}
-//	CDialogEx::OnLButtonUp(nFlags, point);
-//}
-
-void MainHomeDlg::OnLButtonUp(UINT nFlags, CPoint point)
-{
-	if (m_bDragging)
-	{
-		m_bDragging = false;
-		ReleaseCapture();
-
-		if (!m_vCatButtons.empty())
-		{
-			CRect rFirst, rLast;
-			m_vCatButtons.front()->GetWindowRect(&rFirst); ScreenToClient(&rFirst);
-			m_vCatButtons.back()->GetWindowRect(&rLast); ScreenToClient(&rLast);
-
-			int startMargin = 40;
-			int endMargin = 560;
-			int unitSize = 135;
-
-			// --- [양 끝단 밀어주기 로직 통일] ---
-			if (rFirst.left > startMargin) {
-				m_nTargetX = startMargin;
-			}
-			else if (rLast.right < endMargin) {
-				int totalWidth = (int)(m_vCatButtons.size() - 1) * unitSize + 115;
-				m_nTargetX = endMargin - totalWidth;
-			}
-			else {
-				int offset = rFirst.left - startMargin;
-				// 현재 위치에서 가장 가까운 인덱스로 반올림
-				int nIndex = (offset <= 0) ? (offset - unitSize / 2) / unitSize : (offset + unitSize / 2) / unitSize;
-				m_nTargetX = startMargin + (nIndex * unitSize);
-			}
-
-			if (rFirst.left != m_nTargetX) SetTimer(1, 10, NULL);
-		}
-	}
-	CDialogEx::OnLButtonUp(nFlags, point);
-}
-
+// 어떤 색으로 칠할지 결정해서 윈도우에게 알려주는 함수
+// 화면에 보이는 각각의 구성 요소(버튼, 글자, 배경 등)를 그릴 때마다 매번 호출됨
 HBRUSH MainHomeDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
+	// 윈도우 표준 색상(회색이나 흰색) 을 hbr에 담아둠
 	HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
 
-	// 1. 버튼이 움직이는 통로(IDC_STATIC_BG)만 기존 색상 유지
+	// ID 가 IDC_STATIC_BG (상단 음식카테고리메뉴바)라면!
 	if (pWnd->GetDlgCtrlID() == IDC_STATIC_BG)
 	{
-		pDC->SetBkColor(RGB(230, 245, 245)); // 글자 배경도 통로 색에 맞춤
-		return (HBRUSH)m_brushBack.GetSafeHandle();
+		pDC->SetBkColor(RGB(230, 245, 245));        // 그 위에 써진 글자의 배경색도 배경판 색상과 똑같이 맞춤
+		return (HBRUSH)m_brushBack.GetSafeHandle(); // 미리 준비해둔 연회색으로 칠할것을 윈도우에게 명령 
 	}
 
-	// 2. 그 외 다이얼로그 바닥(DLG)과 다른 정적 텍스트(STATIC)는 모두 하얀색으로!
+	// 그 외 다이얼로그 바닥(DLG)과 다른 정적 텍스트(STATIC)는 모두 하얀색으로!
 	if (nCtlColor == CTLCOLOR_DLG || nCtlColor == CTLCOLOR_STATIC)
 	{
-		pDC->SetBkMode(TRANSPARENT);
-		return (HBRUSH)m_brushWhite.GetSafeHandle();
+		pDC->SetBkMode(TRANSPARENT);                 // 글자 배경을 투명하게
+		return (HBRUSH)m_brushWhite.GetSafeHandle(); // 미리 준비해둔 하얀색으로 칠할것을 윈도우에게 명령  
 	}
 
+	// 위 경우가 아니면 기본색(hbr) 리턴 후 종료
 	return hbr;
 }
 
-void MainHomeDlg::OnTimer(UINT_PTR nIDEvent)
+// 사용자가 음식카테고리에서 메뉴 버튼(치킨, 피자, 한식 등)을 클릭했을 때, 어떤 버튼이 눌려졌는지 확인하고 그에 맞는 동작을 수행하는 클릭 이벤트 처리기
+//LRESULT MainHomeDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM lParam)
+//{
+//	UINT nBtnID = (UINT)wParam; // wParam 를 열어서 클릭된 버튼의 고유 번호(ID)를 꺼냄
+//
+//	// 버튼 ID를 2000번부터 시작하도록 설정했기 때문에 2000을 빼서 0, 1 처럼 배열이나 리스트 인덱스로 쓰기 좋게 변경
+//	int nIndex = nBtnID - 2000; 
+//
+//	// 여기서 클릭된 카테고리에 맞는 동작을 작성
+//	if (nIndex == 0) // 첫번째 버튼 클릭시
+//	{
+//		AfxMessageBox(_T("전체 메뉴를 보여줍니다.")); // 테스트용 : 메시지박스 호출
+//	}
+//
+//	return 0;
+//}
+LRESULT MainHomeDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM lParam)
 {
-	if (nIDEvent == 1) // 애니메이션 실행 타이머
+	// 버튼 ID를 2000번부터 시작하도록 설정했기 때문에 2000을 빼서 0, 1 처럼 배열이나 리스트 인덱스로 쓰기 좋게 변경
+	int nIndex = (UINT)wParam - 2000;
+
+	// 계산된 인덱스가 우리가 가진 카테고리 목록 범위 안에 있는지 확인
+	if (nIndex >= 0 && nIndex < (int)m_vecCategories.size())
 	{
-		if (m_vCatButtons.empty()) { KillTimer(1); return; }
+		// 인덱스에 해당하는 카테고리 명칭(예: "치킨")을 꺼냄
+		CString selCategory = m_vecCategories[nIndex];
 
-		CRect rFirst;
-		m_vCatButtons.front()->GetWindowRect(&rFirst);
-		ScreenToClient(&rFirst);
-
-		int diff = m_nTargetX - rFirst.left;
-		int step = diff / 4;
-		if (step == 0) step = (diff > 0) ? 1 : -1;
-
-		if (abs(diff) <= 1) {
-			step = diff;
-			KillTimer(1);
-		}
-
-		for (auto pBtn : m_vCatButtons) {
-			CRect r;
-			pBtn->GetWindowRect(&r); ScreenToClient(&r);
-			pBtn->SetWindowPos(NULL, r.left + step, r.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOCOPYBITS);
-		}
-
-		CRect rectStatic;
-		GetDlgItem(IDC_STATIC_BG)->GetWindowRect(&rectStatic);
-		ScreenToClient(&rectStatic);
-		InvalidateRect(&rectStatic, TRUE);
+		// 해당 카테고리의 가게 목록으로 화면을 새로고침함
+		UpdateStoreListUI(selCategory);
 	}
-	else if (nIDEvent == 2) // 휠 중지 감지 타이머
+
+	return 0;
+}
+
+// ------------------------------------------------------------------------
+// 아래는 분석 필요 (아마 없어질 내용)
+// 
+
+
+// 음식카테고리메뉴에 따라 출력되는 매장정보를 가져와 출력
+void MainHomeDlg::UpdateStoreListUI(CString categoryName)
+{
+	// 기존에 리스트에 있던 데이터들을 삭제
+	m_listStore.DeleteAllItems();
+
+	// CString(유니코드)을 std::string(ANSI)으로 변환하여 매니저에게 전달
+	std::string targetCat = CT2A(categoryName);
+
+	// 싱글톤 매니저로부터 필터링된 가게 리스트를 받아옴
+	// (이미 OrderManager에 GetStoresByCategory가 구현되어 있어야 합니다)
+	std::vector<StoreInfo> stores = OrderManager::GetInstance().GetStoresByCategory(targetCat);
+
+	// 받아온 데이터를 하나씩 리스트 컨트롤에 꽂아넣음
+	for (int i = 0; i < (int)stores.size(); ++i)
 	{
-		KillTimer(2);
+		// [0번 컬럼] 상호명 넣기
+		// CA2T: std::string -> CString 변환
+		int nRow = m_listStore.InsertItem(i, CA2T(stores[i].storeName.c_str()));
 
-		if (!m_vCatButtons.empty())
-		{
-			CRect rFirst, rLast;
-			m_vCatButtons.front()->GetWindowRect(&rFirst); ScreenToClient(&rFirst);
-			m_vCatButtons.back()->GetWindowRect(&rLast); ScreenToClient(&rLast);
+		// [1번 컬럼] 예상 배달 시간
+		m_listStore.SetItemText(nRow, 1, CA2T(stores[i].deliveryTime.c_str()));
 
-			int startMargin = 40;
-			int endMargin = 560;
-			int unitSize = 135;
+		// [2번 컬럼] 별점/최소주문
+		CString strInfo;
+		strInfo.Format(_T("★4.9 / %d원"), stores[i].minOrderAmount);
+		m_listStore.SetItemText(nRow, 2, strInfo);
 
-			// --- [양 끝단 밀어주기 로직 통일] ---
-			if (rFirst.left > startMargin) { // 왼쪽 빈틈
-				m_nTargetX = startMargin;
-			}
-			else if (rLast.right < endMargin) { // 오른쪽 빈틈
-				int totalWidth = (int)(m_vCatButtons.size() - 1) * unitSize + 115;
-				m_nTargetX = endMargin - totalWidth;
-			}
-			else { // 중간 지점 스냅
-				int offset = rFirst.left - startMargin;
-				int nIndex = (offset <= 0) ? (offset - unitSize / 2) / unitSize : (offset + unitSize / 2) / unitSize;
-				m_nTargetX = startMargin + (nIndex * unitSize);
-			}
-
-			if (rFirst.left != m_nTargetX) SetTimer(1, 10, NULL);
-		}
+		// [3번 컬럼] 거리 (km 붙이기)
+		CString strDistance;
+		strDistance.Format(_T("%.1fkm"), stores[i].distance);
+		m_listStore.SetItemText(nRow, 3, strDistance);
 	}
-	CDialogEx::OnTimer(nIDEvent);
 }

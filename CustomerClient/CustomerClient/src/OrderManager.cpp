@@ -5,6 +5,48 @@ OrderManager::OrderManager()
     : m_currentStoreID(-1)
     , m_isDelivery(true)
 {
+    // 초기 데이터 로드 시 카테고리도 함께 설정
+    m_categoryList = { "전체", "족발/보쌈", "찜/탕", "일식", "치킨", "피자", "중식", "양식" };
+}
+
+std::vector<std::string> OrderManager::GetCategoryList() {
+    return m_categoryList;
+}
+
+// 테스트용 데이터 로드
+void OrderManager::LoadStoreData() {
+    m_allStores.clear();
+
+    StoreInfo s1;
+    s1.storeID = 101;
+    s1.storeName = "마왕족발 대구점";
+    s1.category = "족발/보쌈";
+    s1.deliveryTime = "20~30분";
+    s1.distance = 0.8;
+    s1.minOrderAmount = 15000;
+    m_allStores.push_back(s1);
+
+    StoreInfo s2;
+    s2.storeID = 102;
+    s2.storeName = "황금치킨 본점";
+    s2.category = "치킨";
+    s2.deliveryTime = "30~40분";
+    s2.distance = 1.2;
+    s2.minOrderAmount = 18000;
+    m_allStores.push_back(s2);
+}
+
+// 카테고리에 맞는 가게만 골라내어 로드
+std::vector<StoreInfo> OrderManager::GetStoresByCategory(const std::string& category) {
+    if (category == "전체") return m_allStores;
+
+    std::vector<StoreInfo> filtered;
+    for (const auto& s : m_allStores) {
+        if (s.category == category) {
+            filtered.push_back(s);
+        }
+    }
+    return filtered;
 }
 
 // [고객] 장바구니 담기 (CUS-11, 18)
