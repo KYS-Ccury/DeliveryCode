@@ -25,6 +25,10 @@ public:
     // ─────────────────────────────────────────────
     //  주요 설정 함수
     // ─────────────────────────────────────────────
+
+    // 메시지가 자식(버튼)에게 가기 전에 부모에게 판단하게 하는 함수
+    virtual BOOL PreTranslateMessage(MSG* pMsg);
+
     // 외부(MainHomeDlg)에서 카테고리 목록(전체, 치킨 등)을 넘겨받아 버튼들을 생성하는 함수
     void SetMenuItems(const std::vector<CString>& items);
 
@@ -32,14 +36,20 @@ protected:
     // ─────────────────────────────────────────────
     //  내부 멤버 변수 (관리용)
     // ─────────────────────────────────────────────
-    std::vector<CButton*> m_vButtons;  // 화면에 생성된 실제 버튼 객체들의 주소 목록
-    bool    m_bDragging = false;       // 현재 사용자가 마우스로 메뉴를 붙잡고 끄는 중인지 여부
-    CPoint  m_ptLastMouse;             // 드래그 계산을 위한 직전 마우스 커서 위치 기록
-    int     m_nTargetX = 40;           // 메뉴바가 현재 위치해야 할 X 좌표 목표값 (스크롤 위치)
-    int     m_nBtnWidth = 125;     // 버튼 자체의 가로 길이
-    int     m_nSpacing = 25;       // 버튼 사이의 떨어진 간격
-    int     m_nUnitSize;           //  각 버튼 하나가 차지하는 너비와 간격을 합친 단위 크기(생성자에서 초기화)
-    int     m_nLeftMargin = 40;        // 첫 번째 버튼이 시작될 왼쪽 여백 (Padding)
+    std::vector<CButton*> m_vButtons;  // 생성된 버튼 객체 목록
+
+    // 드래그 관련 변수
+    bool    m_bDragging = false;       // 마우스를 누르고 있는 상태인가?
+    bool    m_bIsRealDrag = false;     // 단순 클릭이 아닌 '진짜 드래그'로 판정되었는가?
+    CPoint  m_ptLastMouse;             // 실시간 이동량 계산을 위한 직전 좌표
+    CPoint  m_ptDown;                  // 드래그 판정 기준점이 되는 최초 클릭 좌표
+
+    // 위치 및 간격 설정값
+    int     m_nTargetX = 40;           // 애니메이션 목표 지점
+    int     m_nBtnWidth = 180;         // 버튼 너비
+    int     m_nSpacing = 0;           // 버튼 간격
+    int     m_nUnitSize;               // 단위 크기 (너비 + 간격)
+    int     m_nLeftMargin = 0;        // 왼쪽 시작 여백
 
     // ─────────────────────────────────────────────
     //  내부 로직 함수
@@ -50,7 +60,7 @@ protected:
     // 메시지 맵 선언 (이벤트 핸들러 연결용)
     DECLARE_MESSAGE_MAP()
 
-public:
+protected:
     // ─────────────────────────────────────────────
     //  메시지 핸들러 함수 (이벤트 처리)
     // ─────────────────────────────────────────────
@@ -64,12 +74,17 @@ public:
     // 마우스 왼쪽 버튼을 뗐을 때 (드래그 종료 및 정렬 시작)
     afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 
-    // 메뉴바 위에서 마우스 휠을 굴렸을 때 (좌우 스크롤 처리)
-    afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
-
     // 정해진 시간마다 호출 (애니메이션의 부드러운 움직임을 구현하기 위해 사용)
     afx_msg void OnTimer(UINT_PTR nIDEvent);
 
     // 동적으로 생성된 버튼이 클릭되었을 때 호출되는 함수
     afx_msg void OnBtnClicked(UINT nID);
+
+    // 배경 지우기 무시 (메뉴바 이동시 점멸방지)
+    afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+
+public:
+    // 메뉴바 위에서 마우스 휠을 굴렸을 때 (좌우 스크롤 처리)
+    afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
+
 };

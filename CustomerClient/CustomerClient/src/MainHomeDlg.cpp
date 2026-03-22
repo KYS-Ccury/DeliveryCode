@@ -37,7 +37,7 @@ void MainHomeDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_LIST_STOR, m_listStore);     // ?
-	DDX_Control(pDX, IDC_STATIC_BG, m_wndScrollMenu); // 음식카테고리메뉴바와 ID를 매핑
+	DDX_Control(pDX, IDC_STATIC_MENU_BAR, m_wndScrollMenu); // 음식카테고리메뉴바와 ID를 매핑
 }
 
 // ─────────────────────────────────────────────
@@ -110,7 +110,9 @@ BOOL MainHomeDlg::OnInitDialog()
 	// 2. 시스템은 화면을 다시 그리기 위해 'WM_CTLCOLOR' 메시지를 이 다이얼로그에 보냄
 	// 3. 메시지 맵에 등록된 OnCtlColor 함수가 실행되면서 우리가 설정한 배경색(연회색 붓)을 시스템에 전달
 	// 4. 결과적으로 해당 컨트롤이 우리가 원하는 색으로 다시 칠해짐
-	GetDlgItem(IDC_STATIC_BG)->Invalidate();
+	GetDlgItem(IDC_STATIC_TOP_BG)->Invalidate();  // 주소창 배경
+	GetDlgItem(IDC_STATIC_MENU_BAR)->Invalidate(); // 메뉴바 배경
+
 
 	return TRUE;  // 컨트롤에 대한 포커스를 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -153,9 +155,10 @@ HBRUSH MainHomeDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
 	// 윈도우 표준 색상(회색이나 흰색) 을 hbr에 담아둠
 	HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+	int nID = pWnd->GetDlgCtrlID();
 
 	// ID 가 IDC_STATIC_BG (상단 음식카테고리메뉴바)라면!
-	if (pWnd->GetDlgCtrlID() == IDC_STATIC_BG)
+	if (nID == IDC_STATIC_TOP_BG || nID == IDC_STATIC_MENU_BAR)
 	{
 		pDC->SetBkColor(RGB(230, 245, 245));        // 그 위에 써진 글자의 배경색도 배경판 색상과 똑같이 맞춤
 		return (HBRUSH)m_brushBack.GetSafeHandle(); // 미리 준비해둔 연회색으로 칠할것을 윈도우에게 명령 
