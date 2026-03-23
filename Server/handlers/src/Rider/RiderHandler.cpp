@@ -21,6 +21,7 @@
 //    407 : GPS 위치 전송
 // ============================================================
 #include "RiderHandler.h"
+#include "EpollServer.h"
 #include "Session.h"
 #include "Packet.h"
 #include "MariaDBManager.h"
@@ -986,10 +987,17 @@ bool RiderHandler::pushDispatch(int riderFd, int orderId,
                                 const std::string& destAddr,
                                 int deliveryFee)
 {
-    // riderFd로 Session 직접 접근이 필요하므로
-    // 실제 구현은 EpollServer가 Session* 맵을 관리해야 함
-    // 여기서는 구조 예시만 제공
-    // (실제 사용 시 EpollServer::getSession(riderFd)->sendPacket(...))
+    if (!EpollServer::s_instance) {
+        std::cerr << "[pushDispatch] EpollServer 인스턴스 없음" << std::endl;
+        return false;
+    }
+
+    auto session = EpollServer::s_instance->getSession(riderFd);
+    if (!session) {
+        std::cerr << "[pushDispatch] riderFd=" << riderFd << " 세션 없음 (접속 끊김?)" << std::endl;
+        return false;
+    }
+
     json push;
     push["order_id"]     = orderId;
     push["store_name"]   = storeName;
@@ -997,7 +1005,14 @@ bool RiderHandler::pushDispatch(int riderFd, int orderId,
     push["dest_addr"]    = destAddr;
     push["delivery_fee"] = deliveryFee;
 
+    bool ok = session->sendPacket(
+        static_cast<uint8_t>(ClientType::RIDER),
+        CmdRider::NTF_NEW_DISPATCH,   // 408
+        push.dump()
+    );
+
     std::cout << "[Rider Push] orderId=" << orderId
-              << " → riderFd=" << riderFd << std::endl;
-    return true; // 실제 sendPacket 연동 시 수정
+              << " riderFd=" << riderFd
+              << (ok ? " → 전송 성공" : " → 전송 실패") << std::endl;
+    return ok;
 }

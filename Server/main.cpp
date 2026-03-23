@@ -40,6 +40,7 @@ int main() {
         int serverPort = 8080;
         std::cout << "[3] Epoll 서버를 포트 " << serverPort << " 에서 초기화합니다." << std::endl;
         EpollServer server(serverPort, &threadPool);
+        EpollServer::s_instance = &server; // pushDispatch용 싱글턴
         
         std::cout << "[4] 서버 이벤트 루프 가동 시작. 클라이언트 접속 대기 중..." << std::endl;
         

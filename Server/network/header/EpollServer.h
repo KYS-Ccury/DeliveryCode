@@ -4,7 +4,7 @@
 #include <netinet/in.h>
 #include <map>
 #include <vector>
-#include <mutex> // 멀티 스레드 환경 보호용
+#include <mutex>
 #include <memory>
 
 class Session;
@@ -20,7 +20,7 @@ private:
     ThreadPool* pool;
 
     std::map<int, std::shared_ptr<Session>> sessions;
-    std::mutex session_mutex; // ★ 추가: 세션 맵 보호용 뮤텍스
+    std::mutex session_mutex;
 
     bool setupServer();
     void setNonBlocking(int fd);
@@ -31,8 +31,14 @@ public:
     ~EpollServer();
 
     void start();
-    
-    // ★ 추가: 워커 스레드가 직접 호출할 수 있도록 public으로 열어둡니다.
-    void closeConnection(int client_fd); 
-    void rearmSocket(int client_fd);     // EPOLLONESHOT 재활성화
+
+    void closeConnection(int client_fd);
+    void rearmSocket(int client_fd);
+
+    // ★ pushDispatch 에서 사용: fd로 Session 포인터 반환 (없으면 nullptr)
+    std::shared_ptr<Session> getSession(int fd);
+
+    // ★ RiderHandler 에서 사용: riderId → fd 매핑은 RiderHandler가 관리,
+    //    fd → Session 접근은 이 함수로 처리
+    static EpollServer* s_instance; // 싱글턴 포인터 (main에서 설정)
 };

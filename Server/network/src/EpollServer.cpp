@@ -172,3 +172,13 @@ void EpollServer::start() {
         }
     }
 }
+// ★ 싱글턴 포인터 정의
+EpollServer* EpollServer::s_instance = nullptr;
+
+// ★ getSession(): fd로 Session 공유포인터 반환 (없으면 nullptr)
+std::shared_ptr<Session> EpollServer::getSession(int fd) {
+    std::lock_guard<std::mutex> lock(session_mutex);
+    auto it = sessions.find(fd);
+    if (it != sessions.end()) return it->second;
+    return nullptr;
+}
