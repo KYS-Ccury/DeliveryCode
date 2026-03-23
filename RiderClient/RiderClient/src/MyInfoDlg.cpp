@@ -287,9 +287,8 @@ BOOL ChangeAcctDlg::OnInitDialog()
         }
         SetDlgItemText(IDC_STATIC_ACCOUNT, masked);
     } else {
-        // 서버에서 프로필 조회 (계좌 정보 포함)
-        json req;
-        AppContext::Get().socket.SendPacket(CMD_GET_MY_INFO, req.dump());
+        // 서버에서 프로필 조회 (계좌 정보 포함) - "{}" 빈 오브젝트 전송
+        AppContext::Get().socket.SendPacket(CMD_GET_MY_INFO, "{}");
         SetDlgItemText(IDC_STATIC_BANK,    _T("-"));
         SetDlgItemText(IDC_STATIC_HOLDER,  _T("-"));
         SetDlgItemText(IDC_STATIC_ACCOUNT, _T("조회 중..."));

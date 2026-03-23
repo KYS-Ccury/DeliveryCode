@@ -507,8 +507,15 @@ void RiderHandler::handleMyDispatches(Session* session, const std::string& jsonB
             return;
         }
 
-        json req = jsonBody.empty() ? json{} : json::parse(jsonBody);
-        bool summaryOnly = req.value("summary_only", false);
+        json req;
+        try {
+            req = jsonBody.empty() ? json::object() : json::parse(jsonBody);
+        } catch (...) {
+            req = json::object();
+        }
+        bool summaryOnly = (req.is_object() && req.contains("summary_only") &&
+                            req["summary_only"].is_boolean())
+                           ? req["summary_only"].get<bool>() : false;
         auto& db = MariaDBManager::getInstance();
 
         // ── 오늘 요약 모드 (MyPageDlg 에서 호출) ──────────
@@ -788,8 +795,16 @@ void RiderHandler::handleGetProfile(Session* session, const std::string& jsonBod
             return;
         }
 
-        json req = jsonBody.empty() ? json{} : json::parse(jsonBody);
-        std::string action = req.value("action", "");
+        json req;
+        try {
+            req = jsonBody.empty() ? json::object() : json::parse(jsonBody);
+        } catch (...) {
+            req = json::object();
+        }
+        std::string action = "";
+        if (req.is_object() && req.contains("action") && req["action"].is_string()) {
+            action = req["action"].get<std::string>();
+        }
         auto& db = MariaDBManager::getInstance();
 
         // ── 비밀번호 변경 ─────────────────────────────────
@@ -880,18 +895,25 @@ void RiderHandler::handleGetProfile(Session* session, const std::string& jsonBod
             return;
         }
         const DBRow& r = rows[0];
+
+        // NULL-safe 헬퍼 (DB에서 NULL은 빈 문자열로 오지만 키 자체가 없을 수도 있음)
+        auto safeGet = [&](const std::string& key) -> std::string {
+            auto it = r.find(key);
+            return (it != r.end()) ? it->second : "";
+        };
+
         json res;
         res["status"]       = Status::SUCCESS;
         res["rider_id"]     = riderId;
-        res["login_id"]     = r.at("login_id");
-        res["name"]         = r.at("name");
-        res["phone"]        = r.at("phone");
-        res["address"]      = r.at("address");
-        res["vehicle_type"] = r.at("vehicle_type");
-        res["is_working"]   = (r.at("is_working") == "1");
-        res["is_accepting"] = (r.at("is_accepting") == "1");
-        res["bank_info"]    = r.count("bank_info")   ? r.at("bank_info")   : "";
-        res["acct_masked"]  = r.count("acct_masked") ? r.at("acct_masked") : "";
+        res["login_id"]     = safeGet("login_id");
+        res["name"]         = safeGet("name");
+        res["phone"]        = safeGet("phone");
+        res["address"]      = safeGet("address");
+        res["vehicle_type"] = safeGet("vehicle_type");
+        res["is_working"]   = (safeGet("is_working")   == "1");
+        res["is_accepting"] = (safeGet("is_accepting") == "1");
+        res["bank_info"]    = safeGet("bank_info");
+        res["acct_masked"]  = safeGet("acct_masked");
 
         session->sendPacket(static_cast<uint8_t>(ClientType::RIDER),
                             CmdCommon::REQ_GET_PROFILE, res.dump());
