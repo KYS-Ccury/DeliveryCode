@@ -21,3 +21,4 @@ void CartItem::CalculateTotalPrice()
 
     totalPrice = (basePrice + optionSum) * quantity;
 }
+

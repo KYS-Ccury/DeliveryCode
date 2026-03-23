@@ -49,6 +49,15 @@ protected:
 	// 사용자가 커스텀 메뉴 버튼을 클릭했을 때 호출되는 사용자 정의 메시지 함수
 	afx_msg LRESULT OnScrollMenuClicked(WPARAM wParam, LPARAM lParam);
 
+	// 장바구니 버튼 (ID IDC_BUTTON1)
+	// 현재 주문완료창이 뜨게 해 놨으나 추후 변경 필요
+	afx_msg void OnBnClickedButton1();
+
+	// 매장리스트에서 매장클릭
+	afx_msg void OnNMDblclkListStor(NMHDR* pNMHDR, LRESULT* pResult);
+
+	afx_msg void OnBnClickedBtnOrderHistory();
+
 	// 메시지 맵을 사용하겠다고 선언 (BEGIN_MESSAGE_MAP과 짝꿍)
 	DECLARE_MESSAGE_MAP()
 
