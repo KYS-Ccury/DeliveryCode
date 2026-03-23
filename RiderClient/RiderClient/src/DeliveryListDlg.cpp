@@ -44,6 +44,9 @@ BOOL DeliveryListDlg::OnInitDialog()
     InitListCtrl();
     RefreshCurrentList();
     SetTimer(1, 1000, nullptr);
+    // 초기 탭은 배차 대기 - 버튼 정상 활성화
+    GetDlgItem(IDC_BTN_ACCEPT_ITEM)->SetWindowText(_T("수락"));
+    GetDlgItem(IDC_BTN_REJECT_ITEM)->SetWindowText(_T("거절"));
     return TRUE;
 }
 
@@ -142,6 +145,9 @@ void DeliveryListDlg::OnBtnRefresh()
 
 void DeliveryListDlg::OnBtnAcceptItem()
 {
+    // 이전 내역 탭에서는 수락 동작 금지
+    if (m_tabList.GetCurSel() != 0) return;
+
     int nSel = m_listOrders.GetNextItem(-1, LVNI_SELECTED);
     if (nSel < 0) { MessageBox(_T("항목을 선택하세요."), _T("알림"), MB_OK); return; }
     if (nSel >= (int)m_items.GetSize()) return;
@@ -159,6 +165,9 @@ void DeliveryListDlg::OnBtnAcceptItem()
 
 void DeliveryListDlg::OnBtnRejectItem()
 {
+    // 이전 내역 탭에서는 거절 동작 금지
+    if (m_tabList.GetCurSel() != 0) return;
+
     int nSel = m_listOrders.GetNextItem(-1, LVNI_SELECTED);
     if (nSel < 0 || nSel >= (int)m_items.GetSize()) return;
     json req; req["order_id"] = m_items[nSel].orderId; req["reason"] = "MANUAL";
@@ -175,8 +184,19 @@ void DeliveryListDlg::OnDblclkList(NMHDR*, LRESULT* pResult)
 void DeliveryListDlg::OnTabSelChange(NMHDR*, LRESULT* pResult)
 {
     InitListCtrl();
-    if (m_tabList.GetCurSel() == 0) RefreshCurrentList();
-    else PopulateHistoryList();
+    if (m_tabList.GetCurSel() == 0) {
+        // 배차 대기 탭 - 수락/거절 버튼 활성화
+        RefreshCurrentList();
+        GetDlgItem(IDC_BTN_ACCEPT_ITEM)->SetWindowText(_T("수락"));
+        GetDlgItem(IDC_BTN_REJECT_ITEM)->SetWindowText(_T("거절"));
+        GetDlgItem(IDC_BTN_ACCEPT_ITEM)->EnableWindow(TRUE);
+        GetDlgItem(IDC_BTN_REJECT_ITEM)->EnableWindow(TRUE);
+    } else {
+        // 이전 내역 탭 - 버튼 비활성화 또는 숨기기
+        PopulateHistoryList();
+        GetDlgItem(IDC_BTN_ACCEPT_ITEM)->EnableWindow(FALSE);
+        GetDlgItem(IDC_BTN_REJECT_ITEM)->EnableWindow(FALSE);
+    }
     *pResult = 0;
 }
 

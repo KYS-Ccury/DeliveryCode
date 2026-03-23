@@ -4,6 +4,7 @@
 // ============================================================
 #include "RiderHandler.h"
 #include "EpollServer.h"
+#include "ChatHandler.h"
 #include "Session.h"
 #include "Packet.h"
 #include "MariaDBManager.h"
@@ -41,6 +42,12 @@ int RiderHandler::getRiderIdByFd(int fd) {
     return (it != s_fdToRider.end()) ? it->second : 0;
 }
 
+int RiderHandler::getRiderFdById(int riderId) {
+    std::lock_guard<std::mutex> lk(s_sessionMtx);
+    auto it = s_riderToFd.find(riderId);
+    return (it != s_riderToFd.end()) ? it->second : -1;
+}
+
 // ─── 메인 디스패치 ────────────────────────────────────────
 void RiderHandler::process(Session* session, uint16_t protocol, const std::string& jsonBody) {
     switch (protocol) {
@@ -59,6 +66,13 @@ void RiderHandler::process(Session* session, uint16_t protocol, const std::strin
         case CmdRider::REQ_MY_DISPATCHES:   handleMyDispatches  (session, jsonBody); break;
         case CmdRider::REQ_WORK_STATUS:     handleWorkStatus    (session, jsonBody); break;
         case CmdRider::REQ_SEND_GPS:        handleUpdateGps     (session, jsonBody); break;
+
+        // 채팅 (라이더가 보내는 600~602)
+        case CmdChat::REQ_CREATE_ROOM:
+        case CmdChat::REQ_SEND_MSG:
+        case CmdChat::REQ_GET_MSGS:
+            ChatHandler::process(session, protocol, jsonBody, ClientType::RIDER);
+            break;
 
         default:
             std::cerr << "[Rider] 알 수 없는 프로토콜: " << protocol << std::endl;

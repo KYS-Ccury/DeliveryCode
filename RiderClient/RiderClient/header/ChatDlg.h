@@ -2,10 +2,9 @@
 #include <afxdialogex.h>
 #include <afxcmn.h>
 
-// ChatDlg.cpp 와 멤버명 일치
 struct ChatMessage {
     bool    isMine     = false;
-    CString senderType;   // "RIDER" | "ADMIN" | "CUSTOMER"
+    CString senderType;   // "RIDER" | "ADMIN"
     CString message;
     CString sentAt;
 };
@@ -13,9 +12,8 @@ struct ChatMessage {
 class ChatDlg : public CDialogEx {
     DECLARE_DYNAMIC(ChatDlg)
 public:
-    // orderId  : 현재 주문 ID (0 이면 일반 관리자 채팅)
-    // partnerType : "ADMIN" | "CUSTOMER"
-    ChatDlg(int orderId, const CString& partnerType, CWnd* pParent = nullptr);
+    // 관리자 채팅 전용 - 파라미터 없이 생성
+    explicit ChatDlg(CWnd* pParent = nullptr);
     virtual ~ChatDlg();
     enum { IDD = IDD_CHAT_DLG };
 protected:
@@ -25,14 +23,14 @@ protected:
     DECLARE_MESSAGE_MAP()
     afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 private:
-    HBRUSH m_hBrushBg = nullptr;
+    HBRUSH   m_hBrushBg = nullptr;
     CListBox m_listChat;
     CEdit    m_editInput;
-    int      m_orderId     = 0;
-    CString  m_partnerType;
+    int      m_roomId   = 0;   // 서버에서 받은 채팅방 ID
     CArray<ChatMessage, const ChatMessage&> m_messages;
 
     afx_msg void    OnBtnSend();
+    afx_msg void    OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMIS);
     afx_msg void    OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDIS);
     afx_msg LRESULT OnSocketRecv(WPARAM w, LPARAM l);
     afx_msg LRESULT OnChatRecv(WPARAM w, LPARAM l);
@@ -41,6 +39,4 @@ private:
     void AppendMessage(const ChatMessage& msg);
     void ScrollToBottom();
     void LoadChatHistory();
-    void ParseChatRecv(const CString& payload);
-    void ParseHistoryResponse(const CString& payload);
 };

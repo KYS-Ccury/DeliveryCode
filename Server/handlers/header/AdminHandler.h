@@ -2,16 +2,19 @@
 #include <string>
 #include <cstdint>
 
-class Session; // 전방 선언
+class Session;
 
 class AdminHandler {
 public:
-    // 메인 디스패치 함수
     static void process(Session* session, uint16_t protocol, const std::string& jsonBody);
 
+    // 관리자 세션 등록/해제 (EpollServer::closeConnection에서 호출)
+    static void registerSession  (int fd, int adminId);
+    static void unregisterSession(int fd);
+
 private:
-    // 실제 기능 구현 함수 (기능 개발 중)
-    static void handleGetStats(Session* session, const std::string& jsonBody);
-    static void handleBanUser(Session* session, const std::string& jsonBody);
+    static void handleGetStats   (Session* session, const std::string& jsonBody);
+    static void handleBanUser    (Session* session, const std::string& jsonBody);
     static void handleForceCancel(Session* session, const std::string& jsonBody);
+    static void handleAdminLogin (Session* session, const std::string& jsonBody);
 };

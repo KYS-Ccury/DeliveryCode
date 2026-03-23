@@ -126,6 +126,9 @@ LRESULT LoginDlg::OnSocketRecv(WPARAM, LPARAM lParam)
             sess.riderId    = res.value("rider_id", 0);
             sess.isLoggedIn = true;
             sess.isOnline   = res.value("is_working", false);
+            // 이미 운행 중 상태로 로그인 시 시작 틱 설정
+            if (sess.isOnline)
+                sess.drivingStartTick = GetTickCount64();
 
             auto toCS = [](const std::string& s) -> CString {
                 CA2T ws(s.c_str(), CP_UTF8); return CString(ws);

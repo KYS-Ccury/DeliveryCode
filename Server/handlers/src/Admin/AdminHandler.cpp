@@ -1,4 +1,6 @@
 #include "AdminHandler.h"
+#include "ChatHandler.h"
+#include "RiderHandler.h"
 #include "Session.h"
 #include "Packet.h"          // CmdAdmin, ClientType, Status 포함
 #include "MariaDBManager.h"
@@ -7,6 +9,15 @@
 #include "Types.h" 
 
 using json = nlohmann::json;
+
+
+// ─── 관리자 세션 등록/해제 ────────────────────────────────
+void AdminHandler::registerSession(int fd, int adminId) {
+    ChatHandler::registerAdmin(fd, adminId);
+}
+void AdminHandler::unregisterSession(int fd) {
+    ChatHandler::unregisterAdmin(fd);
+}
 
 void AdminHandler::process(Session* session, uint16_t protocol, const std::string& jsonBody) {
     std::cout << "[AdminHandler] 관리자 명령어 수신: " << protocol << std::endl;
@@ -22,6 +33,22 @@ void AdminHandler::process(Session* session, uint16_t protocol, const std::strin
 
         case CmdAdmin::REQ_FORCE_CANCEL:
             handleForceCancel(session, jsonBody);
+            break;
+
+        // 채팅 (관리자가 보내는 600~602)
+        case CmdChat::REQ_CREATE_ROOM:
+        case CmdChat::REQ_SEND_MSG:
+        case CmdChat::REQ_GET_MSGS:
+            ChatHandler::process(session, protocol, jsonBody, ClientType::ADMIN);
+            break;
+
+        // 관리자 로그인 (101) - 세션 등록
+        case CmdCommon::REQ_LOGIN:
+            handleAdminLogin(session, jsonBody);
+            break;
+
+        case CmdCommon::REQ_LOGOUT:
+            ChatHandler::unregisterAdmin(session->getFd());
             break;
 
         default:
@@ -106,3 +133,59 @@ void AdminHandler::handleForceCancel(Session* session, const std::string& jsonBo
 // if (db.executeUpdate(insertQuery)) {
 //     uint64_t newOrderId = db.getLastInsertId(); // 생성된 order_id (예: 124) 획득
 // }
+// ─────────────────────────────────────────────────────────
+//  101: 관리자 로그인 + ChatHandler 세션 등록
+// ─────────────────────────────────────────────────────────
+void AdminHandler::handleAdminLogin(Session* session, const std::string& jsonBody) {
+    try {
+        json req = jsonBody.empty() ? json::object() : json::parse(jsonBody);
+        std::string loginId  = req.value("login_id", "");
+        std::string password = req.value("password", "");
+
+        if (loginId.empty() || password.empty()) {
+            json res; res["status"] = Status::BAD_REQUEST;
+            res["message"] = "아이디/비밀번호를 입력하세요.";
+            session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN),
+                                CmdCommon::REQ_LOGIN, res.dump());
+            return;
+        }
+
+        auto& db = MariaDBManager::getInstance();
+        auto esc = [](const std::string& s) {
+            std::string o;
+            for (char c : s) { if (c=='\'' || c=='\\' || c=='"') o+='\\'; o+=c; }
+            return o;
+        };
+
+        DBResult rows = db.executeQuery(
+            "SELECT user_id, name FROM users "
+            "WHERE login_id = '" + esc(loginId) + "' "
+            "  AND password = '" + esc(password) + "' "
+            "  AND role = 'ADMIN' AND status = 'ACTIVE' LIMIT 1");
+
+        if (rows.empty()) {
+            json res; res["status"] = Status::UNAUTHORIZED;
+            res["message"] = "아이디 또는 비밀번호가 올바르지 않습니다.";
+            session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN),
+                                CmdCommon::REQ_LOGIN, res.dump());
+            return;
+        }
+
+        int adminId = std::stoi(rows[0].at("user_id"));
+        // ChatHandler에 관리자 세션 등록 (채팅 Push 수신용)
+        ChatHandler::registerAdmin(session->getFd(), adminId);
+
+        json res;
+        res["status"]   = Status::SUCCESS;
+        res["admin_id"] = adminId;
+        res["name"]     = rows[0].at("name");
+        session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN),
+                            CmdCommon::REQ_LOGIN, res.dump());
+
+        std::cout << "[Admin] 관리자 로그인: " << rows[0].at("name")
+                  << " (id=" << adminId << ")" << std::endl;
+
+    } catch (const std::exception& e) {
+        std::cerr << "[handleAdminLogin] 예외: " << e.what() << std::endl;
+    }
+}

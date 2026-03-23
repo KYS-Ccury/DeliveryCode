@@ -69,8 +69,6 @@ protected:
     afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 private:
     HBRUSH m_hBrushBg = nullptr;
-    int   m_nTodayBaseSec = 0;
-    DWORD m_dwOpenTime    = 0;
 
     afx_msg void OnTimer(UINT_PTR nIDEvent);
 

@@ -13,6 +13,7 @@
 #include "DispatchDlg.h"
 #include "MyPageDlg.h"
 #include "DeliveryListDlg.h"
+#include "ChatDlg.h"
 #include "PickupCodeDlg.h"
 #include "DeliveryPhotoDlg.h"
 #include "json.hpp"
@@ -33,6 +34,7 @@ BEGIN_MESSAGE_MAP(MainDlg, CDialogEx)
     ON_WM_PAINT()
     ON_WM_TIMER()
     ON_WM_CLOSE()
+    ON_BN_CLICKED(IDC_BTN_HELP, &MainDlg::OnBtnHelp)
 END_MESSAGE_MAP()
 
 MainDlg::MainDlg(CWnd* pParent)
@@ -55,6 +57,15 @@ void MainDlg::OnClose()
     }
     AppContext::Get().socket.Disconnect();
     CDialogEx::OnClose();
+}
+
+// 도움요청 버튼 → 관리자 채팅창 열기
+void MainDlg::OnBtnHelp()
+{
+    ChatDlg dlg(this);
+    dlg.DoModal();
+    // 채팅 종료 후 이전 WM_SOCKET_RECV 핸들러 복원
+    AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
 }
 
 void MainDlg::DoDataExchange(CDataExchange* pDX)
@@ -94,8 +105,9 @@ void MainDlg::OnBtnStartDrive()
 {
     if (!m_bDriving) {
         m_bDriving    = true;
-        m_dwStartTime = GetTickCount();
-        AppContext::Get().session.isOnline = true;
+        m_dwStartTime = GetTickCount64();
+        AppContext::Get().session.isOnline        = true;
+        AppContext::Get().session.drivingStartTick = m_dwStartTime;
         SetDlgItemText(IDC_BTN_START_DRIVE, _T("운행 종료"));
         SetStep(DeliveryStep::ONLINE);
 
@@ -113,7 +125,13 @@ void MainDlg::OnBtnStartDrive()
 
         m_bDriving = false;
         AppContext::Get().session.isOnline = false;
-        SetDlgItemText(IDC_BTN_START_DRIVE, _T("Start Drive"));
+        // 이번 운행 시간을 누적
+        if (AppContext::Get().session.drivingStartTick > 0) {
+            ULONGLONG sec = (GetTickCount64() - AppContext::Get().session.drivingStartTick) / 1000;
+            AppContext::Get().session.totalDriveSec += sec;
+            AppContext::Get().session.drivingStartTick = 0;
+        }
+        SetDlgItemText(IDC_BTN_START_DRIVE, _T("운행 시작"));
         SetStep(DeliveryStep::IDLE);
 
         json req; req["action"] = "OFFLINE";
@@ -304,8 +322,8 @@ void MainDlg::OnTimer(UINT_PTR nIDEvent)
 {
     if (nIDEvent == 1) {
         if (m_bDriving && m_dwStartTime > 0) {
-            DWORD elapsed = (GetTickCount() - m_dwStartTime) / 1000;
-            DWORD h = elapsed / 3600, m = (elapsed % 3600) / 60, s = elapsed % 60;
+            ULONGLONG elapsed = (GetTickCount64() - m_dwStartTime) / 1000;
+            ULONGLONG h = elapsed / 3600, m = (elapsed % 3600) / 60, s = elapsed % 60;
             CString timeStr, title;
             timeStr.Format(_T("    : %02u:%02u:%02u"), h, m, s);
             title.Format(_T("      (%s) - %s"), static_cast<LPCTSTR>(timeStr),

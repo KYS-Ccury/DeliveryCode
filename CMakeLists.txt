@@ -14,6 +14,7 @@ file(GLOB_RECURSE SERVER_SOURCES
     "Server/core/src/*.cpp"
     "Server/db/src/*.cpp"
     "Server/handlers/src/*.cpp"
+    "Server/handlers/src/Chat/*.cpp"
     "Server/network/src/*.cpp"
 )
 
@@ -32,6 +33,7 @@ target_include_directories(delivery_server PRIVATE
     "Server/core/header"     # Dispatcher.h 등
     "Server/db/header"       # MariaDBManager.h (이게 누락되어 에러 났던 것)
     "Server/handlers/header" # AdminHandler.h 등
+    "Server/handlers/src/Chat" # ChatHandler.h - 같은 위치
     "Server/network/header"  # Session.h, EpollServer.h 등
 )
 

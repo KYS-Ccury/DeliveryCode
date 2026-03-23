@@ -1,8 +1,8 @@
 ﻿//{{NO_DEPENDENCIES}}
-// RiderClient.rc  —  resource.h
-// Visual Studio 2022
-
-// ── Dialog IDD ───────────────────────────────────────────────
+// Microsoft Visual C++에서 생성한 포함 파일입니다.
+// RiderClient.rc에서 사용되고 있습니다.
+//
+#define VS_VERSION_INFO                 1
 #define IDD_LOGIN_DLG                   101
 #define IDD_REGISTER_DLG                102
 #define IDD_PREPARE_DLG                 103
@@ -20,8 +20,6 @@
 #define IDD_TODAY_HISTORY_DLG           115
 #define IDD_CHANGE_PW_DLG               116
 #define IDD_CHANGE_ACCT_DLG             117
-
-// ── LoginDlg ─────────────────────────────────────────────────
 #define IDC_EDIT_ID                     1001
 #define IDC_EDIT_PW                     1002
 #define IDC_CHECK_SAVEID                1003
@@ -30,8 +28,6 @@
 #define IDC_BTN_FIND_ID                 1006
 #define IDC_BTN_FIND_PW                 1007
 #define IDC_EDIT_PHONE                  1008
-
-// ── RegisterDlg ──────────────────────────────────────────────
 #define IDC_EDIT_PW_CONFIRM             1010
 #define IDC_BTN_CHECK_ID                1011
 #define IDC_EDIT_REGION                 1012
@@ -39,16 +35,12 @@
 #define IDC_BTN_NEXT                    1014
 #define IDC_BTN_PREV                    1015
 #define IDC_STATIC_STEP                 1016
-
-// ── PrepareDeliveryDlg ───────────────────────────────────────
 #define IDC_EDIT_RESIDENT_FRONT         1020
 #define IDC_EDIT_RESIDENT_BACK          1021
 #define IDC_EDIT_BANK                   1022
 #define IDC_EDIT_ACCOUNT_HOLDER         1023
 #define IDC_EDIT_ACCOUNT_NUMBER         1024
 #define IDC_STATIC_CONFIRM_MSG          1025
-
-// ── MainDlg ──────────────────────────────────────────────────
 #define IDC_STATIC_MAP                  1030
 #define IDC_CHECK_NEW_DISPATCH          1031
 #define IDC_BTN_MY_PAGE                 1032
@@ -57,8 +49,6 @@
 #define IDC_STATIC_STATUS               1035
 #define IDC_STATIC_STEP_INFO            1036
 #define IDC_BTN_STEP_ACTION             1037
-
-// ── DispatchDlg ──────────────────────────────────────────────
 #define IDC_STATIC_PICKUP               1040
 #define IDC_STATIC_DEST                 1041
 #define IDC_STATIC_FEE                  1042
@@ -66,8 +56,6 @@
 #define IDC_PROGRESS_TIMER              1044
 #define IDC_BTN_ACCEPT                  1045
 #define IDC_BTN_REJECT                  1046
-
-// ── PickupCodeDlg ────────────────────────────────────────────
 #define IDC_BTN_NUMBER_PICKUP           1050
 #define IDC_BTN_QR_PICKUP               1051
 #define IDC_STATIC_ORDER_CODE           1052
@@ -77,8 +65,6 @@
 #define IDC_EDIT_CODE_4                 1056
 #define IDC_BTN_CONFIRM_CODE            1057
 #define IDC_STATIC_QR_VIEW              1058
-
-// 소프트 키패드 (3x4)
 #define IDC_KEY_1                       1060
 #define IDC_KEY_2                       1061
 #define IDC_KEY_3                       1062
@@ -91,26 +77,18 @@
 #define IDC_KEY_0                       1069
 #define IDC_KEY_A                       1070
 #define IDC_KEY_DEL                     1071
-
-// ── DeliveryPhotoDlg ─────────────────────────────────────────
 #define IDC_STATIC_PHOTO_PATH           1075
 #define IDC_BTN_SELECT_PHOTO            1076
 #define IDC_BTN_SKIP_PHOTO              1077
 #define IDC_BTN_CONFIRM_PHOTO           1078
-
-// ── DeliveryListDlg ──────────────────────────────────────────
 #define IDC_TAB_LIST                    1080
 #define IDC_LIST_ORDERS                 1081
 #define IDC_BTN_REFRESH                 1082
 #define IDC_BTN_ACCEPT_ITEM             1083
 #define IDC_BTN_REJECT_ITEM             1084
-
-// ── ChatDlg ──────────────────────────────────────────────────
 #define IDC_LIST_CHAT                   1090
 #define IDC_EDIT_INPUT                  1091
 #define IDC_BTN_SEND                    1092
-
-// ── MyPageDlg ────────────────────────────────────────────────
 #define IDC_BTN_RIDER_NAME              1099
 #define IDC_STATIC_RIDER_NAME           1100
 #define IDC_STATIC_RIDER_REGION         1101
@@ -122,56 +100,44 @@
 #define IDC_BTN_MY_INFO                 1107
 #define IDC_BTN_SETTINGS                1108
 #define IDC_BTN_LOGOUT                  1109
-
-// ── MyInfoDlg ────────────────────────────────────────────────
 #define IDC_BTN_VEHICLE                 1110
 #define IDC_STATIC_REGION               1111
 #define IDC_STATIC_LOGIN_ID             1112
 #define IDC_BTN_CHANGE_PW               1113
 #define IDC_BTN_CHANGE_ACCT             1114
-
-// ── ChangeAcctDlg ────────────────────────────────────────────
 #define IDC_STATIC_BANK                 1115
 #define IDC_STATIC_HOLDER               1116
 #define IDC_STATIC_ACCOUNT              1117
 #define IDC_EDIT_HOLDER                 1119
-
-// ── ChangePwDlg ──────────────────────────────────────────────
 #define IDC_EDIT_CUR_PW                 1120
 #define IDC_EDIT_NEW_PW                 1121
 #define IDC_EDIT_NEW_PW_CONFIRM         1122
 #define IDC_BTN_PW_CONFIRM              1123
-
-// ── ChangeAcctDlg (edit 컨트롤) ──────────────────────────────
 #define IDC_EDIT_ACCOUNT                1124
 #define IDC_BTN_ACCT_CHANGE             1125
-
-// ── SettingsDlg ──────────────────────────────────────────────
 #define IDC_BTN_REGION_NEWS             1130
 #define IDC_EDIT_REGION_NEWS            1131
 #define IDC_BTN_DISPATCH_TYPE           1132
 #define IDC_STATIC_DISPATCH_TYPE        1133
-
-// ── SettlementDlg ────────────────────────────────────────────
 #define IDC_LIST_SETTLEMENT             1140
-
-// ── DriveTimeDlg ─────────────────────────────────────────────
 #define IDC_STATIC_TODAY_DATE           1150
 #define IDC_STATIC_TODAY_TIME           1151
 #define IDC_STATIC_WEEK_RANGE           1152
 #define IDC_STATIC_WEEK_TIME            1153
-
-// ── TodayHistoryDlg ──────────────────────────────────────────
 #define IDC_LIST_HISTORY                1160
 #define IDC_STATIC_TOTAL_CNT            1161
 #define IDC_STATIC_TOTAL_FEE            1162
+#define IDC_BUTTON1                     1200
+#define IDC_BTN_HELP                    1200
+#define IDC_STATIC                      -1
 
 // Next default values for new objects
+// 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        200
+#define _APS_NEXT_RESOURCE_VALUE        201
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1200
+#define _APS_NEXT_CONTROL_VALUE         1201
 #define _APS_NEXT_SYMED_VALUE           118
 #endif
 #endif

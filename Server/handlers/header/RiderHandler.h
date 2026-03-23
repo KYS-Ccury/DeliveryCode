@@ -21,6 +21,7 @@ public:
     static void registerSession(int fd, int riderId);
     static void unregisterSession(int fd);
     static int  getRiderIdByFd(int fd);   // 0이면 미등록(비로그인)
+    static int  getRiderFdById(int riderId); // 역방향: riderId → fd (-1이면 없음)
 
     // ─── 서버 Push: 관리자가 배차 요청을 보낼 때 사용 ──
     // (AdminHandler 또는 주문 수락 시 호출)

@@ -11,14 +11,17 @@ struct RiderSession {
     CString bankName;
     CString accountHolder;
     CString accountNumber;
-    bool    isLoggedIn    = false;
-    bool    isOnline      = false;
+    bool      isLoggedIn      = false;
+    bool      isOnline        = false;
+    ULONGLONG drivingStartTick = 0;  // GetTickCount64() when driving started
+    ULONGLONG totalDriveSec   = 0;  // accumulated seconds from previous sessions
     void Clear() {
         riderId = 0;
         loginId = name = phone = _T("");
         deliveryRegion = vehicleType = _T("");
         bankName = accountHolder = accountNumber = _T("");
         isLoggedIn = isOnline = false;
+        drivingStartTick = totalDriveSec = 0;
     }
 };
 

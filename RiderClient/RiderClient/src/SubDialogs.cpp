@@ -253,8 +253,6 @@ BOOL DriveTimeDlg::OnInitDialog()
     CalcWeekRange(weekRange);
     SetDlgItemText(IDC_STATIC_WEEK_RANGE, weekRange);
 
-    m_nTodayBaseSec = 0;
-    m_dwOpenTime    = GetTickCount();
     UpdateDriveTimeUI();
     SetTimer(1, 1000, nullptr);
     return TRUE;
@@ -268,20 +266,24 @@ void DriveTimeDlg::OnTimer(UINT_PTR nIDEvent)
 
 void DriveTimeDlg::UpdateDriveTimeUI()
 {
-    int elapsed = m_nTodayBaseSec;
-    if (AppContext::Get().session.isOnline)
-        elapsed += (int)((GetTickCount() - m_dwOpenTime) / 1000);
-    SetDlgItemText(IDC_STATIC_TODAY_TIME, FormatSeconds(elapsed));
-    SetDlgItemText(IDC_STATIC_WEEK_TIME,  FormatSeconds(elapsed * 5));
+    const RiderSession& sess = AppContext::Get().session;
+    ULONGLONG totalSec = sess.totalDriveSec;
+    // drivingStartTick이 있으면 현재 운행 중 - isOnline 무관하게 계산
+    if (sess.drivingStartTick > 0)
+        totalSec += (GetTickCount64() - sess.drivingStartTick) / 1000;
+    SetDlgItemText(IDC_STATIC_TODAY_TIME, FormatSeconds((int)totalSec));
+    SetDlgItemText(IDC_STATIC_WEEK_TIME,  FormatSeconds((int)totalSec));
 }
 
 CString DriveTimeDlg::FormatSeconds(int totalSec)
 {
     int h = totalSec / 3600;
     int m = (totalSec % 3600) / 60;
+    int s = totalSec % 60;
     CString result;
-    if (h > 0) result.Format(_T("%d시간 %d분"), h, m);
-    else        result.Format(_T("%d분"), m);
+    if (h > 0)       result.Format(_T("%d시간 %d분 %02d초"), h, m, s);
+    else if (m > 0)  result.Format(_T("%d분 %02d초"), m, s);
+    else             result.Format(_T("%d초"), s);
     return result;
 }
 
