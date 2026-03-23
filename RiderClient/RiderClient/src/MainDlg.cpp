@@ -32,6 +32,7 @@ BEGIN_MESSAGE_MAP(MainDlg, CDialogEx)
     ON_MESSAGE(WM_SERVER_DISCONN,         &MainDlg::OnServerDisconn)
     ON_WM_PAINT()
     ON_WM_TIMER()
+    ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
 MainDlg::MainDlg(CWnd* pParent)
@@ -41,6 +42,19 @@ MainDlg::MainDlg(CWnd* pParent)
 
 MainDlg::~MainDlg()
 {
+}
+
+// ──────────────────────────────────────────────────────
+// 강제 종료(X 버튼, Alt+F4) 시 서버에 로그아웃 패킷 전송
+// ──────────────────────────────────────────────────────
+void MainDlg::OnClose()
+{
+    if (AppContext::Get().session.isLoggedIn) {
+        AppContext::Get().socket.SendPacket(CMD_LOGOUT, "{}");
+        AppContext::Get().session.isLoggedIn = false;
+    }
+    AppContext::Get().socket.Disconnect();
+    CDialogEx::OnClose();
 }
 
 void MainDlg::DoDataExchange(CDataExchange* pDX)

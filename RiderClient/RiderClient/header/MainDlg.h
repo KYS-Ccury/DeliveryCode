@@ -38,6 +38,7 @@ private:
     bool         m_bDriving    = false;
     DWORD        m_dwStartTime = 0;
 
+    afx_msg void    OnClose();
     afx_msg void    OnBtnStartDrive();
     afx_msg void    OnBtnMyPage();
     afx_msg void    OnBtnDeliveryList();

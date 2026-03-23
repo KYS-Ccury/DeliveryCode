@@ -4,6 +4,7 @@
 #include "pch.h"
 #include "SocketManager.h"
 #include "Protocol.h"
+#include <string>
 
 #pragma comment(lib, "ws2_32.lib")
 

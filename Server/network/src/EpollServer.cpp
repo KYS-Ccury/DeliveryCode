@@ -1,4 +1,6 @@
 #include "EpollServer.h"
+#include "RiderHandler.h"
+#include <iostream>
 #include "Session.h"
 #include "ThreadPool.h"
 #include <iostream>
@@ -123,11 +125,17 @@ void EpollServer::rearmSocket(int client_fd) {
 }
 
 void EpollServer::closeConnection(int client_fd) {
+    // 라이더 세션 해제 + 로그 출력
+    int riderId = RiderHandler::getRiderIdByFd(client_fd);
+    if (riderId > 0) {
+        RiderHandler::unregisterSession(client_fd);
+        std::cout << "[Server] 라이더 연결 끊김 (강제종료 포함): riderId="
+                  << riderId << " fd=" << client_fd << std::endl;
+    }
+
     std::lock_guard<std::mutex> lock(session_mutex);
     epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);
-    
-    // ★ 수정: delete 불필요. map에서 지우기만 하면 됨
-    sessions.erase(client_fd); 
+    sessions.erase(client_fd);
 }
 
 

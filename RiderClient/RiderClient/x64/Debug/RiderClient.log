@@ -1,13 +1,4 @@
-﻿  ChatDlg.cpp
-  DeliveryListDlg.cpp
-  DeliveryPhotoDlg.cpp
-  DispatchDlg.cpp
-  LoginDlg.cpp
-  MainDlg.cpp
+﻿  MainDlg.cpp
   MyInfoDlg.cpp
-  MyPageDlg.cpp
-  PickupCodeDlg.cpp
-  RegisterDlg.cpp
-  SubDialogs.cpp
   코드를 생성하고 있습니다...
   RiderClient.vcxproj -> C:\Users\LMS\Desktop\bemin\DeliveryCode\RiderClient\x64\Debug\RiderClient.exe

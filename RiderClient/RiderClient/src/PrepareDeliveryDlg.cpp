@@ -227,11 +227,12 @@ void PrepareDeliveryDlg::OnTimer(UINT_PTR nIDEvent)
 // ─────────────────────────────────────────────
 LRESULT PrepareDeliveryDlg::OnSocketRecv(WPARAM /*w*/, LPARAM lParam)
 {
-    CString* pMsg = reinterpret_cast<CString*>(lParam);
-    if (!pMsg) return 0;
-    CString msg = *pMsg;
-    delete pMsg;
-    // 현재 PrepareDelivery에서는 서버 응답 별도 처리 없음
+    // SocketManager는 RecvPacket* 을 lParam으로 전달함
+    // CString* 으로 캐스팅하면 NULL 포인터 역참조 → 크래시 발생했던 원인
+    RecvPacket* pPkt = reinterpret_cast<RecvPacket*>(lParam);
+    if (!pPkt) return 0;
+    delete pPkt;  // 메모리 해제 (처리 불필요 시 바로 삭제)
+    // PrepareDelivery 단계에서는 서버 응답 별도 처리 없음
     // (자동 승인 타이머로 처리)
     return 0;
 }

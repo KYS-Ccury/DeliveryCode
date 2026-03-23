@@ -7,6 +7,28 @@
 #include "json.hpp"
 using json = nlohmann::json;
 
+// ── 팝업 창을 부모 창 안에 중앙 정렬하는 헬퍼 ─────────────
+static void CenterInParent(CWnd* pDlg, CWnd* pParent)
+{
+    if (!pParent || !pDlg) return;
+    CRect rcParent, rcDlg;
+    pParent->GetWindowRect(&rcParent);
+    pDlg->GetWindowRect(&rcDlg);
+
+    int dlgW = rcDlg.Width();
+    int dlgH = rcDlg.Height();
+
+    // 부모 중앙 계산
+    int x = rcParent.left + (rcParent.Width()  - dlgW) / 2;
+    int y = rcParent.top  + (rcParent.Height() - dlgH) / 2;
+
+    // 부모 영역 밖으로 나가지 않도록 클램프
+    x = max(rcParent.left, min(x, rcParent.right  - dlgW));
+    y = max(rcParent.top,  min(y, rcParent.bottom - dlgH));
+
+    pDlg->SetWindowPos(nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+}
+
 // ================================================================
 //  MyInfoDlg
 // ================================================================
@@ -29,6 +51,7 @@ BOOL MyInfoDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
     AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
+    CenterInParent(this, GetParent());
 
     const RiderSession& s = AppContext::Get().session;
     SetDlgItemText(IDC_STATIC_LOGIN_ID, s.loginId);
@@ -132,6 +155,7 @@ BOOL ChangePwDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
     AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
+    CenterInParent(this, GetParent());
     return TRUE;
 }
 
@@ -246,19 +270,30 @@ BOOL ChangeAcctDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
     AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
+    CenterInParent(this, GetParent());
 
     const RiderSession& s = AppContext::Get().session;
-    SetDlgItemText(IDC_STATIC_BANK,   s.bankName);
-    SetDlgItemText(IDC_STATIC_HOLDER, s.accountHolder);
 
-    CString masked;
-    if (s.accountNumber.GetLength() > 4) {
-        CString stars(_T('*'), s.accountNumber.GetLength() - 4);
-        masked = stars + s.accountNumber.Right(4);
+    // 세션에 계좌 정보가 있으면 바로 표시, 없으면 서버에서 조회
+    if (!s.bankName.IsEmpty() || !s.accountHolder.IsEmpty()) {
+        SetDlgItemText(IDC_STATIC_BANK,   s.bankName);
+        SetDlgItemText(IDC_STATIC_HOLDER, s.accountHolder);
+        CString masked;
+        if (s.accountNumber.GetLength() > 4) {
+            CString stars(_T('*'), s.accountNumber.GetLength() - 4);
+            masked = stars + s.accountNumber.Right(4);
+        } else {
+            masked = s.accountNumber;
+        }
+        SetDlgItemText(IDC_STATIC_ACCOUNT, masked);
     } else {
-        masked = s.accountNumber;
+        // 서버에서 프로필 조회 (계좌 정보 포함)
+        json req;
+        AppContext::Get().socket.SendPacket(CMD_GET_MY_INFO, req.dump());
+        SetDlgItemText(IDC_STATIC_BANK,    _T("-"));
+        SetDlgItemText(IDC_STATIC_HOLDER,  _T("-"));
+        SetDlgItemText(IDC_STATIC_ACCOUNT, _T("조회 중..."));
     }
-    SetDlgItemText(IDC_STATIC_ACCOUNT, masked);
     ShowEditMode(false);
     return TRUE;
 }
@@ -338,7 +373,7 @@ void ChangeAcctDlg::DoSaveAcct()
     }
 }
 
-// Recv: {"status":2000,"action":"CHANGE_ACCT"}
+// Recv: {"status":2000,"action":"CHANGE_ACCT"} 또는 프로필 조회 응답
 LRESULT ChangeAcctDlg::OnSocketRecv(WPARAM, LPARAM lParam)
 {
     RecvPacket* pPkt = reinterpret_cast<RecvPacket*>(lParam);
@@ -351,12 +386,38 @@ LRESULT ChangeAcctDlg::OnSocketRecv(WPARAM, LPARAM lParam)
 
     try {
         json res = json::parse(body);
-        if (!res.contains("action") || res["action"] != "CHANGE_ACCT") return 0;
-        if (res.value("status", 0) == STATUS_SUCCESS) {
+        if (res.value("status", 0) != STATUS_SUCCESS) return 0;
+
+        std::string action = res.value("action", "");
+
+        // 계좌 변경 완료 응답
+        if (action == "CHANGE_ACCT") {
             MessageBox(_T("계좌 정보가 변경되었습니다."), _T("완료"), MB_OK | MB_ICONINFORMATION);
             ShowEditMode(false);
-        } else {
-            MessageBox(_T("계좌 정보 변경에 실패했습니다."), _T("오류"), MB_OK | MB_ICONWARNING);
+            return 0;
+        }
+
+        // 프로필 조회 응답 (bank_info, acct_masked 필드가 있으면 계좌 정보 표시)
+        if (res.contains("bank_info")) {
+            auto toCS = [](const std::string& s) -> CString {
+                CA2T ws(s.c_str(), CP_UTF8); return CString(ws);
+            };
+            CString bankInfo  = toCS(res.value("bank_info",  ""));
+            CString acctMask  = toCS(res.value("acct_masked", ""));
+
+            // bank_info = "은행명 예금주" 형식으로 저장됨
+            int sp = bankInfo.Find(_T(' '));
+            if (sp > 0) {
+                AppContext::Get().session.bankName      = bankInfo.Left(sp);
+                AppContext::Get().session.accountHolder = bankInfo.Mid(sp + 1);
+            } else {
+                AppContext::Get().session.bankName = bankInfo;
+            }
+            AppContext::Get().session.accountNumber = acctMask;
+
+            SetDlgItemText(IDC_STATIC_BANK,    AppContext::Get().session.bankName);
+            SetDlgItemText(IDC_STATIC_HOLDER,  AppContext::Get().session.accountHolder);
+            SetDlgItemText(IDC_STATIC_ACCOUNT, acctMask.IsEmpty() ? CString(_T("-")) : acctMask);
         }
     } catch (...) {}
     return 0;
