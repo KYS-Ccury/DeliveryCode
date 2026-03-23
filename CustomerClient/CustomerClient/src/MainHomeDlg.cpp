@@ -6,6 +6,10 @@
 #include "MainHomeDlg.h"         // 메인파일 헤더
 #include "OrderManager.h"
 
+#include "CartDlg.h"             // 장바구니창
+#include "StoreListDlg.h"        // 매장화면
+#include "OrderHistoryDlg.h"
+
 
 // MainHomeDlg 대화 상자
 
@@ -46,10 +50,14 @@ void MainHomeDlg::DoDataExchange(CDataExchange* pDX)
 
 // 윈도우 메시지와 함수를 연결
 // (사용자의 행동(이벤트)을 어떤 함수가 처리할지 연결)
-BEGIN_MESSAGE_MAP(MainHomeDlg, CDialogEx)	
+BEGIN_MESSAGE_MAP(MainHomeDlg, CDialogEx)
 	ON_WM_MOUSEWHEEL()       // 사용자가 마우스 휠을 굴릴 때
 	ON_WM_CTLCOLOR()         // 컨트롤(버튼, 배경 등)에 색을 더해서 그릴 때
 	ON_MESSAGE(WM_SCROLL_MENU_CLICKED, &MainHomeDlg::OnScrollMenuClicked)  // 음식카테고리메뉴의 스크롤바를 사용자가 클릭했을 때
+
+	ON_BN_CLICKED(IDC_BUTTON1, &MainHomeDlg::OnBnClickedButton1) // 장바구니 버튼 클릭
+	ON_NOTIFY(NM_CLICK, IDC_LIST_STOR, &MainHomeDlg::OnNMDblclkListStor) // 매장리스트에서 매장클릭
+	ON_BN_CLICKED(IDC_BTN_MYPAGE, &MainHomeDlg::OnBnClickedBtnOrderHistory)
 END_MESSAGE_MAP()
 
 
@@ -175,22 +183,6 @@ HBRUSH MainHomeDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 	return hbr;
 }
 
-// 사용자가 음식카테고리에서 메뉴 버튼(치킨, 피자, 한식 등)을 클릭했을 때, 어떤 버튼이 눌려졌는지 확인하고 그에 맞는 동작을 수행하는 클릭 이벤트 처리기
-//LRESULT MainHomeDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM lParam)
-//{
-//	UINT nBtnID = (UINT)wParam; // wParam 를 열어서 클릭된 버튼의 고유 번호(ID)를 꺼냄
-//
-//	// 버튼 ID를 2000번부터 시작하도록 설정했기 때문에 2000을 빼서 0, 1 처럼 배열이나 리스트 인덱스로 쓰기 좋게 변경
-//	int nIndex = nBtnID - 2000; 
-//
-//	// 여기서 클릭된 카테고리에 맞는 동작을 작성
-//	if (nIndex == 0) // 첫번째 버튼 클릭시
-//	{
-//		AfxMessageBox(_T("전체 메뉴를 보여줍니다.")); // 테스트용 : 메시지박스 호출
-//	}
-//
-//	return 0;
-//}
 LRESULT MainHomeDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM lParam)
 {
 	// 버튼 ID를 2000번부터 시작하도록 설정했기 때문에 2000을 빼서 0, 1 처럼 배열이나 리스트 인덱스로 쓰기 좋게 변경
@@ -247,4 +239,56 @@ void MainHomeDlg::UpdateStoreListUI(CString categoryName)
 		strDistance.Format(_T("%.1fkm"), stores[i].distance);
 		m_listStore.SetItemText(nRow, 3, strDistance);
 	}
+}
+
+void MainHomeDlg::OnBnClickedButton1()
+{
+	// 1. 장바구니 다이얼로그 객체 생성
+	CartDlg dlg;
+
+	// 2. 창 띄우기 (모달 방식)
+	// 장바구니에서 '주문하기'를 눌러 IDOK가 반환되면 메인도 정리하거나 추가 로직 수행 가능
+	if (dlg.DoModal() == IDOK)
+	{
+		// 주문이 완료되어 메인으로 돌아왔을 때의 처리 (예: 장바구니 비우기 등)
+	}
+}
+
+void MainHomeDlg::OnNMDblclkListStor(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
+
+	// 클릭한 행(Row)의 인덱스 가져오기 (-1이면 빈 공간 클릭)
+	int nIndex = pNMItemActivate->iItem;
+
+	if (nIndex != -1)
+	{
+		// 1. 선택한 가게의 이름이나 ID 가져오기 (예: 0번 컬럼이 상호명일 때)
+		CString strStoreName = m_listStore.GetItemText(nIndex, 0);
+
+		// 2. 매장 상세 다이얼로그 생성
+		StoreListDlg dlg;
+
+		// 3. (선택사항) 상세창에 가게 정보 전달
+		// dlg.m_strStoreName = strStoreName;
+
+		// 4. 창 띄우기
+		dlg.DoModal();
+	}
+
+	*pResult = 0;
+}
+
+void MainHomeDlg::OnBnClickedBtnOrderHistory()
+{
+	// 1. 주문현황 다이얼로그 객체 생성
+	OrderHistoryDlg dlg;
+
+	// 2. (선택 사항) 필요한 데이터를 미리 넘겨줍니다.
+	dlg.m_strOrderNum = _T("20260323-001");
+	dlg.m_strShopName = _T("불고기피자 본점");
+	dlg.m_nTotalAmount = 21000;
+
+	// 3. 창 띄우기 (Modal 방식)
+	dlg.DoModal();
 }

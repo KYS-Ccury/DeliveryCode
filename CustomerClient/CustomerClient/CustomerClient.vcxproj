@@ -193,6 +193,7 @@
     <ClInclude Include="header\CartItem.h" />
     <ClInclude Include="header\ChatDlg.h" />
     <ClInclude Include="header\ChatManager.h" />
+    <ClInclude Include="header\DeliveryOkDlg.h" />
     <ClInclude Include="header\LoginDlg.h" />
     <ClInclude Include="header\MainHomeDlg.h" />
     <ClInclude Include="header\MenuDetailDlg.h" />
@@ -201,10 +202,14 @@
     <ClInclude Include="header\OrderInfo.h" />
     <ClInclude Include="header\OrderManager.h" />
     <ClInclude Include="header\PaymentDlg.h" />
+    <ClInclude Include="header\ReviewListDlg.h" />
+    <ClInclude Include="header\ReviewWriteDlg.h" />
     <ClInclude Include="header\ScrollMenu.h" />
+    <ClInclude Include="header\StoreDetailDlg.h" />
     <ClInclude Include="header\StoreInfo.h" />
     <ClInclude Include="header\StoreListDlg.h" />
     <ClInclude Include="header\UserInfo.h" />
+    <ClInclude Include="OptionChangeDlg.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
@@ -212,6 +217,7 @@
   <ItemGroup>
     <ClCompile Include="CustomerClient.cpp" />
     <ClCompile Include="CustomerClientDlg.cpp" />
+    <ClCompile Include="OptionChangeDlg.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -223,6 +229,7 @@
     <ClCompile Include="src\CartItem.cpp" />
     <ClCompile Include="src\ChatDlg.cpp" />
     <ClCompile Include="src\ChatManager.cpp" />
+    <ClCompile Include="src\DeliveryOkDlg.cpp" />
     <ClCompile Include="src\LoginDlg.cpp" />
     <ClCompile Include="src\MainHomeDlg.cpp" />
     <ClCompile Include="src\MenuDetailDlg.cpp" />
@@ -231,7 +238,10 @@
     <ClCompile Include="src\OrderInfo.cpp" />
     <ClCompile Include="src\OrderManager.cpp" />
     <ClCompile Include="src\PaymentDlg.cpp" />
+    <ClCompile Include="src\ReviewListDlg.cpp" />
+    <ClCompile Include="src\ReviewWriteDlg.cpp" />
     <ClCompile Include="src\ScrollMenu.cpp" />
+    <ClCompile Include="src\StoreDetailDlg.cpp" />
     <ClCompile Include="src\StoreInfo.cpp" />
     <ClCompile Include="src\StoreListDlg.cpp" />
     <ClCompile Include="src\UserInfo.cpp" />

@@ -1,12 +1,2 @@
-﻿  CustomerClient.cpp
-  CustomerClientDlg.cpp
-  CartDlg.cpp
-  ChatDlg.cpp
-  LoginDlg.cpp
-  MainHomeDlg.cpp
-  MenuDetailDlg.cpp
-  OrderHistoryDlg.cpp
-  PaymentDlg.cpp
-  StoreListDlg.cpp
-  コードを生成中...
-  CustomerClient.vcxproj -> C:\Users\kunan\Desktop\code_book\DeliveryCode\CustomerClient\x64\Debug\CustomerClient.exe
+﻿  DeliveryOkDlg.cpp
+  CustomerClient.vcxproj -> C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\x64\Debug\CustomerClient.exe
