@@ -8,17 +8,18 @@ class CustomerHandler {
 public:
     static void process(Session* session, uint16_t protocol, const std::string& jsonBody);
 
-    // NTF_ORDER_STATUS Push (OwnerHandler / RiderHandler에서 호출)
-    // status: "PENDING","ACCEPTED","REJECTED","COOKING","WAITING_PICKUP",
-    //         "DELIVERING","DONE","CANCELED"
-    static void pushOrderStatus(Session* session, int orderId,
-                                 const std::string& status, const std::string& msg);
+    // NTF_ORDER_STATUS (210) Push – OwnerHandler/RiderHandler에서 호출
+    static void pushOrderStatus(Session* session, int orderID, int status, const std::string& msg);
 
 private:
-    static void handleSignup      (Session* s, const std::string& b); // 100
-    static void handleLogin       (Session* s, const std::string& b); // 101
-    static void handleLogout      (Session* s, const std::string& b); // 102
-    static void handleGetProfile  (Session* s, const std::string& b); // 104
+    // 공통 인증 (CmdCommon 100~105)
+    static void handleSignup     (Session* s, const std::string& b); // 100
+    static void handleLogin      (Session* s, const std::string& b); // 101
+    static void handleLogout     (Session* s, const std::string& b); // 102
+    static void handleGetProfile (Session* s, const std::string& b); // 104
+    static void handleWithdraw   (Session* s, const std::string& b); // 105
+
+    // 고객 전용 (CmdCustomer 200~210)
     static void handleStoreList   (Session* s, const std::string& b); // 200
     static void handleMenuList    (Session* s, const std::string& b); // 201
     static void handleCreateOrder (Session* s, const std::string& b); // 202

@@ -1,42 +1,83 @@
-#pragma once
+ï»¿#pragma once
+
 #include <string>
+
 #include <vector>
 
-// ROLE Á¤ÀÇ (¿­°ÅÇüÀ¸·Î °ü¸®ÇÏ¸é ÄÚµå °¡µ¶¼ºÀÌ ÁÁÀ½)
+
+
+// ROLE ì •ì˜ (ì—´ê±°í˜•ìœ¼ë¡œ ê´€ë¦¬í•˜ë©´ ì½”ë“œ ê°€ë…ì„±ì´ ì¢‹ìŒ)
+
 enum UserRole {
+
     ROLE_CUSTOMER = 0,
+
     ROLE_OWNER = 1,
+
     ROLE_RIDER = 2,
+
     ROLE_ADMIN = 3
+
 };
+
+
 
 struct CardInfo {
+
     std::string cardName;
+
     std::string cardNumber;
+
 };
 
-class UserInfo
-{
-public:
-    // --- [°øÅë Á¤º¸] ---
-    std::string id;
-    std::string pw;
-    std::string address;
-    int role;                // UserRole °ª (0:°í°´, 1:»çÀå, 2:¶óÀÌ´õ µî)
 
-    // --- [°í°´ Àü¿ë] ---
+
+class UserInfo
+
+{
+
+public:
+
+    // --- [ê³µí†µ ì •ë³´] ---
+
+    std::string id;
+
+    std::string pw;
+
+    std::string address;
+
+    int role;                // UserRole ê°’ (0:ê³ ê°, 1:ì‚¬ì¥, 2:ë¼ì´ë” ë“±)
+
+
+
+    // --- [ê³ ê° ì „ìš©] ---
+
     int points;
+
     std::vector<CardInfo> cardList;
+
     std::vector<std::string> couponList;
 
-    // --- [¶óÀÌ´õ Àü¿ë] (Ãß°¡µÊ) ---
-    std::string vehicleType; // ¿ÀÅä¹ÙÀÌ, ÀÚÀü°Å, µµº¸ µî
-    bool isWorking;          // ÇöÀç ¾÷¹« Áß(ON/OFF) ¿©ºÎ
-    int deliveryCount;       // ¿À´Ã ¿Ï·áÇÑ ¹è´Ş °Ç¼ö
 
-    // --- [»çÀå Àü¿ë] (Ãß°¡µÊ) ---
-    int ownedStoreID;        // º»ÀÎÀÌ ¿î¿µÇÏ´Â ¸ÅÀå ID
+
+    // --- [ë¼ì´ë” ì „ìš©] (ì¶”ê°€ë¨) ---
+
+    std::string vehicleType; // ì˜¤í† ë°”ì´, ìì „ê±°, ë„ë³´ ë“±
+
+    bool isWorking;          // í˜„ì¬ ì—…ë¬´ ì¤‘(ON/OFF) ì—¬ë¶€
+
+    int deliveryCount;       // ì˜¤ëŠ˜ ì™„ë£Œí•œ ë°°ë‹¬ ê±´ìˆ˜
+
+
+
+    // --- [ì‚¬ì¥ ì „ìš©] (ì¶”ê°€ë¨) ---
+
+    int ownedStoreID;        // ë³¸ì¸ì´ ìš´ì˜í•˜ëŠ” ë§¤ì¥ ID
+
+
 
     UserInfo();
+
     void Clear();
+
 };

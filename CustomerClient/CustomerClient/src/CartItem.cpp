@@ -1,24 +1,24 @@
-#include "pch.h"
-#include "CartItem.h"
-
-CartItem::CartItem()
-    : menuID(-1)
-    , menuName("")
-    , basePrice(0)
-    , quantity(1)
-    , totalPrice(0)
-    , storeID(-1)
-{
-}
-
-// ¼±ÅÃµÈ ¿É¼Çµé°ú ¼ö·®À» ¹ÙÅÁÀ¸·Î ÃÖÁ¾ °¡°İÀ» °è»êÇÔ
-void CartItem::CalculateTotalPrice()
-{
-    int optionSum = 0;
-    for (const auto& opt : selectedOptions) {
-        optionSum += opt.optionPrice;
-    }
-
-    totalPrice = (basePrice + optionSum) * quantity;
-}
-
+ï»¿#include "pch.h"
+#include "CartItem.h"
+
+CartItem::CartItem()
+    : menuID(-1)
+    , menuName("")
+    , basePrice(0)
+    , quantity(1)
+    , totalPrice(0)
+    , storeID(-1)
+{
+}
+
+// ì„ íƒëœ ì˜µì…˜ë“¤ê³¼ ìˆ˜ëŸ‰ì„ ë°”íƒ•ìœ¼ë¡œ ìµœì¢… ê°€ê²©ì„ ê³„ì‚°í•¨
+void CartItem::CalculateTotalPrice()
+{
+    int optionSum = 0;
+    for (const auto& opt : selectedOptions) {
+        optionSum += opt.optionPrice;
+    }
+
+    totalPrice = (basePrice + optionSum) * quantity;
+}
+

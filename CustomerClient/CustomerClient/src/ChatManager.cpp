@@ -1,53 +1,105 @@
-#include "pch.h"
+ï»¿#include "pch.h"
+
 #include "ChatManager.h"
 
+
+
 ChatManager::ChatManager()
+
     : m_isConnected(false)
+
     , m_currentPartnerID("")
+
 {
+
 }
 
-// ¼­¹ö ¿¬°á ·ÎÁ÷
+
+
+// ì„œë²„ ì—°ê²° ë¡œì§
+
 bool ChatManager::ConnectToServer(const std::string& ip, int port)
+
 {
-    // TODO: WinSock µîÀ» ÀÌ¿ëÇÑ ½ÇÁ¦ ¼ÒÄÏ ¿¬°á ±¸Çö
+
+    // TODO: WinSock ë“±ì„ ì´ìš©í•œ ì‹¤ì œ ì†Œì¼“ ì—°ê²° êµ¬í˜„
+
     m_isConnected = true;
+
     return true;
+
 }
+
+
 
 void ChatManager::Disconnect()
+
 {
-    // TODO: ¼ÒÄÏ ´İ±â Ã³¸®
+
+    // TODO: ì†Œì¼“ ë‹«ê¸° ì²˜ë¦¬
+
     m_isConnected = false;
+
 }
 
-// CUS-16: ¸Ş½ÃÁö Àü¼Û
+
+
+// CUS-16: ë©”ì‹œì§€ ì „ì†¡
+
 bool ChatManager::SendMessageTo(const std::string& targetID, const std::string& msg)
+
 {
+
     if (!m_isConnected) return false;
 
-    // TODO: ÆĞÅ¶ ±¸¼º ÈÄ ¼­¹ö Àü¼Û ·ÎÁ÷
-    // ¿¹: Packet p; p.type = CHAT; p.to = targetID; p.data = msg;
+
+
+    // TODO: íŒ¨í‚· êµ¬ì„± í›„ ì„œë²„ ì „ì†¡ ë¡œì§
+
+    // ì˜ˆ: Packet p; p.type = CHAT; p.to = targetID; p.data = msg;
+
+
 
     return true;
+
 }
 
-// Æ¯Á¤ÀÎ°úÀÇ °ú°Å ´ëÈ­ ³»¿ª ·Îµå
+
+
+// íŠ¹ì •ì¸ê³¼ì˜ ê³¼ê±° ëŒ€í™” ë‚´ì—­ ë¡œë“œ
+
 std::vector<ChatMessage> ChatManager::GetChatHistory(const std::string& targetID)
+
 {
+
     std::vector<ChatMessage> history;
-    // TODO: ·ÎÄÃ DB³ª ¼­¹ö¿¡¼­ ÇØ´ç À¯Àú¿ÍÀÇ ¸Ş½ÃÁö ±â·Ï ·Îµå
+
+    // TODO: ë¡œì»¬ DBë‚˜ ì„œë²„ì—ì„œ í•´ë‹¹ ìœ ì €ì™€ì˜ ë©”ì‹œì§€ ê¸°ë¡ ë¡œë“œ
+
     return history;
+
 }
 
-// ¼­¹ö·ÎºÎÅÍ ¸Ş½ÃÁö¸¦ ¹Ş¾ÒÀ» ¶§ È£ÃâµÉ ÇÔ¼ö
+
+
+// ì„œë²„ë¡œë¶€í„° ë©”ì‹œì§€ë¥¼ ë°›ì•˜ì„ ë•Œ í˜¸ì¶œë  í•¨ìˆ˜
+
 void ChatManager::OnMessageReceived(const ChatMessage& incomingMsg)
+
 {
-    // TODO: ÇöÀç È°¼ºÈ­µÈ Ã¤ÆÃÃ¢(ChatDlg)ÀÌ ÀÖ´Ù¸é UI °»½Å ¾Ë¸² Àü¼Û
+
+    // TODO: í˜„ì¬ í™œì„±í™”ëœ ì±„íŒ…ì°½(ChatDlg)ì´ ìˆë‹¤ë©´ UI ê°±ì‹  ì•Œë¦¼ ì „ì†¡
+
     // AfxGetMainWnd()->PostMessage(WM_CHAT_RECEIVED, ...);
+
 }
+
+
 
 void ChatManager::SetCurrentChatPartner(const std::string& partnerID)
+
 {
+
     m_currentPartnerID = partnerID;
+
 }

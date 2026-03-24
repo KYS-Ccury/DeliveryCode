@@ -1,126 +1,286 @@
-#include "pch.h"
+ï»¿#include "pch.h"
+
 #include "OrderManager.h"
 
+
+
 OrderManager::OrderManager()
+
     : m_currentStoreID(-1)
+
     , m_isDelivery(true)
+
 {
-    // ÃÊ±â µ¥ÀÌÅÍ ·Îµå ½Ã Ä«Å×°í¸®µµ ÇÔ²² ¼³Á¤
-    m_categoryList = { "ÀüÃ¼", "Á·¹ß/º¸½Ó", "Âò/ÅÁ", "ÀÏ½Ä", "Ä¡Å²", "ÇÇÀÚ", "Áß½Ä", "¾ç½Ä" };
+
+    // ì´ˆê¸° ë°ì´í„° ë¡œë“œ ì‹œ ì¹´í…Œê³ ë¦¬ë„ í•¨ê»˜ ì„¤ì •
+
+    m_categoryList = { "ì „ì²´", "ì¡±ë°œ/ë³´ìŒˆ", "ì°œ/íƒ•", "ì¼ì‹", "ì¹˜í‚¨", "í”¼ì", "ì¤‘ì‹", "ì–‘ì‹" };
+
 }
+
+
 
 std::vector<std::string> OrderManager::GetCategoryList() {
+
     return m_categoryList;
+
 }
 
-// Å×½ºÆ®¿ë µ¥ÀÌÅÍ ·Îµå
+
+
+// í…ŒìŠ¤íŠ¸ìš© ë°ì´í„° ë¡œë“œ
+
 void OrderManager::LoadStoreData() {
+
     m_allStores.clear();
 
+
+
     StoreInfo s1;
+
     s1.storeID = 101;
-    s1.storeName = "¸¶¿ÕÁ·¹ß ´ë±¸Á¡";
-    s1.category = "Á·¹ß/º¸½Ó";
-    s1.deliveryTime = "20~30ºĞ";
+
+    s1.storeName = "ë§ˆì™•ì¡±ë°œ ëŒ€êµ¬ì ";
+
+    s1.category = "ì¡±ë°œ/ë³´ìŒˆ";
+
+    s1.deliveryTime = "20~30ë¶„";
+
     s1.distance = 0.8;
+
     s1.minOrderAmount = 15000;
+
     m_allStores.push_back(s1);
 
+
+
     StoreInfo s2;
+
     s2.storeID = 102;
-    s2.storeName = "È²±İÄ¡Å² º»Á¡";
-    s2.category = "Ä¡Å²";
-    s2.deliveryTime = "30~40ºĞ";
+
+    s2.storeName = "í™©ê¸ˆì¹˜í‚¨ ë³¸ì ";
+
+    s2.category = "ì¹˜í‚¨";
+
+    s2.deliveryTime = "30~40ë¶„";
+
     s2.distance = 1.2;
+
     s2.minOrderAmount = 18000;
+
     m_allStores.push_back(s2);
+
 }
 
-// Ä«Å×°í¸®¿¡ ¸Â´Â °¡°Ô¸¸ °ñ¶ó³»¾î ·Îµå
+
+
+// ì¹´í…Œê³ ë¦¬ì— ë§ëŠ” ê°€ê²Œë§Œ ê³¨ë¼ë‚´ì–´ ë¡œë“œ
+
 std::vector<StoreInfo> OrderManager::GetStoresByCategory(const std::string& category) {
-    if (category == "ÀüÃ¼") return m_allStores;
+
+    if (category == "ì „ì²´") return m_allStores;
+
+
 
     std::vector<StoreInfo> filtered;
+
     for (const auto& s : m_allStores) {
+
         if (s.category == category) {
+
             filtered.push_back(s);
+
         }
+
     }
+
     return filtered;
+
 }
 
-// [°í°´] Àå¹Ù±¸´Ï ´ã±â (CUS-11, 18)
+
+
+// [ê³ ê°] ì¥ë°”êµ¬ë‹ˆ ë‹´ê¸° (CUS-11, 18)
+
 bool OrderManager::AddToCart(int storeID, const CartItem& item)
+
 {
+
     if (m_currentStoreID != -1 && m_currentStoreID != storeID) {
-        return false; // Å¸ ¸ÅÀå »óÇ° Á¸Àç ½Ã ¾Ë¸²¿ë
+
+        return false; // íƒ€ ë§¤ì¥ ìƒí’ˆ ì¡´ì¬ ì‹œ ì•Œë¦¼ìš©
+
     }
+
     m_currentStoreID = storeID;
+
     m_cartList.push_back(item);
+
     return true;
+
 }
+
+
 
 void OrderManager::ClearCart()
+
 {
+
     m_cartList.clear();
+
     m_currentStoreID = -1;
+
+}
+
+void OrderManager::LoadMenuData(int storeID, const std::string& category)
+{
+    m_currentStoreID = storeID;
+    // ë©”ë‰´ ë¡œë“œ ë¡œì§...
+}
+
+void OrderManager::RegisterOrderStatusCallback(std::function<void(const std::string&, int, const std::string&)> callback)
+{
+    // ì½œë°± ë“±ë¡ ë¡œì§...
 }
 
 int OrderManager::GetTotalAmount() const
+
 {
+
     int total = 0;
+
     for (const auto& item : m_cartList) {
+
         total += item.totalPrice;
+
     }
+
     return total;
+
 }
+
+
 
 void OrderManager::SetDeliveryType(bool isDelivery)
+
 {
+
     m_isDelivery = isDelivery;
+
 }
 
-// [°í°´] °áÁ¦ ¹× ÁÖ¹® »ı¼º
-bool OrderManager::ProcessOrder(const std::string& cardID, int usePoint, const std::string& couponID)
+
+
+// [ê³ ê°] ê²°ì œ ë° ì£¼ë¬¸ ìƒì„±
+
+bool OrderManager::ProcessOrder(const std::string& cardID, int usePoint, const std::string& couponID, const std::string& extraArg)
 {
-    // TODO: ¼­¹ö API È£ÃâÇÏ¿© DB¿¡ ÁÖ¹® µ¥ÀÌÅÍ ÀúÀå
+
+
+
+    // TODO: ì„œë²„ API í˜¸ì¶œí•˜ì—¬ DBì— ì£¼ë¬¸ ë°ì´í„° ì €ì¥
+
     ClearCart();
+
     return true;
+
 }
 
-// [°øÅë] ÁÖ¹® Ãë¼Ò (CUS-17)
+
+
+// [ê³µí†µ] ì£¼ë¬¸ ì·¨ì†Œ (CUS-17)
+
 bool OrderManager::CancelOrder(const std::string& orderID)
+
 {
-    // TODO: ÇöÀç ÁÖ¹® »óÅÂ È®ÀÎ ÈÄ ½ÂÀÎ ÀüÀÌ¸é Ãë¼Ò Ã³¸®
+
+    // TODO: í˜„ì¬ ì£¼ë¬¸ ìƒíƒœ í™•ì¸ í›„ ìŠ¹ì¸ ì „ì´ë©´ ì·¨ì†Œ ì²˜ë¦¬
+
     return true;
+
 }
 
-// [¶óÀÌ´õ/»çÀå] »óÅÂ º¯°æ ·ÎÁ÷ (ÇÙ½É ¼öÁ¤ »çÇ×)
+
+
+// [ë¼ì´ë”/ì‚¬ì¥] ìƒíƒœ ë³€ê²½ ë¡œì§ (í•µì‹¬ ìˆ˜ì • ì‚¬í•­)
+
 bool OrderManager::UpdateOrderStatus(const std::string& orderID, int newStatus)
+
 {
-    // newStatus: 1(Á¶¸®Áß), 2(¹è´ŞÁß - ¶óÀÌ´õ ÇÈ¾÷), 3(¹è´Ş¿Ï·á)
-    // TODO: ¼­¹ö DBÀÇ Order Å×ÀÌºí »óÅÂ ¾÷µ¥ÀÌÆ® ¹× °í°´¿¡°Ô Çª½Ã ¾Ë¸²
+
+    // newStatus: 1(ì¡°ë¦¬ì¤‘), 2(ë°°ë‹¬ì¤‘ - ë¼ì´ë” í”½ì—…), 3(ë°°ë‹¬ì™„ë£Œ)
+
+    // TODO: ì„œë²„ DBì˜ Order í…Œì´ë¸” ìƒíƒœ ì—…ë°ì´íŠ¸ ë° ê³ ê°ì—ê²Œ í‘¸ì‹œ ì•Œë¦¼
+
     return true;
+
 }
 
-// [¶óÀÌ´õ] ¹èÂ÷ ¿Ï·á Ã³¸®
+
+
+// [ë¼ì´ë”] ë°°ì°¨ ì™„ë£Œ ì²˜ë¦¬
+
 bool OrderManager::AssignRiderToOrder(const std::string& orderID, const std::string& riderID)
+
 {
-    // TODO: ÁÖ¹® µ¥ÀÌÅÍ¿¡ ¶óÀÌ´õ ID ¸ÅÄª ¹× »óÅÂ¸¦ '¹è´ŞÁØºñ'·Î º¯°æ
+
+    // TODO: ì£¼ë¬¸ ë°ì´í„°ì— ë¼ì´ë” ID ë§¤ì¹­ ë° ìƒíƒœë¥¼ 'ë°°ë‹¬ì¤€ë¹„'ë¡œ ë³€ê²½
+
     return true;
+
 }
 
-// [°í°´] ½Ç½Ã°£ »óÅÂ Á¶È¸ (CUS-15)
+
+
+// [ê³ ê°] ì‹¤ì‹œê°„ ìƒíƒœ ì¡°íšŒ (CUS-15)
+
 int OrderManager::GetLiveStatus(const std::string& orderID)
+
 {
-    // TODO: ¼­¹ö¿¡¼­ ÇöÀç ÁÖ¹®ÀÇ status ÄÃ·³ °ª °¡Á®¿À±â
-    return 2; // Å×½ºÆ®¿ë: ¹è´Ş Áß ¹İÈ¯
+
+    // TODO: ì„œë²„ì—ì„œ í˜„ì¬ ì£¼ë¬¸ì˜ status ì»¬ëŸ¼ ê°’ ê°€ì ¸ì˜¤ê¸°
+
+    return 2; // í…ŒìŠ¤íŠ¸ìš©: ë°°ë‹¬ ì¤‘ ë°˜í™˜
+
 }
+
+
 
 std::vector<OrderInfo> OrderManager::GetOrderHistory()
+
 {
+
     std::vector<OrderInfo> history;
+
     return history;
+
 }
 
+
+
 int OrderManager::GetMyPoints() { return 1000; }
+void OrderManager::SelectStore(int storeID)
+{
+    m_currentStoreID = storeID;
+}
+
+std::vector<MenuInfo> OrderManager::GetMenuData(int storeID, const std::string& category)
+{
+    std::vector<MenuInfo> result;
+
+    MenuInfo m1;
+    m1.menuID = storeID * 100 + 1;
+    m1.menuName = "\EB\8C\80\ED\91\9C \EB\A9\94\EB\89\B4 1";
+    m1.price = 12000;
+    m1.subCategory = "\EC\9D\B8\EA\B8\B0\EB\A9\94\EB\89\B4";
+    result.push_back(m1);
+
+    MenuInfo m2;
+    m2.menuID = storeID * 100 + 2;
+    m2.menuName = "\EB\8C\80\ED\91\9C \EB\A9\94\EB\89\B4 2";
+    m2.price = 15000;
+    m2.subCategory = "\EC\9D\B8\EA\B8\B0\EB\A9\94\EB\89\B4";
+    result.push_back(m2);
+
+    return result;
+}

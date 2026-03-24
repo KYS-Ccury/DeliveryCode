@@ -1,66 +1,139 @@
-#pragma once
+ï»¿#pragma once
+
 #include <vector>
+
 #include <string>
+
 #include "CartItem.h"
+
 #include "OrderInfo.h"
+
 #include "StoreInfo.h"
 
-// [CUSTOMER/RIDER] ÁÖ¹® ¹× ¹è´Ş »óÅÂ °ü¸® ¸Å´ÏÀú (Singleton)
+#include <functional>
+
+// [CUSTOMER/RIDER] ì£¼ë¬¸ ë° ë°°ë‹¬ ìƒíƒœ ê´€ë¦¬ ë§¤ë‹ˆì € (Singleton)
+
 class OrderManager
+
 {
+
 public:
+
     static OrderManager& GetInstance() {
+
         static OrderManager instance;
+
         return instance;
+
     }
 
-    // À½½ÄÄ«Å×°í¸®¸Ş´º ¸ñ·ÏÀ» UI¿¡ Àü´ŞÇÏ´Â ÇÔ¼ö
+
+
+    // ìŒì‹ì¹´í…Œê³ ë¦¬ë©”ë‰´ ëª©ë¡ì„ UIì— ì „ë‹¬í•˜ëŠ” í•¨ìˆ˜
+
     std::vector<std::string> GetCategoryList();
 
-    // ÀüÃ¼ °¡°Ô ¸ñ·Ï °¡Á®¿À±â ¹× Ä«Å×°í¸® ÇÊÅÍ¸µ
-    void LoadStoreData(); // ÃÊ±â µ¥ÀÌÅÍ ·Îµå (DB ´ë¿ë)
+
+
+    // ì „ì²´ ê°€ê²Œ ëª©ë¡ ê°€ì ¸ì˜¤ê¸° ë° ì¹´í…Œê³ ë¦¬ í•„í„°ë§
+
+    void LoadStoreData(); // ì´ˆê¸° ë°ì´í„° ë¡œë“œ (DB ëŒ€ìš©)
+
     std::vector<StoreInfo> GetStoresByCategory(const std::string& category);
 
-    // --- [°í°´ ±â´É] ---
+
+
+    // --- [ê³ ê° ê¸°ëŠ¥] ---
+
     void SetCurrentCategory(const std::string& category);
+
     void SelectStore(int storeID);
 
-    // Àå¹Ù±¸´Ï °ü·Ã (CUS-11, 12, 18)
+
+
+    // ì¥ë°”êµ¬ë‹ˆ ê´€ë ¨ (CUS-11, 12, 18)
+
     bool AddToCart(int storeID, const CartItem& item);
+
     void ClearCart();
+
     std::vector<CartItem> GetCartItems() const { return m_cartList; }
+
     int GetTotalAmount() const;
+
     void SetDeliveryType(bool isDelivery);
 
-    // ÁÖ¹® ¹× °áÁ¦ (CUS-13)
-    bool ProcessOrder(const std::string& cardID, int usePoint, const std::string& couponID);
 
-    // ÁÖ¹® Ãë¼Ò (CUS-17)
+
+    // ì£¼ë¬¸ ë° ê²°ì œ (CUS-13)
+
+    // 1. RegisterOrderStatusCallback ìˆ˜ì • (ëŒë‹¤ê°€ orderID, status, msg 3ê°œë¥¼ ì‚¬ìš©í•¨)
+    void RegisterOrderStatusCallback(std::function<void(const std::string&, int, const std::string&)> callback);
+
+    // 2. LoadMenuData ìˆ˜ì • (ì¸ì 2ê°œê°€ int, string ì¡°í•©ì¸ ê²ƒìœ¼ë¡œ ë³´ì„)
+    void LoadMenuData(int storeID, const std::string& category = ""); // ì¸ì 2ê°œ ëŒ€ì‘
+
+    // 3. ProcessOrder ìˆ˜ì • (ì¸ì 3ê°œ ì˜¤ë²„ë¡œë“œ ì˜¤ë¥˜ í•´ê²°)
+    bool ProcessOrder(const std::string& cardID, int usePoint, const std::string& couponID, const std::string& extraArg = "");
+
+    // 4. GetCurrentStoreID ì¶”ê°€ (ê¸°ì¡´ íŒŒì¼ì— ëˆ„ë½ë¨)
+    int GetCurrentStoreID() const { return m_currentStoreID; }
+
+    // ì£¼ë¬¸ ì·¨ì†Œ (CUS-17)
+
     bool CancelOrder(const std::string& orderID);
 
-    // --- [¶óÀÌ´õ ¹× »óÅÂ °ü¸® ±â´É] (Ãß°¡/¼öÁ¤µÊ) ---
-    // CUS-15: ½Ç½Ã°£ ¹è´Ş »óÅÂ ¾÷µ¥ÀÌÆ® (0:Á¢¼öÀü, 1:Á¶¸®Áß, 2:¹è´ŞÁß, 3:¿Ï·á)
-    // »çÀå´ÔÀÌ³ª ¶óÀÌ´õ°¡ È£ÃâÇÏ¿© »óÅÂ¸¦ º¯°æÇÔ
+
+
+    // --- [ë¼ì´ë” ë° ìƒíƒœ ê´€ë¦¬ ê¸°ëŠ¥] (ì¶”ê°€/ìˆ˜ì •ë¨) ---
+
+    // CUS-15: ì‹¤ì‹œê°„ ë°°ë‹¬ ìƒíƒœ ì—…ë°ì´íŠ¸ (0:ì ‘ìˆ˜ì „, 1:ì¡°ë¦¬ì¤‘, 2:ë°°ë‹¬ì¤‘, 3:ì™„ë£Œ)
+
+    // ì‚¬ì¥ë‹˜ì´ë‚˜ ë¼ì´ë”ê°€ í˜¸ì¶œí•˜ì—¬ ìƒíƒœë¥¼ ë³€ê²½í•¨
+
     bool UpdateOrderStatus(const std::string& orderID, int newStatus);
 
-    // Æ¯Á¤ ÁÖ¹®¿¡ ¶óÀÌ´õ¸¦ ¹èÁ¤ÇÔ
+
+
+    // íŠ¹ì • ì£¼ë¬¸ì— ë¼ì´ë”ë¥¼ ë°°ì •í•¨
+
     bool AssignRiderToOrder(const std::string& orderID, const std::string& riderID);
 
-    // ÇöÀç »óÅÂ Á¶È¸
+
+
+    // í˜„ì¬ ìƒíƒœ ì¡°íšŒ
+
     int GetLiveStatus(const std::string& orderID);
+
     std::vector<OrderInfo> GetOrderHistory();
 
-    // --- [±âÅ¸ Æ÷ÀÎÆ®/ÄíÆù] ---
+    // OrderManager.h ì—ì„œ ë°˜í™˜ íƒ€ì… ìˆ˜ì • (ì˜ˆì‹œ)
+    std::vector<MenuInfo> GetMenuData(int storeID, const std::string& category = "");
+
+    // --- [ê¸°íƒ€ í¬ì¸íŠ¸/ì¿ í°] ---
+
     int GetMyPoints();
+
+
 
 private:
     OrderManager();
+
     ~OrderManager() {}
 
-    std::vector<std::string> m_categoryList; // À½½ÄÄ«Å×°í¸®¸Ş´º ÀúÀå¼Ò
+
+
+    std::vector<std::string> m_categoryList; // ìŒì‹ì¹´í…Œê³ ë¦¬ë©”ë‰´ ì €ì¥ì†Œ
+
     std::vector<StoreInfo> m_allStores;
+
     std::vector<CartItem> m_cartList;
+
     int m_currentStoreID;
+
     bool m_isDelivery;
+
+
 
 };

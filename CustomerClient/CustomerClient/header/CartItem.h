@@ -1,23 +1,45 @@
-#pragma once
+ï»¿#pragma once
+
 #include <string>
+
 #include <vector>
-#include "MenuInfo.h" // OptionItem ±¸Á¶Ã¼ ÂüÁ¶¸¦ À§ÇØ Æ÷ÇÔ
 
-// Àå¹Ù±¸´Ï¿¡ ´ã±ä ÇÏ³ªÀÇ Ç×¸ñ (¸Ş´º + ¼±ÅÃ ¿É¼Çµé)
+#include "MenuInfo.h" // OptionItem êµ¬ì¡°ì²´ ì°¸ì¡°ë¥¼ ìœ„í•´ í¬í•¨
+
+
+
+// ì¥ë°”êµ¬ë‹ˆì— ë‹´ê¸´ í•˜ë‚˜ì˜ í•­ëª© (ë©”ë‰´ + ì„ íƒ ì˜µì…˜ë“¤)
+
 class CartItem
-{
-public:
-    int menuID;                     // ¸Ş´º °íÀ¯ ID
-    std::string menuName;           // À½½Ä¸í
-    int basePrice;                  // ¸Ş´º ±âº» °¡°İ
-    int quantity;                   // ÁÖ¹® ¼ö·®
 
-    // »ç¿ëÀÚ°¡ ¼±ÅÃÇÑ ¿É¼ÇµéÀÇ ¸®½ºÆ®
+{
+
+public:
+
+    int menuID;                     // ë©”ë‰´ ê³ ìœ  ID
+
+    std::string menuName;           // ìŒì‹ëª…
+
+    int basePrice;                  // ë©”ë‰´ ê¸°ë³¸ ê°€ê²©
+
+    int quantity;                   // ì£¼ë¬¸ ìˆ˜ëŸ‰
+
+
+
+    // ì‚¬ìš©ìê°€ ì„ íƒí•œ ì˜µì…˜ë“¤ì˜ ë¦¬ìŠ¤íŠ¸
+
     std::vector<OptionItem> selectedOptions;
 
-    int totalPrice;                 // (±âº»°¡ + ¿É¼Ç°¡ ÇÕ»ê) * ¼ö·®
-    int storeID;                    // Àå¹Ù±¸´Ï Á¤ÇÕ¼º Ã¼Å©¿ë (¾î´À °¡°Ô ¸Ş´ºÀÎÁö)
+
+
+    int totalPrice;                 // (ê¸°ë³¸ê°€ + ì˜µì…˜ê°€ í•©ì‚°) * ìˆ˜ëŸ‰
+
+    int storeID;                    // ì¥ë°”êµ¬ë‹ˆ ì •í•©ì„± ì²´í¬ìš© (ì–´ëŠ ê°€ê²Œ ë©”ë‰´ì¸ì§€)
+
+
 
     CartItem();
-    void CalculateTotalPrice();     // ÃÑ °¡°İ °è»ê ÇÔ¼ö
+
+    void CalculateTotalPrice();     // ì´ ê°€ê²© ê³„ì‚° í•¨ìˆ˜
+
 };

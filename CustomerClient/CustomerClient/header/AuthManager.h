@@ -1,58 +1,115 @@
-#pragma once
+ï»¿#pragma once
+
 #include <string>
+
 #include <vector>
+
+
 
 #include "UserInfo.h" 
 
-// [COMMON] ÀÎÁõ ¹× °èÁ¤ °ü¸® ¸Å´ÏÀú (Singleton)
+
+
+// [COMMON] ì¸ì¦ ë° ê³„ì • ê´€ë¦¬ ë§¤ë‹ˆì € (Singleton)
+
 class AuthManager
+
 {
+
 public:
+
     static AuthManager& GetInstance() {
+
         static AuthManager instance;
+
         return instance;
+
     }
 
-    // --- [°øÅë ±â´É] ---
+    std::string GetCurrentUserID() const { return m_currentUserID; }
 
-    // CUS-01: È¸¿ø°¡ÀÔ (ID, PW, ÁÖ¼Ò, ROLE ¼±ÅÃ)
+    // --- [ê³µí†µ ê¸°ëŠ¥] ---
+
+
+
+    // CUS-01: íšŒì›ê°€ì… (ID, PW, ì£¼ì†Œ, ROLE ì„ íƒ)
+
     bool RegisterUser(const std::string& id, const std::string& pw, const std::string& address, int role);
 
-    // CUS-02: ·Î±×ÀÎ / ·Î±×¾Æ¿ô
+
+
+    // CUS-02: ë¡œê·¸ì¸ / ë¡œê·¸ì•„ì›ƒ
+
     bool Login(const std::string& id, const std::string& pw);
+
     void Logout();
 
-    // ÀÎÁõ ÅäÅ« °ü¸® (Ãß°¡»çÇ×)
+
+
+    // ì¸ì¦ í† í° ê´€ë¦¬ (ì¶”ê°€ì‚¬í•­)
+
     std::string GetAccessToken() const;
+
     void RefreshToken();
 
-    // ¾ÆÀÌµğ / ºñ¹ø Ã£±â (Ãß°¡»çÇ×)
+
+
+    // ì•„ì´ë”” / ë¹„ë²ˆ ì°¾ê¸° (ì¶”ê°€ì‚¬í•­)
+
     std::string FindID(const std::string& phoneNumber);
+
     bool ResetPassword(const std::string& id, const std::string& phoneNumber);
 
-    // ÀÚµ¿ ·Î±×ÀÎ (Ãß°¡»çÇ×)
-    bool EnableAutoLogin(bool enable);
-    bool CheckAutoLogin(); // ¾Û ½ÃÀÛ ½Ã È£ÃâÇÏ¿© ÀÚµ¿ ·Î±×ÀÎ ½Ãµµ
 
-    // °í°´ Á¤º¸ ¸¶½ºÅ· (3H: ¾Õ 3±ÛÀÚ Á¦¿Ü ¸¶½ºÅ·)
+
+    // ìë™ ë¡œê·¸ì¸ (ì¶”ê°€ì‚¬í•­)
+
+    bool EnableAutoLogin(bool enable);
+
+    bool CheckAutoLogin(); // ì•± ì‹œì‘ ì‹œ í˜¸ì¶œí•˜ì—¬ ìë™ ë¡œê·¸ì¸ ì‹œë„
+
+
+
+    // ê³ ê° ì •ë³´ ë§ˆìŠ¤í‚¹ (3H: ì• 3ê¸€ì ì œì™¸ ë§ˆìŠ¤í‚¹)
+
     std::string GetMaskedInfo(const std::string& rawData);
 
 
-    // --- [°í°´ ±â´É] ---
 
-    // °³ÀÎ Á¤º¸ ¼³Á¤ (ÁÖ¼Ò º¯°æ, ºñ¹Ğ¹øÈ£ º¯°æ µî)
+
+
+    // --- [ê³ ê° ê¸°ëŠ¥] ---
+
+
+
+    // ê°œì¸ ì •ë³´ ì„¤ì • (ì£¼ì†Œ ë³€ê²½, ë¹„ë°€ë²ˆí˜¸ ë³€ê²½ ë“±)
+
     bool UpdateUserAddress(const std::string& newAddress);
+
     bool ChangePassword(const std::string& oldPw, const std::string& newPw);
 
+    //std::string GetCurrentUserID() const { return m_currentUserID; }
+
 private:
+
     AuthManager();
+
     ~AuthManager() {}
+
+
 
     UserInfo m_currentUser;
 
-    // ³»ºÎ »óÅÂ º¯¼ö
+
+
+    // ë‚´ë¶€ ìƒíƒœ ë³€ìˆ˜
+
     bool m_isLoggedIn;
+
     bool m_isAutoLoginEnabled;
+
     std::string m_accessToken;
+
     std::string m_currentUserID;
+
 };

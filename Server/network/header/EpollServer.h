@@ -1,44 +1,35 @@
 #pragma once
-
-#include <sys/epoll.h>
-#include <netinet/in.h>
-#include <map>
-#include <vector>
+#include <unordered_map>
 #include <mutex>
-#include <memory>
+#include <sys/epoll.h>
+#include "Session.h"
 
-class Session;
 class ThreadPool;
 
 class EpollServer {
-private:
-    static constexpr int MAX_EVENTS = 1024;
-
-    int port;
-    int server_fd;
-    int epoll_fd;
-    ThreadPool* pool;
-
-    std::map<int, std::shared_ptr<Session>> sessions;
-    std::mutex session_mutex;
-
-    bool setupServer();
-    void setNonBlocking(int fd);
-    void acceptConnection();
-
 public:
+    // OwnerHandler / RiderHandler에서 Push 전송 시 고객 세션 조회용
+    static EpollServer* s_instance;
+
     EpollServer(int port, ThreadPool* pool);
     ~EpollServer();
 
-    void start();
+    bool setupServer();
+    void start();         // epoll_wait 루프
+    void acceptConnection();
 
-    void closeConnection(int client_fd);
-    void rearmSocket(int client_fd);
+    // userID로 Session 포인터 조회 (로그인된 세션만 반환)
+    Session* getSessionByUserID(int userID);
 
-    // ★ pushDispatch 에서 사용: fd로 Session 포인터 반환 (없으면 nullptr)
-    std::shared_ptr<Session> getSession(int fd);
+private:
+    void setNonBlocking(int fd);
+    void rearmEpoll(int fd);
 
-    // ★ RiderHandler 에서 사용: riderId → fd 매핑은 RiderHandler가 관리,
-    //    fd → Session 접근은 이 함수로 처리
-    static EpollServer* s_instance; // 싱글턴 포인터 (main에서 설정)
+    int         port;
+    int         server_fd;
+    int         epoll_fd;
+    ThreadPool* pool;
+
+    std::mutex                        session_mutex;
+    std::unordered_map<int, Session*> sessions; // fd → Session*
 };

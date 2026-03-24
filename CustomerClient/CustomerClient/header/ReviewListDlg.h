@@ -1,24 +1,31 @@
-﻿#pragma once
+#pragma once
 #include "afxdialogex.h"
-
-
-// ReviewListDlg 대화 상자
 
 class ReviewListDlg : public CDialogEx
 {
-	DECLARE_DYNAMIC(ReviewListDlg)
+    DECLARE_DYNAMIC(ReviewListDlg)
 
 public:
-	ReviewListDlg(CWnd* pParent = nullptr);   // 표준 생성자입니다.
-	virtual ~ReviewListDlg();
+    ReviewListDlg(CWnd* pParent = nullptr);
+    virtual ~ReviewListDlg();
 
-// 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME
-	enum { IDD = IDD_REVIEW_LIST_DLG };
+    enum { IDD = IDD_REVIEW_LIST_DLG };
 #endif
 
-protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 지원입니다.
+    // StoreListDlg 정보 버튼 또는 매장 화면에서 설정
+    int     m_nStoreID     = 0;
+    CString m_strStoreName;
 
-	DECLARE_MESSAGE_MAP()
+protected:
+    virtual void DoDataExchange(CDataExchange* pDX);
+    virtual BOOL OnInitDialog();
+
+    afx_msg void OnBnClickedBtnBack();
+
+    DECLARE_MESSAGE_MAP()
+
+private:
+    CListCtrl m_listReviews;
+    void      LoadReviews();
 };

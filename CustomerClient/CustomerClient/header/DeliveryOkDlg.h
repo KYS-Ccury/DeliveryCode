@@ -1,27 +1,28 @@
 ﻿#pragma once
 #include "afxdialogex.h"
+#include "OrderInfo.h"
 
-
-// DeliveryOkDlg 대화 상자
+#define WM_ORDER_STATUS_CHANGED (WM_USER + 201)
 
 class DeliveryOkDlg : public CDialogEx
 {
-	DECLARE_DYNAMIC(DeliveryOkDlg)
-
+    DECLARE_DYNAMIC(DeliveryOkDlg)
 public:
-	DeliveryOkDlg(CWnd* pParent = nullptr);   // 표준 생성자입니다.
-	virtual ~DeliveryOkDlg();
-
-// 대화 상자 데이터입니다.
+    DeliveryOkDlg(CWnd* pParent = nullptr);
+    virtual ~DeliveryOkDlg();
 #ifdef AFX_DESIGN_TIME
-	enum { IDD = IDD_DELIVERY_OK_DLG };
+    enum { IDD = IDD_DELIVERY_OK_DLG };
 #endif
-
+    CString m_strOrderID;
+    CString m_strStoreName;
+    CString m_strOrderList;
+    int     m_nTotalAmount = 0;
 protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 지원입니다.
-	BOOL OnInitDialog();
-
-	afx_msg void OnBnClickedBtnWriteReview();
-
-	DECLARE_MESSAGE_MAP()
+    virtual void DoDataExchange(CDataExchange* pDX);
+    virtual BOOL OnInitDialog();
+    afx_msg void    OnBnClickedBtnWriteReview();
+    afx_msg LRESULT OnOrderStatusChanged(WPARAM wParam, LPARAM lParam);
+    DECLARE_MESSAGE_MAP()
+private:
+    void UpdateStatusUI(int status); // DeliveryStatus enum 값 받음
 };

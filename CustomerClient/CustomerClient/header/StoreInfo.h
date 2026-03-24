@@ -1,27 +1,53 @@
-#pragma once
+ï»¿#pragma once
+
 #include <string>
+
 #include <vector>
 
-// [CUSTOMER] ¸ÅÀå Á¤º¸ µ¥ÀÌÅÍ ¸ğµ¨
+
+
+// [CUSTOMER] ë§¤ì¥ ì •ë³´ ë°ì´í„° ëª¨ë¸
+
 class StoreInfo
+
 {
+
 public:
-    int storeID;                // °¡°Ô °íÀ¯ ID
-    std::string storeName;      // »óÈ£¸í (CUS-07)
-    std::string category;       // À½½Ä Ä«Å×°í¸® (´ëºĞ·ù: Á·¹ß, ÇÇÀÚ µî) (CUS-03)
-    std::string openTime;       // ¿µ¾÷ ½Ã°£ (CUS-07)
-    std::string phoneNumber;    // ÀüÈ­¹øÈ£ (CUS-07)
-    std::string address;        // ¸ÅÀå ÁÖ¼Ò (CUS-07)
-    std::string holiday;        // ÈŞ¹«ÀÏ (CUS-07)
 
-    int minOrderAmount;         // ÃÖ¼Ò ÁÖ¹® ±İ¾× (CUS-06)
-    double distance;            // »ç¿ëÀÚ·ÎºÎÅÍÀÇ °Å¸® (km ´ÜÀ§) (CUS-06)
+    int storeID;                // ê°€ê²Œ ê³ ìœ  ID
 
-    // CUS-06 ¿ä±¸»çÇ× ±¸Ã¼È­
-    std::string deliveryPriceRange; // ¹è´Ş °¡°İ ¹üÀ§ (¿¹: "2,000¿ø~3,500¿ø")
-    std::string deliveryTime;      // ¿¹»ó ¹è´Ş ½Ã°£ (¿¹: "25~35ºĞ")
-    std::string storeImageUrl;     // ¸ÅÀå/À½½Ä ´ëÇ¥ ÀÌ¹ÌÁö °æ·Î
+    std::string storeName;      // ìƒí˜¸ëª… (CUS-07)
+
+    std::string category;       // ìŒì‹ ì¹´í…Œê³ ë¦¬ (ëŒ€ë¶„ë¥˜: ì¡±ë°œ, í”¼ì ë“±) (CUS-03)
+
+    std::string openTime;       // ì˜ì—… ì‹œê°„ (CUS-07)
+
+    std::string phoneNumber;    // ì „í™”ë²ˆí˜¸ (CUS-07)
+
+    std::string address;        // ë§¤ì¥ ì£¼ì†Œ (CUS-07)
+
+    std::string holiday;        // íœ´ë¬´ì¼ (CUS-07)
+
+
+
+    int minOrderAmount;         // ìµœì†Œ ì£¼ë¬¸ ê¸ˆì•¡ (CUS-06)
+
+    double distance;            // ì‚¬ìš©ìë¡œë¶€í„°ì˜ ê±°ë¦¬ (km ë‹¨ìœ„) (CUS-06)
+
+
+
+    // CUS-06 ìš”êµ¬ì‚¬í•­ êµ¬ì²´í™”
+
+    std::string deliveryPriceRange; // ë°°ë‹¬ ê°€ê²© ë²”ìœ„ (ì˜ˆ: "2,000ì›~3,500ì›")
+
+    std::string deliveryTime;      // ì˜ˆìƒ ë°°ë‹¬ ì‹œê°„ (ì˜ˆ: "25~35ë¶„")
+
+    std::string storeImageUrl;     // ë§¤ì¥/ìŒì‹ ëŒ€í‘œ ì´ë¯¸ì§€ ê²½ë¡œ
+
+
 
     StoreInfo();
+
     void Clear();
+
 };

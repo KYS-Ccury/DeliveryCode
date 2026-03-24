@@ -8,13 +8,17 @@ class AdminHandler {
 public:
     static void process(Session* session, uint16_t protocol, const std::string& jsonBody);
 
-    // 관리자 세션 등록/해제 (EpollServer::closeConnection에서 호출)
+    // ChatHandler 연동용
     static void registerSession  (int fd, int adminId);
     static void unregisterSession(int fd);
 
 private:
-    static void handleGetStats   (Session* session, const std::string& jsonBody);
-    static void handleBanUser    (Session* session, const std::string& jsonBody);
-    static void handleForceCancel(Session* session, const std::string& jsonBody);
-    static void handleAdminLogin (Session* session, const std::string& jsonBody);
+    static void handleAdminLogin   (Session* s, const std::string& b); // 101
+    static void handleGetStats     (Session* s, const std::string& b); // 510
+    static void handleRiderStatus  (Session* s, const std::string& b); // 511
+    static void handleForceDispatch(Session* s, const std::string& b); // 512
+    static void handleForceCancel  (Session* s, const std::string& b); // 513
+    static void handleManageReview (Session* s, const std::string& b); // 520
+    static void handleSettlement   (Session* s, const std::string& b); // 500
+    static void handleBanUser      (Session* s, const std::string& b); // 내부용
 };

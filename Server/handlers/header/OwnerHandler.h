@@ -2,15 +2,22 @@
 #include <string>
 #include <cstdint>
 
-class Session; // 전방 선언
+class Session;
 
 class OwnerHandler {
 public:
-    // 메인 디스패치 함수
     static void process(Session* session, uint16_t protocol, const std::string& jsonBody);
 
 private:
-    // 실제 기능 구현 함수 (기능 개발 중)
-    static void handleAcceptOrder(Session* session, const std::string& jsonBody);
-    static void handleSoldOut(Session* session, const std::string& jsonBody);
+    static void handleLogin       (Session* s, const std::string& body); // 101
+    static void handleStoreInfo   (Session* s, const std::string& body); // 300
+    static void handleUpdateStore (Session* s, const std::string& body); // 301
+    static void handleAddMenu     (Session* s, const std::string& body); // 302
+    static void handleSoldOut     (Session* s, const std::string& body); // 303
+    static void handleOrderList   (Session* s, const std::string& body); // 304
+    static void handleAcceptOrder (Session* s, const std::string& body); // 305
+    static void handleRejectOrder (Session* s, const std::string& body); // 306
+    static void handleCookingDone (Session* s, const std::string& body); // 307
+    static void handleSalesStats  (Session* s, const std::string& body); // 308
+    static void handleChangeStatus(Session* s, const std::string& body); // 309
 };

@@ -1,52 +1,105 @@
-#pragma once
+ï»¿#pragma once
+
 #include <string>
+
 #include <vector>
 
-// ½Ç½Ã°£ Ã¤ÆÃÀº º¸Åë ¼ÒÄÏ(Socket) Åë½ÅÀ» »ç¿ëÇÏÁö¸¸, ÇöÀç´Â ÇÁ·ÎÅäÅ¸ÀÔ ´Ü°èÀÌ¹Ç·Î 
-// ¸Ş½ÃÁö ¼Û¼ö½Å ¹× Ã¤³Î °ü¸® ·ÎÁ÷ À§ÁÖ·Î ÀÎÅÍÆäÀÌ½º¸¦ ¼³°èÇÔ.
 
-// Ã¤ÆÃ ¸Ş½ÃÁö ±¸Á¶Ã¼
+
+// ì‹¤ì‹œê°„ ì±„íŒ…ì€ ë³´í†µ ì†Œì¼“(Socket) í†µì‹ ì„ ì‚¬ìš©í•˜ì§€ë§Œ, í˜„ì¬ëŠ” í”„ë¡œí† íƒ€ì… ë‹¨ê³„ì´ë¯€ë¡œ 
+
+// ë©”ì‹œì§€ ì†¡ìˆ˜ì‹  ë° ì±„ë„ ê´€ë¦¬ ë¡œì§ ìœ„ì£¼ë¡œ ì¸í„°í˜ì´ìŠ¤ë¥¼ ì„¤ê³„í•¨.
+
+
+
+// ì±„íŒ… ë©”ì‹œì§€ êµ¬ì¡°ì²´
+
 struct ChatMessage {
-    std::string senderID;   // º¸³½ »ç¶÷
-    std::string message;    // ¸Ş½ÃÁö ³»¿ë
-    std::string timestamp;  // º¸³½ ½Ã°£
-    bool isMine;            // º»ÀÎÀÌ º¸³½ ¸Ş½ÃÁö ¿©ºÎ
+
+    std::string senderID;   // ë³´ë‚¸ ì‚¬ëŒ
+
+    std::string message;    // ë©”ì‹œì§€ ë‚´ìš©
+
+    std::string timestamp;  // ë³´ë‚¸ ì‹œê°„
+
+    bool isMine;            // ë³¸ì¸ì´ ë³´ë‚¸ ë©”ì‹œì§€ ì—¬ë¶€
+
 };
 
-// [COMMON] ½Ç½Ã°£ Ã¤ÆÃ °ü¸® ¸Å´ÏÀú (Singleton)
+
+
+// [COMMON] ì‹¤ì‹œê°„ ì±„íŒ… ê´€ë¦¬ ë§¤ë‹ˆì € (Singleton)
+
 class ChatManager
+
 {
+
 public:
+
     static ChatManager& GetInstance() {
+
         static ChatManager instance;
+
         return instance;
+
     }
 
-    // --- [¿¬°á ¹× ¼³Á¤] ---
-    // ¼­¹ö ¿¬°á ½Ãµµ (IP, Port µî)
+    void CreateOrGetRoom(const std::string& targetID, const std::string& targetType) {}
+    void RegisterReceiveCallback(HWND hWnd) {}
+    void UnregisterReceiveCallback() {}
+
+    // --- [ì—°ê²° ë° ì„¤ì •] ---
+
+    // ì„œë²„ ì—°ê²° ì‹œë„ (IP, Port ë“±)
+
     bool ConnectToServer(const std::string& ip, int port);
+
     void Disconnect();
 
-    // --- [Ã¤ÆÃ ±â´É] ---
-    // CUS-16: 1:1 Ã¤ÆÃ ¹®ÀÇ (À½½ÄÁ¡ ¶Ç´Â °ü¸®ÀÚ ´ë»ó)
+
+
+    // --- [ì±„íŒ… ê¸°ëŠ¥] ---
+
+    // CUS-16: 1:1 ì±„íŒ… ë¬¸ì˜ (ìŒì‹ì  ë˜ëŠ” ê´€ë¦¬ì ëŒ€ìƒ)
+
     bool SendMessageTo(const std::string& targetID, const std::string& msg);
 
-    // Æ¯Á¤ ´ë»ó°úÀÇ ´ëÈ­ ³»¿ª °¡Á®¿À±â
+
+
+    // íŠ¹ì • ëŒ€ìƒê³¼ì˜ ëŒ€í™” ë‚´ì—­ ê°€ì ¸ì˜¤ê¸°
+
     std::vector<ChatMessage> GetChatHistory(const std::string& targetID);
 
-    // ¸Ş½ÃÁö ¼ö½Å ÀÌº¥Æ® ÇÚµé·¯ (UI ¾÷µ¥ÀÌÆ®¿ë)
+
+
+    // ë©”ì‹œì§€ ìˆ˜ì‹  ì´ë²¤íŠ¸ í•¸ë“¤ëŸ¬ (UI ì—…ë°ì´íŠ¸ìš©)
+
     void OnMessageReceived(const ChatMessage& incomingMsg);
 
-    // --- [»óÅÂ °ü¸®] ---
+
+
+    // --- [ìƒíƒœ ê´€ë¦¬] ---
+
     bool IsConnected() const { return m_isConnected; }
+
     void SetCurrentChatPartner(const std::string& partnerID);
 
+
+
 private:
+
     ChatManager();
+
     ~ChatManager() {}
 
+
+
     bool m_isConnected;
-    std::string m_currentPartnerID; // ÇöÀç Ã¤ÆÃ ÁßÀÎ »ó´ë
-    // ´ëÈ­ »ó´ëº° ¸Ş½ÃÁö ¸®½ºÆ® ÀúÀå (¸Ş¸ğ¸® ³» Ä³½Ã ¿¹½Ã)
+
+    std::string m_currentPartnerID; // í˜„ì¬ ì±„íŒ… ì¤‘ì¸ ìƒëŒ€
+
+    // ëŒ€í™” ìƒëŒ€ë³„ ë©”ì‹œì§€ ë¦¬ìŠ¤íŠ¸ ì €ì¥ (ë©”ëª¨ë¦¬ ë‚´ ìºì‹œ ì˜ˆì‹œ)
+
     // std::map<std::string, std::vector<ChatMessage>> m_chatLogs; 
+
 };

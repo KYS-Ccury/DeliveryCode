@@ -1,34 +1,67 @@
-#pragma once
+ï»¿#pragma once
+
 #include <string>
+
 #include <vector>
 
-// ¸Ş´º¿¡ Á¾¼ÓµÈ ¿É¼Ç ¾ÆÀÌÅÛ (¿¹: º¸Åë¸À, ¸Å¿î¸À / ¶ó¸é»ç¸® µî)
+
+
+// ë©”ë‰´ì— ì¢…ì†ëœ ì˜µì…˜ ì•„ì´í…œ (ì˜ˆ: ë³´í†µë§›, ë§¤ìš´ë§› / ë¼ë©´ì‚¬ë¦¬ ë“±)
+
 struct OptionItem {
+
     int optionID;
+
     std::string optionName;
+
     int optionPrice;
+
 };
 
-// ¿É¼Ç ±×·ì (¿¹: "¸Ê±â ¼±ÅÃ", "Ãß°¡ ÅäÇÎ")
+
+
+// ì˜µì…˜ ê·¸ë£¹ (ì˜ˆ: "ë§µê¸° ì„ íƒ", "ì¶”ê°€ í† í•‘")
+
 struct OptionGroup {
+
     std::string groupName;
-    bool isRequired; // ÇÊ¼ö ¼±ÅÃ ¿©ºÎ
+
+    bool isRequired; // í•„ìˆ˜ ì„ íƒ ì—¬ë¶€
+
     std::vector<OptionItem> items;
+
 };
 
-// [CUSTOMER] ¸ÅÀå ³» °³º° ¸Ş´º Á¤º¸ ¸ğµ¨
-class MenuInfo
-{
-public:
-    int menuID;                 // ¸Ş´º °íÀ¯ ID
-    std::string menuName;       // À½½Ä¸í (CUS-09)
-    int price;                  // °¡°İ (CUS-09)
-    std::string subCategory;    // ¼ÒºĞ·ù Ä«Å×°í¸® (ÀÎ±â¸Ş´º, ¸ŞÀÎ¿ä¸® µî) (CUS-08)
-    std::string menuImageUrl;   // À½½Ä ÀÌ¹ÌÁö °æ·Î (CUS-06)
 
-    // CUS-10: ¿É¼Ç ¼±ÅÃ °ü·Ã µ¥ÀÌÅÍ
+
+// [CUSTOMER] ë§¤ì¥ ë‚´ ê°œë³„ ë©”ë‰´ ì •ë³´ ëª¨ë¸
+
+class MenuInfo
+
+{
+
+public:
+
+    int menuID;                 // ë©”ë‰´ ê³ ìœ  ID
+
+    std::string menuName;       // ìŒì‹ëª… (CUS-09)
+
+    int price;                  // ê°€ê²© (CUS-09)
+
+    std::string subCategory;    // ì†Œë¶„ë¥˜ ì¹´í…Œê³ ë¦¬ (ì¸ê¸°ë©”ë‰´, ë©”ì¸ìš”ë¦¬ ë“±) (CUS-08)
+
+    std::string menuImageUrl;   // ìŒì‹ ì´ë¯¸ì§€ ê²½ë¡œ (CUS-06)
+
+
+
+    // CUS-10: ì˜µì…˜ ì„ íƒ ê´€ë ¨ ë°ì´í„°
+
     std::vector<OptionGroup> optionGroups;
 
+
+
     MenuInfo();
+
     void Clear();
+
 };

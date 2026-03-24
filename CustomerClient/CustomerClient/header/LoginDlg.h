@@ -1,24 +1,19 @@
 ﻿#pragma once
 #include "afxdialogex.h"
 
-
-// LoginDlg ダイアログ
-
 class LoginDlg : public CDialogEx
 {
-	DECLARE_DYNAMIC(LoginDlg)
-
+    DECLARE_DYNAMIC(LoginDlg)
 public:
-	LoginDlg(CWnd* pParent = nullptr);   // 標準コンストラクター
-	virtual ~LoginDlg();
-
-// ダイアログ データ
+    LoginDlg(CWnd* pParent = nullptr);
+    virtual ~LoginDlg();
 #ifdef AFX_DESIGN_TIME
-	enum { IDD = IDD_LOGIN_DLG };
+    enum { IDD = IDD_LOGIN_DLG };
 #endif
-
 protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV サポート
-
-	DECLARE_MESSAGE_MAP()
+    virtual void DoDataExchange(CDataExchange* pDX);
+    virtual BOOL OnInitDialog();
+    afx_msg void OnBnClickedOk();
+    afx_msg void OnBnClickedCancel();
+    DECLARE_MESSAGE_MAP()
 };

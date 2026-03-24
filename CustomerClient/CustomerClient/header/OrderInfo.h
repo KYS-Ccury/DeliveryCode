@@ -1,32 +1,63 @@
-#pragma once
+ï»¿#pragma once
+
 #include <string>
+
 #include <vector>
 
-// ¹è´Ş »óÅÂ Á¤ÀÇ (°¡µ¶¼ºÀ» À§ÇÑ enum)
+
+
+// ë°°ë‹¬ ìƒíƒœ ì •ì˜ (ê°€ë…ì„±ì„ ìœ„í•œ enum)
+
 enum DeliveryStatus {
-    STATUS_WAITING = 0,   // Á¢¼ö ´ë±â
-    STATUS_PREPARING = 1, // Á¶¸® Áß
-    STATUS_DELIVERING = 2,// ¹è´Ş Áß (¶óÀÌ´õ ÇÈ¾÷)
-    STATUS_COMPLETE = 3,  // ¹è´Ş ¿Ï·á
-    STATUS_CANCELED = 4   // ÁÖ¹® Ãë¼Ò
+
+    STATUS_WAITING = 0,   // ì ‘ìˆ˜ ëŒ€ê¸°
+
+    STATUS_PREPARING = 1, // ì¡°ë¦¬ ì¤‘
+
+    STATUS_DELIVERING = 2,// ë°°ë‹¬ ì¤‘ (ë¼ì´ë” í”½ì—…)
+
+    STATUS_COMPLETE = 3,  // ë°°ë‹¬ ì™„ë£Œ
+
+    STATUS_CANCELED = 4   // ì£¼ë¬¸ ì·¨ì†Œ
+
 };
 
+
+
 class OrderInfo
+
 {
+
 public:
-    std::string orderID;      // ÁÖ¹® ¹øÈ£ (¿¹: 20240522-0001)
-    int storeID;              // °¡°Ô °íÀ¯ ID
-    std::string storeName;    // °¡°Ô ÀÌ¸§ (³»¿ª Á¶È¸ ½Ã ÆíÀÇ¿ë)
-    std::string orderDateTime;// ÁÖ¹® ÀÏ½Ã
 
-    int totalPayment;         // ÃÖÁ¾ °áÁ¦ ±İ¾×
-    int deliveryStatus;       // ÇöÀç ¹è´Ş »óÅÂ (DeliveryStatus »ç¿ë)
-    bool isDelivery;          // ¼ö·É ¹æ¹ı (true: ¹è´Ş, false: Æ÷Àå)
+    std::string orderID;      // ì£¼ë¬¸ ë²ˆí˜¸ (ì˜ˆ: 20240522-0001)
 
-    // »ó¼¼ ³»¿ª Á¶È¸¸¦ À§ÇÑ Ãß°¡ ÇÊµå
-    std::string deliveryAddress; // ¹è´ŞÁö ÁÖ¼Ò
-    std::string riderID;         // ¹èÁ¤µÈ ¶óÀÌ´õ ID
+    int storeID;              // ê°€ê²Œ ê³ ìœ  ID
+
+    std::string storeName;    // ê°€ê²Œ ì´ë¦„ (ë‚´ì—­ ì¡°íšŒ ì‹œ í¸ì˜ìš©)
+
+    std::string orderDateTime;// ì£¼ë¬¸ ì¼ì‹œ
+
+
+
+    int totalPayment;         // ìµœì¢… ê²°ì œ ê¸ˆì•¡
+
+    int deliveryStatus;       // í˜„ì¬ ë°°ë‹¬ ìƒíƒœ (DeliveryStatus ì‚¬ìš©)
+
+    bool isDelivery;          // ìˆ˜ë ¹ ë°©ë²• (true: ë°°ë‹¬, false: í¬ì¥)
+
+
+
+    // ìƒì„¸ ë‚´ì—­ ì¡°íšŒë¥¼ ìœ„í•œ ì¶”ê°€ í•„ë“œ
+
+    std::string deliveryAddress; // ë°°ë‹¬ì§€ ì£¼ì†Œ
+
+    std::string riderID;         // ë°°ì •ëœ ë¼ì´ë” ID
+
+
 
     OrderInfo();
+
     void Clear();
+
 };

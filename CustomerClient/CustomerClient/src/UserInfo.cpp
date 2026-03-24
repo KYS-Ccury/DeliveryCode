@@ -1,26 +1,26 @@
-#include "pch.h"
-#include "UserInfo.h"
-
-UserInfo::UserInfo()
-{
-    Clear();
-}
-
-void UserInfo::Clear()
-{
-    id = "";
-    pw = "";
-    address = "";
-    role = ROLE_CUSTOMER; // ±âº»°ªÀº °í°´
-    points = 0;
-
-    // ¸®½ºÆ® ¹× º¤ÅÍ ÃÊ±âÈ­
-    cardList.clear();
-    couponList.clear();
-
-    // ¶óÀÌ´õ/»çÀå °ü·Ã Ãß°¡ ÇÊµå ÃÊ±âÈ­
-    vehicleType = "";
-    isWorking = false;
-    deliveryCount = 0;
-    ownedStoreID = -1;
+ï»¿#include "pch.h"
+#include "UserInfo.h"
+
+UserInfo::UserInfo()
+{
+    Clear();
+}
+
+void UserInfo::Clear()
+{
+    id = "";
+    pw = "";
+    address = "";
+    role = ROLE_CUSTOMER; // ê¸°ë³¸ê°’ì€ ê³ ê°
+    points = 0;
+
+    // ë¦¬ìŠ¤íŠ¸ ë° ë²¡í„° ì´ˆê¸°í™”
+    cardList.clear();
+    couponList.clear();
+
+    // ë¼ì´ë”/ì‚¬ì¥ ê´€ë ¨ ì¶”ê°€ í•„ë“œ ì´ˆê¸°í™”
+    vehicleType = "";
+    isWorking = false;
+    deliveryCount = 0;
+    ownedStoreID = -1;
 }

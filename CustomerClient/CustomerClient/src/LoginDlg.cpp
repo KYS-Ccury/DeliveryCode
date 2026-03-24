@@ -1,34 +1,39 @@
-﻿// LoginDlg.cpp : 実装ファイル
-//
-
-#include "pch.h"
+﻿#include "pch.h"
 #include "CustomerClient.h"
 #include "afxdialogex.h"
 #include "LoginDlg.h"
-
-
-// LoginDlg ダイアログ
+#include "AuthManager.h"
 
 IMPLEMENT_DYNAMIC(LoginDlg, CDialogEx)
 
-LoginDlg::LoginDlg(CWnd* pParent /*=nullptr*/)
-	: CDialogEx(IDD_LOGIN_DLG, pParent)
-{
-
-}
-
-LoginDlg::~LoginDlg()
-{
-}
+LoginDlg::LoginDlg(CWnd* pParent)
+    : CDialogEx(IDD_LOGIN_DLG, pParent) {}
+LoginDlg::~LoginDlg() {}
 
 void LoginDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialogEx::DoDataExchange(pDX);
+    CDialogEx::DoDataExchange(pDX);
 }
 
-
 BEGIN_MESSAGE_MAP(LoginDlg, CDialogEx)
+    ON_BN_CLICKED(IDOK,     &LoginDlg::OnBnClickedOk)
+    ON_BN_CLICKED(IDCANCEL, &LoginDlg::OnBnClickedCancel)
 END_MESSAGE_MAP()
 
+BOOL LoginDlg::OnInitDialog()
+{
+    CDialogEx::OnInitDialog();
+    return TRUE;
+}
 
-// LoginDlg メッセージ ハンドラー
+void LoginDlg::OnBnClickedOk()
+{
+    // 서버 연동 전 임시 처리: 바로 메인 화면 진입
+    AuthManager::GetInstance().Login("test_user", "test1234");
+    CDialogEx::OnOK();
+}
+
+void LoginDlg::OnBnClickedCancel()
+{
+    CDialogEx::OnCancel();
+}

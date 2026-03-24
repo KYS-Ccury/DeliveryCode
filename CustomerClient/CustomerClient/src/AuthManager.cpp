@@ -1,109 +1,217 @@
-#include "pch.h"
+ï»¿#include "pch.h"
+
 #include "AuthManager.h"
 
+
+
 AuthManager::AuthManager()
+
     : m_isLoggedIn(false)
+
     , m_isAutoLoginEnabled(false)
+
     , m_accessToken("")
+
     , m_currentUserID("")
+
 {
-    m_currentUser.Clear(); // UserInfoÀÇ µ¥ÀÌÅÍ¸¦ ±ú²ıÇÏ°Ô ÃÊ±âÈ­ÇÔ.
+
+    m_currentUser.Clear(); // UserInfoì˜ ë°ì´í„°ë¥¼ ê¹¨ë—í•˜ê²Œ ì´ˆê¸°í™”í•¨.
+
 }
 
-// CUS-01: È¸¿ø°¡ÀÔ (ID/PW ±â¹İ, ÁÖ¼Ò ÇÊ¼ö)
-bool AuthManager::RegisterUser(const std::string& id, const std::string& pw, const std::string& address, int role)
-{
-    // TODO: ¼­¹ö ¿¬µ¿ ¹× DB ÀúÀå ·ÎÁ÷
 
-    // Å×½ºÆ®¸¦ À§ÇØ ÇöÀç À¯Àú °´Ã¼¿¡ Á¤º¸ ¼¼ÆÃ
+
+// CUS-01: íšŒì›ê°€ì… (ID/PW ê¸°ë°˜, ì£¼ì†Œ í•„ìˆ˜)
+
+bool AuthManager::RegisterUser(const std::string& id, const std::string& pw, const std::string& address, int role)
+
+{
+
+    // TODO: ì„œë²„ ì—°ë™ ë° DB ì €ì¥ ë¡œì§
+
+
+
+    // í…ŒìŠ¤íŠ¸ë¥¼ ìœ„í•´ í˜„ì¬ ìœ ì € ê°ì²´ì— ì •ë³´ ì„¸íŒ…
+
     m_currentUser.id = id;
+
     m_currentUser.pw = pw;
+
     m_currentUser.address = address;
+
     m_currentUser.role = role;
 
+
+
     return true;
+
 }
 
-// CUS-02: ·Î±×ÀÎ
+
+
+// CUS-02: ë¡œê·¸ì¸
+
 bool AuthManager::Login(const std::string& id, const std::string& pw)
+
 {
-    // TODO: ¼­¹ö ÀÎÁõ ¹× ¼¼¼Ç »ı¼º
+
+    // TODO: ì„œë²„ ì¸ì¦ ë° ì„¸ì…˜ ìƒì„±
+
     m_isLoggedIn = true;
+
     m_currentUserID = id;
+
     m_accessToken = "dummy_token_12345";
+
     return true;
+
 }
+
+
 
 void AuthManager::Logout()
+
 {
+
     m_isLoggedIn = false;
+
     m_accessToken = "";
+
     m_currentUserID = "";
+
 }
 
-// ÀÎÁõ ÅäÅ« °ü¸®
+
+
+// ì¸ì¦ í† í° ê´€ë¦¬
+
 std::string AuthManager::GetAccessToken() const
+
 {
+
     return m_accessToken;
+
 }
+
+
 
 void AuthManager::RefreshToken()
+
 {
-    // TODO: ÅäÅ« °»½Å ·ÎÁ÷
+
+    // TODO: í† í° ê°±ì‹  ë¡œì§
+
 }
 
-// ¾ÆÀÌµğ Ã£±â (ÀüÈ­¹øÈ£ ±âÁØ)
+
+
+// ì•„ì´ë”” ì°¾ê¸° (ì „í™”ë²ˆí˜¸ ê¸°ì¤€)
+
 std::string AuthManager::FindID(const std::string& phoneNumber)
+
 {
-    // TODO: DB Á¶È¸ ÈÄ ID ¹İÈ¯
+
+    // TODO: DB ì¡°íšŒ í›„ ID ë°˜í™˜
+
     return "found_user_id";
+
 }
 
-// ºñ¹Ğ¹øÈ£ ÃÊ±âÈ­/Ã£±â
+
+
+// ë¹„ë°€ë²ˆí˜¸ ì´ˆê¸°í™”/ì°¾ê¸°
+
 bool AuthManager::ResetPassword(const std::string& id, const std::string& phoneNumber)
+
 {
-    // TODO: º»ÀÎ È®ÀÎ ÈÄ ÀÓ½Ã ºñ¹ø ¹ß¼Û È¤Àº Àç¼³Á¤ Ã¢ ¿¬°á
+
+    // TODO: ë³¸ì¸ í™•ì¸ í›„ ì„ì‹œ ë¹„ë²ˆ ë°œì†¡ í˜¹ì€ ì¬ì„¤ì • ì°½ ì—°ê²°
+
     return true;
+
 }
 
-// ÀÚµ¿ ·Î±×ÀÎ ¼³Á¤ ¹× Ã¼Å©
+
+
+// ìë™ ë¡œê·¸ì¸ ì„¤ì • ë° ì²´í¬
+
 bool AuthManager::EnableAutoLogin(bool enable)
+
 {
+
     m_isAutoLoginEnabled = enable;
-    // TODO: ·ÎÄÃ ÆÄÀÏÀÌ³ª ·¹Áö½ºÆ®¸®¿¡ ¼³Á¤ ÀúÀå
+
+    // TODO: ë¡œì»¬ íŒŒì¼ì´ë‚˜ ë ˆì§€ìŠ¤íŠ¸ë¦¬ì— ì„¤ì • ì €ì¥
+
     return true;
+
 }
+
+
 
 bool AuthManager::CheckAutoLogin()
+
 {
-    // TODO: ÀúÀåµÈ ÅäÅ«ÀÌ À¯È¿ÇÑÁö È®ÀÎ ÈÄ ÀÚµ¿ ·Î±×ÀÎ Ã³¸®
+
+    // TODO: ì €ì¥ëœ í† í°ì´ ìœ íš¨í•œì§€ í™•ì¸ í›„ ìë™ ë¡œê·¸ì¸ ì²˜ë¦¬
+
     if (m_isAutoLoginEnabled) {
+
         return true;
+
     }
+
     return false;
+
 }
 
-// °í°´ Á¤º¸ ¸¶½ºÅ· (3H ¹æ½Ä: ¾Õ 3±ÛÀÚ À¯Áö, ³ª¸ÓÁö´Â * Ã³¸®)
+
+
+// ê³ ê° ì •ë³´ ë§ˆìŠ¤í‚¹ (3H ë°©ì‹: ì• 3ê¸€ì ìœ ì§€, ë‚˜ë¨¸ì§€ëŠ” * ì²˜ë¦¬)
+
 std::string AuthManager::GetMaskedInfo(const std::string& rawData)
+
 {
+
     if (rawData.length() <= 3) return rawData;
 
+
+
     std::string masked = rawData.substr(0, 3);
+
     for (size_t i = 3; i < rawData.length(); ++i) {
+
         masked += "*";
+
     }
+
     return masked;
+
 }
 
-// °í°´ °³ÀÎÁ¤º¸ ¼³Á¤ º¯°æ
+
+
+// ê³ ê° ê°œì¸ì •ë³´ ì„¤ì • ë³€ê²½
+
 bool AuthManager::UpdateUserAddress(const std::string& newAddress)
+
 {
-    // TODO: ÇöÀç ·Î±×ÀÎ À¯ÀúÀÇ ÁÖ¼Ò Á¤º¸ ¼­¹ö ¾÷µ¥ÀÌÆ®
+
+    // TODO: í˜„ì¬ ë¡œê·¸ì¸ ìœ ì €ì˜ ì£¼ì†Œ ì •ë³´ ì„œë²„ ì—…ë°ì´íŠ¸
+
     return true;
+
 }
+
+
 
 bool AuthManager::ChangePassword(const std::string& oldPw, const std::string& newPw)
+
 {
-    // TODO: ±âÁ¸ ºñ¹ø È®ÀÎ ÈÄ »õ ºñ¹øÀ¸·Î ±³Ã¼
+
+    // TODO: ê¸°ì¡´ ë¹„ë²ˆ í™•ì¸ í›„ ìƒˆ ë¹„ë²ˆìœ¼ë¡œ êµì²´
+
     return true;
+
 }

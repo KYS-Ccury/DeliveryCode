@@ -29,14 +29,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
@@ -44,14 +44,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
@@ -95,6 +95,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)header;$(ProjectDir)res;$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard_C>Default</LanguageStandard_C>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -185,19 +186,29 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="CustomerClient.h" />
-    <ClInclude Include="CustomerClientDlg.h" />
-    <ClInclude Include="framework.h" />
+    <ResourceCompile Include="CustomerClient.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\CustomerClient.rc2" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\CustomerClient.ico" />
+  </ItemGroup>
+  <ItemGroup>
     <ClInclude Include="header\AuthManager.h" />
     <ClInclude Include="header\CartDlg.h" />
     <ClInclude Include="header\CartItem.h" />
     <ClInclude Include="header\ChatDlg.h" />
     <ClInclude Include="header\ChatManager.h" />
     <ClInclude Include="header\DeliveryOkDlg.h" />
+    <ClInclude Include="header\json.hpp" />
     <ClInclude Include="header\LoginDlg.h" />
     <ClInclude Include="header\MainHomeDlg.h" />
     <ClInclude Include="header\MenuDetailDlg.h" />
     <ClInclude Include="header\MenuInfo.h" />
+    <ClInclude Include="header\MenuInfo_final.h" />
+    <ClInclude Include="header\NetworkManager.h" />
+    <ClInclude Include="header\OptionChangeDlg.h" />
     <ClInclude Include="header\OrderHistoryDlg.h" />
     <ClInclude Include="header\OrderInfo.h" />
     <ClInclude Include="header\OrderManager.h" />
@@ -209,31 +220,24 @@
     <ClInclude Include="header\StoreInfo.h" />
     <ClInclude Include="header\StoreListDlg.h" />
     <ClInclude Include="header\UserInfo.h" />
-    <ClInclude Include="OptionChangeDlg.h" />
-    <ClInclude Include="pch.h" />
-    <ClInclude Include="Resource.h" />
-    <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CustomerClient.cpp" />
-    <ClCompile Include="CustomerClientDlg.cpp" />
-    <ClCompile Include="OptionChangeDlg.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\AuthManager.cpp" />
     <ClCompile Include="src\CartDlg.cpp" />
     <ClCompile Include="src\CartItem.cpp" />
     <ClCompile Include="src\ChatDlg.cpp" />
     <ClCompile Include="src\ChatManager.cpp" />
+    <ClCompile Include="src\CustomerClient.cpp" />
     <ClCompile Include="src\DeliveryOkDlg.cpp" />
     <ClCompile Include="src\LoginDlg.cpp" />
     <ClCompile Include="src\MainHomeDlg.cpp" />
     <ClCompile Include="src\MenuDetailDlg.cpp" />
     <ClCompile Include="src\MenuInfo.cpp" />
+    <ClCompile Include="src\NetworkManager.cpp" />
+    <ClCompile Include="src\OptionChangeDlg.cpp" />
     <ClCompile Include="src\OrderHistoryDlg.cpp" />
     <ClCompile Include="src\OrderInfo.cpp" />
     <ClCompile Include="src\OrderManager.cpp" />
@@ -244,16 +248,8 @@
     <ClCompile Include="src\StoreDetailDlg.cpp" />
     <ClCompile Include="src\StoreInfo.cpp" />
     <ClCompile Include="src\StoreListDlg.cpp" />
+    <ClCompile Include="src\StoreListDlg_patch.cpp" />
     <ClCompile Include="src\UserInfo.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="CustomerClient.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="res\CustomerClient.rc2" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="res\CustomerClient.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
