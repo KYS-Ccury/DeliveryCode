@@ -1,242 +1,327 @@
-// AdminHandler.cpp v2 – bemin_db 스키마 기준 완성본
-#include "AdminHandler.h"
-#include "ChatHandler.h"
-#include "RiderHandler.h"
-#include "CustomerHandler.h"
-#include "Session.h"
-#include "MariaDBManager.h"
-#include "Types.h"
-#include <nlohmann/json.hpp>
-#include <iostream>
-#include "EpollServer.h"   // ← 이 줄 추가 (9번 줄 다음)
+// // AdminHandler.cpp – DB 연동 완성본
+// #include "AdminHandler.h"
+// #include "ChatHandler.h"
+// #include "RiderHandler.h"
+// #include "CustomerHandler.h"
+// #include "Session.h"
+// #include "MariaDBManager.h"
+// #include "EpollServer.h"
+// #include "Protocol.h"
+// #include <nlohmann/json.hpp>
+// #include <iostream>
 
-using json = nlohmann::json;
+// using json = nlohmann::json;
 
-static void sendErr(Session* s, uint16_t p, uint16_t c, const std::string& m) {
-    json r; r["status"] = c; r["message"] = m;
-    s->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), p, r.dump());
-}
-static std::string esc(const std::string& s) {
-    std::string o; for (char c : s) { if(c=='\''||c=='\\'||c=='"') o+='\\'; o+=c; } return o;
-}
+// static void sendErr(Session* s, uint16_t proto, uint16_t code, const std::string& msg) {
+//     json r; r["status"] = code; r["message"] = msg;
+//     s->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), proto, r.dump());
+// }
+// static std::string esc(const std::string& s) {
+//     std::string o; for (char c : s) { if (c=='\''||c=='\\'||c=='"') o+='\\'; o+=c; } return o;
+// }
 
-void AdminHandler::registerSession  (int fd, int adminId) { ChatHandler::registerAdmin(fd, adminId); }
-void AdminHandler::unregisterSession(int fd)              { ChatHandler::unregisterAdmin(fd); }
+// void AdminHandler::registerSession  (int fd, int adminId) { ChatHandler::registerAdmin(fd, adminId); }
+// void AdminHandler::unregisterSession(int fd)               { ChatHandler::unregisterAdmin(fd); }
 
-void AdminHandler::process(Session* session, uint16_t protocol, const std::string& body) {
-    switch (protocol) {
-        case CmdCommon::REQ_LOGIN:           handleAdminLogin  (session, body); break;
-        case CmdCommon::REQ_LOGOUT:
-            ChatHandler::unregisterAdmin(session->getFd());
-            { json r; r["status"]=Status::SUCCESS;
-              session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), CmdCommon::REQ_LOGOUT, r.dump()); }
-            break;
-        case CmdAdmin::REQ_MONITOR_ORDERS:   handleGetStats    (session, body); break;
-        case CmdAdmin::REQ_RIDER_STATUS:     handleRiderStatus (session, body); break;
-        case CmdAdmin::REQ_FORCE_DISPATCH:   handleForceDispatch(session, body); break;
-        case CmdAdmin::REQ_FORCE_CANCEL:     handleForceCancel (session, body); break;
-        case CmdAdmin::REQ_MANAGE_REVIEW:    handleManageReview(session, body); break;
-        case CmdAdmin::REQ_SETTLEMENT_LIST:  handleSettlement  (session, body); break;
-        case CmdChat::REQ_CREATE_ROOM:
-        case CmdChat::REQ_SEND_MSG:
-        case CmdChat::REQ_GET_MSGS:
-            ChatHandler::process(session, protocol, body, ClientType::ADMIN);
-            break;
-        default: sendErr(session, protocol, Status::BAD_REQUEST, "Unknown protocol"); break;
-    }
-}
+// void AdminHandler::process(Session* session, uint16_t protocol, const std::string& body) {
+//     std::cout << "[AdminHandler] Protocol: " << protocol << "\n";
+//     switch (protocol) {
+//         case CmdCommon::REQ_LOGIN: handleLogin(session, body); break;
+//         case CmdCommon::REQ_LOGOUT:
+//             ChatHandler::unregisterAdmin(session->getFd());
+//             { json r; r["status"]=Status::SUCCESS;
+//               session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN),CmdCommon::REQ_LOGOUT,r.dump()); }
+//             break;
+//         case CmdAdmin::REQ_MONITOR_ORDERS:  handleMonitorOrders (session, body); break;
+//         case CmdAdmin::REQ_RIDER_STATUS:    handleRiderStatus   (session, body); break;
+//         case CmdAdmin::REQ_FORCE_DISPATCH:  handleForceDispatch (session, body); break;
+//         case CmdAdmin::REQ_FORCE_CANCEL:    handleForceCancel   (session, body); break;
+//         case CmdAdmin::REQ_SETTLEMENT_LIST: handleSettlementList(session, body); break;
+//         case CmdAdmin::REQ_SETTLEMENT_CONF: handleSettlementConf(session, body); break;
+//         case CmdAdmin::REQ_MANAGE_REVIEW:   handleManageReview  (session, body); break;
+//         case CmdChat::REQ_CREATE_ROOM:
+//         case CmdChat::REQ_SEND_MSG:
+//         case CmdChat::REQ_GET_MSGS:
+//             ChatHandler::process(session, protocol, body, ClientType::ADMIN);
+//             break;
+//         default:
+//             std::cerr << "[AdminHandler] 알 수 없는 프로토콜: " << protocol << "\n";
+//             sendErr(session, protocol, Status::BAD_REQUEST, "Unknown protocol");
+//     }
+// }
 
-// 101: 관리자 로그인
-void AdminHandler::handleAdminLogin(Session* session, const std::string& body) {
-    try {
-        auto& db = MariaDBManager::getInstance();
-        json  req = json::parse(body);
-        std::string id = esc(req.value("id","login_id" ));
-        std::string pw = esc(req.value("pw","password" ));
-        // 기존 RiderHandlerImpl 방식과 맞춤 (login_id / password 필드)
-        if (req.contains("login_id")) id = esc(req["login_id"].get<std::string>());
-        if (req.contains("password")) pw = esc(req["password"].get<std::string>());
+// // ─────────────────────────────────────────────────
+// // 510: 대기 주문 모니터링 (실시간 현황판)
+// // ─────────────────────────────────────────────────
+// void AdminHandler::handleMonitorOrders(Session* session, const std::string&) {
+//     try {
+//         auto& db = MariaDBManager::getInstance();
 
-        auto rows = db.executeQuery(
-            "SELECT user_id, name FROM users "
-            "WHERE login_id='" + id + "' AND password='" + pw
-            + "' AND role='ADMIN' AND status='ACTIVE' LIMIT 1");
+//         // 오늘 주문 수, 대기 중 주문 수, 활성 라이더 수
+//         auto statsRows = db.executeQuery(
+//             "SELECT "
+//             " (SELECT COUNT(*) FROM orders WHERE DATE(created_at)=CURDATE()) AS today_orders, "
+//             " (SELECT COUNT(*) FROM orders WHERE status IN ('PENDING','ACCEPTED','COOKING','WAITING_PICKUP','DELIVERING')) AS active_orders, "
+//             " (SELECT COUNT(*) FROM rider_profiles WHERE is_working=TRUE AND is_online=TRUE) AS active_riders");
 
-        if (rows.empty()) { sendErr(session, CmdCommon::REQ_LOGIN, Status::UNAUTHORIZED, "로그인 실패"); return; }
+//         // WAITING_PICKUP 배차 대기 주문 목록
+//         auto waitRows = db.executeQuery(
+//             "SELECT o.order_id, r.restaurant_name AS store_name, r.address AS pickup_addr, "
+//             "       o.delivery_address AS dest_addr, r.base_delivery_fee, o.total_price, "
+//             "       TIMESTAMPDIFF(SECOND, o.created_at, NOW()) AS wait_sec "
+//             "FROM orders o "
+//             "JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
+//             "WHERE o.status='WAITING_PICKUP' AND o.rider_id IS NULL "
+//             "ORDER BY o.created_at ASC LIMIT 50");
 
-        int adminId = std::stoi(rows[0]["user_id"]);
-        session->setUserID(adminId);
-        session->setUserType(static_cast<uint8_t>(ClientType::ADMIN));
-        ChatHandler::registerAdmin(session->getFd(), adminId);
+//         json res;
+//         res["status"] = Status::SUCCESS;
+//         if (!statsRows.empty()) {
+//             res["today_orders"]  = std::stoi(statsRows[0].count("today_orders")  ? statsRows[0].at("today_orders")  : "0");
+//             res["active_orders"] = std::stoi(statsRows[0].count("active_orders") ? statsRows[0].at("active_orders") : "0");
+//             res["active_riders"] = std::stoi(statsRows[0].count("active_riders") ? statsRows[0].at("active_riders") : "0");
+//         }
 
-        json res; res["status"] = Status::SUCCESS;
-        res["admin_id"] = adminId;
-        res["name"]     = rows[0]["name"];
-        session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), CmdCommon::REQ_LOGIN, res.dump());
+//         json waiting = json::array();
+//         for (auto& r : waitRows) {
+//             json w;
+//             w["order_id"]     = std::stoi(r.at("order_id"));
+//             w["store_name"]   = r.at("store_name");
+//             w["pickup_addr"]  = r.count("pickup_addr") ? r.at("pickup_addr") : "";
+//             w["dest_addr"]    = r.count("dest_addr")   ? r.at("dest_addr")   : "";
+//             w["delivery_fee"] = std::stoi(r.count("base_delivery_fee") ? r.at("base_delivery_fee") : "0");
+//             w["total_price"]  = std::stoi(r.count("total_price") ? r.at("total_price") : "0");
+//             w["wait_sec"]     = std::stoi(r.count("wait_sec") ? r.at("wait_sec") : "0");
+//             waiting.push_back(w);
+//         }
+//         res["waiting_orders"] = waiting;
 
-    } catch (const std::exception& e) { sendErr(session, CmdCommon::REQ_LOGIN, Status::SERVER_ERROR, e.what()); }
-}
+//         session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), CmdAdmin::REQ_MONITOR_ORDERS, res.dump());
 
-// 510: 주문 모니터링 대시보드
-void AdminHandler::handleGetStats(Session* session, const std::string& body) {
-    try {
-        auto& db = MariaDBManager::getInstance();
+//     } catch (const std::exception& e) {
+//         sendErr(session, CmdAdmin::REQ_MONITOR_ORDERS, Status::SERVER_ERROR, e.what());
+//     }
+// }
 
-        // 오늘 주문 수
-        auto today = db.executeQuery(
-            "SELECT COUNT(*) AS cnt FROM orders WHERE DATE(created_at)=CURDATE()");
-        // 활성 라이더 수
-        auto riders = db.executeQuery(
-            "SELECT COUNT(*) AS cnt FROM rider_profiles WHERE is_online=1");
-        // 대기 주문 (PENDING)
-        auto pending = db.executeQuery(
-            "SELECT COUNT(*) AS cnt FROM orders WHERE status='PENDING'");
-        // 배달 중 (DELIVERING)
-        auto delivering = db.executeQuery(
-            "SELECT COUNT(*) AS cnt FROM orders WHERE status='DELIVERING'");
+// // ─────────────────────────────────────────────────
+// // 511: 라이더 현황 조회
+// // ─────────────────────────────────────────────────
+// void AdminHandler::handleRiderStatus(Session* session, const std::string&) {
+//     try {
+//         auto& db = MariaDBManager::getInstance();
 
-        json res; res["status"] = Status::SUCCESS;
-        res["today_orders"]  = today.empty()      || today[0]["cnt"].empty()      ? 0 : std::stoi(today[0]["cnt"]);
-        res["active_riders"] = riders.empty()     || riders[0]["cnt"].empty()     ? 0 : std::stoi(riders[0]["cnt"]);
-        res["pending_orders"]= pending.empty()    || pending[0]["cnt"].empty()    ? 0 : std::stoi(pending[0]["cnt"]);
-        res["delivering"]    = delivering.empty() || delivering[0]["cnt"].empty() ? 0 : std::stoi(delivering[0]["cnt"]);
-        session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), CmdAdmin::REQ_MONITOR_ORDERS, res.dump());
+//         auto rows = db.executeQuery(
+//             "SELECT u.user_id, u.name, u.phone, rp.vehicle_type, "
+//             "       rp.is_working, rp.is_online, rp.is_accepting, rp.is_admin_blocked "
+//             "FROM users u "
+//             "JOIN rider_profiles rp ON rp.user_id = u.user_id "
+//             "WHERE u.role='RIDER' AND u.status='ACTIVE' "
+//             "ORDER BY rp.is_online DESC, rp.is_working DESC");
 
-    } catch (const std::exception& e) { sendErr(session, CmdAdmin::REQ_MONITOR_ORDERS, Status::SERVER_ERROR, e.what()); }
-}
+//         json riders = json::array();
+//         for (auto& r : rows) {
+//             json rd;
+//             rd["rider_id"]       = std::stoi(r.at("user_id"));
+//             rd["name"]           = r.at("name");
+//             rd["phone"]          = r.count("phone")        ? r.at("phone")        : "";
+//             rd["vehicle_type"]   = r.count("vehicle_type") ? r.at("vehicle_type") : "";
+//             rd["is_working"]     = (r.at("is_working")   == "1");
+//             rd["is_online"]      = (r.at("is_online")    == "1");
+//             rd["is_accepting"]   = (r.at("is_accepting") == "1");
+//             rd["is_blocked"]     = (r.at("is_admin_blocked") == "1");
+//             riders.push_back(rd);
+//         }
 
-// 511: 라이더 현황
-void AdminHandler::handleRiderStatus(Session* session, const std::string& body) {
-    try {
-        auto& db = MariaDBManager::getInstance();
-        auto rows = db.executeQuery(
-            "SELECT u.user_id, u.name, u.phone, rp.vehicle_type, "
-            "       rp.is_online, rp.is_working, rp.is_accepting, rp.is_admin_blocked "
-            "FROM users u JOIN rider_profiles rp ON rp.user_id = u.user_id "
-            "WHERE u.role='RIDER' ORDER BY rp.is_online DESC, u.name");
+//         json res; res["status"] = Status::SUCCESS; res["riders"] = riders;
+//         session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), CmdAdmin::REQ_RIDER_STATUS, res.dump());
 
-        json riders = json::array();
-        for (auto& r : rows) {
-            json rd;
-            rd["id"]           = std::stoi(r["user_id"]);
-            rd["name"]         = r["name"];
-            rd["phone"]        = r.count("phone")        ? r["phone"]       : "";
-            rd["vehicle"]      = r.count("vehicle_type") ? r["vehicle_type"]: "";
-            rd["is_online"]    = (r.count("is_online")   && r["is_online"]   == "1");
-            rd["is_working"]   = (r.count("is_working")  && r["is_working"]  == "1");
-            rd["is_accepting"] = (r.count("is_accepting")&& r["is_accepting"]== "1");
-            rd["is_blocked"]   = (r.count("is_admin_blocked") && r["is_admin_blocked"] == "1");
-            riders.push_back(rd);
-        }
-        json res; res["status"] = Status::SUCCESS; res["riders"] = riders;
-        session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), CmdAdmin::REQ_RIDER_STATUS, res.dump());
+//     } catch (const std::exception& e) {
+//         sendErr(session, CmdAdmin::REQ_RIDER_STATUS, Status::SERVER_ERROR, e.what());
+//     }
+// }
 
-    } catch (const std::exception& e) { sendErr(session, CmdAdmin::REQ_RIDER_STATUS, Status::SERVER_ERROR, e.what()); }
-}
+// // ─────────────────────────────────────────────────
+// // 512: 강제 배차 (관리자가 라이더 지정)
+// // 요청: { order_id, rider_id }
+// // ─────────────────────────────────────────────────
+// void AdminHandler::handleForceDispatch(Session* session, const std::string& body) {
+//     try {
+//         auto& db  = MariaDBManager::getInstance();
+//         json  req = json::parse(body);
+//         int   orderID  = req.value("order_id",  0);
+//         int   riderID  = req.value("rider_id",  0);
 
-// 512: 강제 배차 (라이더 지정)
-void AdminHandler::handleForceDispatch(Session* session, const std::string& body) {
-    try {
-        auto& db = MariaDBManager::getInstance();
-        json  req = json::parse(body);
-        int orderId = req.value("order_id", 0);
-        int riderId = req.value("rider_id", 0);
+//         if (!orderID || !riderID) { sendErr(session, CmdAdmin::REQ_FORCE_DISPATCH, Status::BAD_REQUEST, "파라미터 누락"); return; }
 
-        db.executeUpdate(
-            "UPDATE orders SET rider_id=" + std::to_string(riderId)
-            + ",status='DELIVERING' WHERE order_id=" + std::to_string(orderId));
-        db.executeUpdate(
-            "INSERT INTO dispatch_logs (order_id,rider_id,result) VALUES ("
-            + std::to_string(orderId) + "," + std::to_string(riderId) + ",'ACCEPT')");
+//         // 주문 상태 DELIVERING으로, rider_id 지정
+//         bool ok = db.executeUpdate(
+//             "UPDATE orders SET rider_id=" + std::to_string(riderID)
+//             + ", status='DELIVERING' WHERE order_id=" + std::to_string(orderID)
+//             + "  AND status='WAITING_PICKUP'");
 
-        // 라이더에게 Push (NTF_NEW_DISPATCH = 408)
-        int riderFd = RiderHandler::getRiderFdById(riderId);
-        if (riderFd != -1) {
-            auto rows = db.executeQuery(
-                "SELECT r.restaurant_name, r.address AS pickup, o.delivery_address AS dest, "
-                "       r.base_delivery_fee AS fee "
-                "FROM orders o JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
-                "WHERE o.order_id=" + std::to_string(orderId));
-            if (!rows.empty())
-                RiderHandler::pushDispatch(riderFd, orderId,
-                    rows[0]["restaurant_name"], rows[0]["pickup"],
-                    rows[0]["dest"], std::stoi(rows[0]["fee"]));
-        }
+//         if (!ok) { sendErr(session, CmdAdmin::REQ_FORCE_DISPATCH, Status::NOT_FOUND, "배차 가능한 주문 없음"); return; }
 
-        json res; res["status"] = Status::SUCCESS;
-        session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), CmdAdmin::REQ_FORCE_DISPATCH, res.dump());
+//         db.executeUpdate(
+//             "INSERT INTO dispatch_logs (order_id, rider_id, result) VALUES ("
+//             + std::to_string(orderID) + "," + std::to_string(riderID) + ",'FORCE_DISPATCH')");
 
-    } catch (const std::exception& e) { sendErr(session, CmdAdmin::REQ_FORCE_DISPATCH, Status::SERVER_ERROR, e.what()); }
-}
+//         // 라이더에게 NTF_NEW_DISPATCH Push
+//         int riderFd = RiderHandler::getInstance().getFdByUserId(riderID);
+//         if (riderFd > 0 && EpollServer::s_instance) {
+//             auto rs = EpollServer::s_instance->getSession(riderFd);
+//             if (rs) {
+//                 auto detailRows = db.executeQuery(
+//                     "SELECT r.restaurant_name, r.address, o.delivery_address, r.base_delivery_fee "
+//                     "FROM orders o JOIN restaurants r ON r.restaurant_id=o.restaurant_id "
+//                     "WHERE o.order_id=" + std::to_string(orderID));
+//                 if (!detailRows.empty()) {
+//                     auto& d = detailRows[0];
+//                     RiderHandler::getInstance().pushDispatch(riderFd, orderID,
+//                         d.at("restaurant_name"),
+//                         d.count("address") ? d.at("address") : "",
+//                         d.count("delivery_address") ? d.at("delivery_address") : "",
+//                         std::stoi(d.count("base_delivery_fee") ? d.at("base_delivery_fee") : "0"));
+//                 }
+//             }
+//         }
 
-// 513: 강제 취소
-void AdminHandler::handleForceCancel(Session* session, const std::string& body) {
-    try {
-        auto& db = MariaDBManager::getInstance();
-        json  req = json::parse(body);
-        int orderId = req.value("order_id", 0);
-        std::string reason = esc(req.value("reason", "관리자 강제 취소"));
+//         json res; res["status"] = Status::SUCCESS; res["message"] = "강제 배차 완료";
+//         session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), CmdAdmin::REQ_FORCE_DISPATCH, res.dump());
 
-        db.executeUpdate(
-            "UPDATE orders SET status='CANCELED',cancel_reason='" + reason
-            + "',canceled_at=NOW() WHERE order_id=" + std::to_string(orderId));
+//     } catch (const std::exception& e) {
+//         sendErr(session, CmdAdmin::REQ_FORCE_DISPATCH, Status::SERVER_ERROR, e.what());
+//     }
+// }
 
-        // 고객 Push
-        auto rows = db.executeQuery("SELECT customer_id FROM orders WHERE order_id=" + std::to_string(orderId));
-        if (!rows.empty() && EpollServer::s_instance) {
-            Session* cs = EpollServer::s_instance->getSessionByUserID(std::stoi(rows[0]["customer_id"]));
-            if (cs) CustomerHandler::pushOrderStatus(cs, orderId, 4, "주문이 취소되었습니다: " + reason);
-        }
+// // ─────────────────────────────────────────────────
+// // 513: 배차 강제 취소
+// // 요청: { order_id, reason }
+// // ─────────────────────────────────────────────────
+// void AdminHandler::handleForceCancel(Session* session, const std::string& body) {
+//     try {
+//         auto& db  = MariaDBManager::getInstance();
+//         json  req = json::parse(body);
+//         int   orderID = req.value("order_id", 0);
+//         std::string reason = req.value("reason", "관리자 강제 취소");
 
-        json res; res["status"] = Status::SUCCESS;
-        session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), CmdAdmin::REQ_FORCE_CANCEL, res.dump());
+//         // 주문 취소
+//         db.executeUpdate(
+//             "UPDATE orders SET status='CANCELED', rider_id=NULL WHERE order_id=" + std::to_string(orderID));
 
-    } catch (const std::exception& e) { sendErr(session, CmdAdmin::REQ_FORCE_CANCEL, Status::SERVER_ERROR, e.what()); }
-}
+//         // 고객에게 Push
+//         auto custRows = db.executeQuery(
+//             "SELECT customer_id FROM orders WHERE order_id=" + std::to_string(orderID));
+//         if (!custRows.empty() && EpollServer::s_instance) {
+//             int custID = std::stoi(custRows[0].at("customer_id"));
+//             auto cs = EpollServer::s_instance->getSessionByUserID(custID);
+//             if (cs)
+//                 CustomerHandler::getInstance().pushOrderStatus(cs, orderID, 0, "관리자에 의해 주문이 취소되었습니다: " + reason);
+//         }
 
-// 520: 리뷰 관리 (블라인드 처리)
-void AdminHandler::handleManageReview(Session* session, const std::string& body) {
-    try {
-        auto& db = MariaDBManager::getInstance();
-        json  req = json::parse(body);
-        int  reviewId = req.value("review_id", 0);
-        bool blind    = req.value("blind",     false);
+//         json res; res["status"] = Status::SUCCESS;
+//         session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), CmdAdmin::REQ_FORCE_CANCEL, res.dump());
 
-        // reviews 테이블에 blind 컬럼이 없으면 content를 null로 처리
-        if (blind)
-            db.executeUpdate("UPDATE reviews SET content=NULL WHERE review_id=" + std::to_string(reviewId));
-        else
-            db.executeUpdate("UPDATE reviews SET content='" + esc(req.value("content","")) + "' WHERE review_id=" + std::to_string(reviewId));
+//     } catch (const std::exception& e) {
+//         sendErr(session, CmdAdmin::REQ_FORCE_CANCEL, Status::SERVER_ERROR, e.what());
+//     }
+// }
 
-        json res; res["status"] = Status::SUCCESS;
-        session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), CmdAdmin::REQ_MANAGE_REVIEW, res.dump());
+// // ─────────────────────────────────────────────────
+// // 500: 정산 목록 조회 (1일 단위)
+// // ─────────────────────────────────────────────────
+// void AdminHandler::handleSettlementList(Session* session, const std::string& body) {
+//     try {
+//         auto& db = MariaDBManager::getInstance();
+//         json  req = body.empty() ? json::object() : json::parse(body);
+//         std::string date = req.value("date", ""); // "2026-03-24"
 
-    } catch (const std::exception& e) { sendErr(session, CmdAdmin::REQ_MANAGE_REVIEW, Status::SERVER_ERROR, e.what()); }
-}
+//         std::string q =
+//             "SELECT s.settlement_id, r.restaurant_name, s.settle_date, "
+//             "       s.total_sales, s.commission, s.payout_amount, s.is_confirmed "
+//             "FROM settlements s "
+//             "JOIN restaurants r ON r.restaurant_id = s.restaurant_id ";
+//         if (!date.empty()) q += "WHERE s.settle_date='" + esc(date) + "' ";
+//         q += "ORDER BY s.settle_date DESC, r.restaurant_name";
 
-// 500: 정산 목록 조회
-void AdminHandler::handleSettlement(Session* session, const std::string& body) {
-    try {
-        auto& db = MariaDBManager::getInstance();
-        auto rows = db.executeQuery(
-            "SELECT s.settlement_id, r.restaurant_name, s.period_start, s.period_end, "
-            "       s.net_amount, s.status "
-            "FROM settlements s JOIN restaurants r ON r.restaurant_id = s.restaurant_id "
-            "ORDER BY s.period_end DESC LIMIT 100");
+//         auto rows = db.executeQuery(q);
+//         json list = json::array();
+//         for (auto& r : rows) {
+//             json s;
+//             s["id"]          = std::stoi(r.at("settlement_id"));
+//             s["store_name"]  = r.at("restaurant_name");
+//             s["date"]        = r.at("settle_date");
+//             s["total_sales"] = std::stoi(r.count("total_sales")   ? r.at("total_sales")   : "0");
+//             s["commission"]  = std::stoi(r.count("commission")    ? r.at("commission")    : "0");
+//             s["payout"]      = std::stoi(r.count("payout_amount") ? r.at("payout_amount") : "0");
+//             s["confirmed"]   = (r.at("is_confirmed") == "1");
+//             list.push_back(s);
+//         }
 
-        json list = json::array();
-        for (auto& r : rows) {
-            json s;
-            s["id"]      = std::stoi(r["settlement_id"]);
-            s["store"]   = r["restaurant_name"];
-            s["from"]    = r["period_start"];
-            s["to"]      = r["period_end"];
-            s["amount"]  = r.count("net_amount") && !r["net_amount"].empty() ? std::stoi(r["net_amount"]) : 0;
-            s["status"]  = r["status"];
-            list.push_back(s);
-        }
-        json res; res["status"] = Status::SUCCESS; res["settlements"] = list;
-        session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), CmdAdmin::REQ_SETTLEMENT_LIST, res.dump());
+//         json res; res["status"] = Status::SUCCESS; res["settlements"] = list;
+//         session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), CmdAdmin::REQ_SETTLEMENT_LIST, res.dump());
 
-    } catch (const std::exception& e) { sendErr(session, CmdAdmin::REQ_SETTLEMENT_LIST, Status::SERVER_ERROR, e.what()); }
-}
+//     } catch (const std::exception& e) {
+//         sendErr(session, CmdAdmin::REQ_SETTLEMENT_LIST, Status::SERVER_ERROR, e.what());
+//     }
+// }
+
+// // ─────────────────────────────────────────────────
+// // 502: 정산 확정
+// // ─────────────────────────────────────────────────
+// void AdminHandler::handleSettlementConf(Session* session, const std::string& body) {
+//     try {
+//         auto& db  = MariaDBManager::getInstance();
+//         json  req = json::parse(body);
+//         int   sid = req.value("settlement_id", 0);
+
+//         db.executeUpdate(
+//             "UPDATE settlements SET is_confirmed=TRUE, confirmed_at=NOW() "
+//             "WHERE settlement_id=" + std::to_string(sid));
+
+//         json res; res["status"] = Status::SUCCESS;
+//         session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), CmdAdmin::REQ_SETTLEMENT_CONF, res.dump());
+
+//     } catch (const std::exception& e) {
+//         sendErr(session, CmdAdmin::REQ_SETTLEMENT_CONF, Status::SERVER_ERROR, e.what());
+//     }
+// }
+
+// // ─────────────────────────────────────────────────
+// // 520: 리뷰/사용자 관리 (비공개 처리 또는 계정 정지)
+// // ─────────────────────────────────────────────────
+// void AdminHandler::handleManageReview(Session* session, const std::string& body) {
+//     try {
+//         auto& db  = MariaDBManager::getInstance();
+//         json  req = json::parse(body);
+//         std::string action = req.value("action", "");
+
+//         json res; res["status"] = Status::SUCCESS;
+
+//         if (action == "DELETE_REVIEW") {
+//             int reviewID = req.value("review_id", 0);
+//             db.executeUpdate("DELETE FROM reviews WHERE review_id=" + std::to_string(reviewID));
+//             res["message"] = "리뷰 삭제 완료";
+
+//         } else if (action == "BAN_USER") {
+//             int targetID = req.value("target_user_id", 0);
+//             db.executeUpdate(
+//                 "UPDATE users SET status='SUSPENDED' WHERE user_id=" + std::to_string(targetID));
+//             res["message"] = "사용자 정지 완료";
+
+//         } else if (action == "BLOCK_RIDER") {
+//             int riderID = req.value("rider_id", 0);
+//             db.executeUpdate(
+//                 "UPDATE rider_profiles SET is_admin_blocked=TRUE WHERE user_id=" + std::to_string(riderID));
+//             res["message"] = "라이더 차단 완료";
+
+//         } else {
+//             res["status"]  = Status::BAD_REQUEST;
+//             res["message"] = "알 수 없는 action: " + action;
+//         }
+
+//         session->sendPacket(static_cast<uint8_t>(ClientType::ADMIN), CmdAdmin::REQ_MANAGE_REVIEW, res.dump());
+
+//     } catch (const std::exception& e) {
+//         sendErr(session, CmdAdmin::REQ_MANAGE_REVIEW, Status::SERVER_ERROR, e.what());
+//     }
+// }

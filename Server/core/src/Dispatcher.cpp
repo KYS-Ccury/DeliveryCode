@@ -1,9 +1,6 @@
 // ============================================================
 //  Dispatcher.cpp
-//  ★ 변경 사항:
-//    - 공통 프로토콜(100~105)도 clientType 별로 분기
-//      → 라이더가 보낸 로그인/회원가입/프로필 요청은 RiderHandler에서 처리
-//    - 기존 구조 완전 유지, 공통 분기만 추가
+//  ★ 최종 수정: 모든 핸들러를 싱글톤(getInstance) 호출 방식으로 통일
 // ============================================================
 #include "Dispatcher.h"
 #include "CustomerHandler.h"
@@ -11,39 +8,41 @@
 #include "AdminHandler.h"
 #include "OwnerHandler.h"
 #include "Session.h"
-#include "Types.h"
+#include "Struct.h"   // Packet.h에서 이름 변경됨
+#include "Protocol.h"
 #include <iostream>
 
 void Dispatcher::dispatch(Session* session, const PacketHeader& header, const std::string& jsonBody) {
+    if (!session) return;
+
+    // header에서 clientType과 protocol 추출
     ClientType cType   = static_cast<ClientType>(header.clientType);
     uint16_t   protocol = header.protocol;
 
-    // ── 공통 프로토콜(100번대)은 clientType 기준으로 각 핸들러에 위임 ──
-    // 각 핸들러의 process() switch 에 CmdCommon 케이스가 포함되어 있음
-    bool isCommon = (protocol >= 100 && protocol <= 105);
+    // 로그 (디버깅용)
+    // std::cout << "[Dispatcher] Type: " << static_cast<int>(cType) << ", Protocol: " << protocol << std::endl;
 
     switch (cType) {
         case ClientType::CUSTOMER:
-            CustomerHandler::process(session, protocol, jsonBody);
+            // 모든 핸들러를 getInstance().process()로 통일합니다.
+            CustomerHandler::getInstance().process(session, protocol, jsonBody); 
             break;
 
         case ClientType::OWNER:
-            OwnerHandler::process(session, protocol, jsonBody);
+            OwnerHandler::getInstance().process(session, protocol, jsonBody);
             break;
 
         case ClientType::RIDER:
-            // 공통(로그인·로그아웃·프로필) + 라이더 전용(400번대) 모두 처리
-            RiderHandler::process(session, protocol, jsonBody);
+            RiderHandler::getInstance().process(session, protocol, jsonBody);
             break;
 
         case ClientType::ADMIN:
-            AdminHandler::process(session, protocol, jsonBody);
+            AdminHandler::getInstance().process(session, protocol, jsonBody);
             break;
 
         default:
-            std::cerr << "[Dispatcher] 알 수 없는 ClientType: "
-                      << static_cast<int>(cType)
-                      << " / protocol=" << protocol << std::endl;
+            std::cerr << "[Dispatcher] 정의되지 않은 ClientType: " 
+                      << static_cast<int>(cType) << " (Protocol: " << protocol << ")" << std::endl;
             break;
     }
 }

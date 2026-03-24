@@ -2,7 +2,7 @@
 #include <string>
 #include <unordered_map>
 #include <mutex>
-#include "Types.h"
+#include "Protocol.h"
 
 class Session;
 

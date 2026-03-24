@@ -29,32 +29,32 @@ void Session::resetBuffer() {
 //  클라이언트에게 패킷 전송
 //  형식: PacketHeader(1+2+4 바이트, 빅 엔디안) + JSON Body
 // ─────────────────────────────────────────────────────────
-// bool Session::sendPacket(uint8_t clientType, uint16_t protocol, const std::string& jsonBody) {
-//     PacketHeader hdr;
-//     hdr.clientType  = clientType;
-//     hdr.protocol    = htons(protocol);                          // 호스트 → 네트워크 바이트 순서
-//     hdr.bodyLength  = htonl(static_cast<uint32_t>(jsonBody.size()));
+bool Session::sendPacket(uint8_t clientType, uint16_t protocol, const std::string& jsonBody) {
+    PacketHeader hdr;
+    hdr.clientType  = clientType;
+    hdr.protocol    = htons(protocol);                          // 호스트 → 네트워크 바이트 순서
+    hdr.bodyLength  = htonl(static_cast<uint32_t>(jsonBody.size()));
 
-//     // 헤더 + 바디를 하나의 버퍼에 합쳐서 전송 (TCP 단편화 최소화)
-//     std::vector<uint8_t> buf;
-//     buf.resize(sizeof(PacketHeader) + jsonBody.size());
-//     std::memcpy(buf.data(), &hdr, sizeof(PacketHeader));
-//     std::memcpy(buf.data() + sizeof(PacketHeader), jsonBody.data(), jsonBody.size());
+    // 헤더 + 바디를 하나의 버퍼에 합쳐서 전송 (TCP 단편화 최소화)
+    std::vector<uint8_t> buf;
+    buf.resize(sizeof(PacketHeader) + jsonBody.size());
+    std::memcpy(buf.data(), &hdr, sizeof(PacketHeader));
+    std::memcpy(buf.data() + sizeof(PacketHeader), jsonBody.data(), jsonBody.size());
 
-//     size_t total = buf.size();
-//     size_t sent  = 0;
-//     while (sent < total) {
-//         ssize_t ret = send(client_fd,
-//                            reinterpret_cast<const char*>(buf.data()) + sent,
-//                            total - sent, MSG_NOSIGNAL);
-//         if (ret <= 0) {
-//             std::cerr << "[Session::sendPacket] send 실패 fd=" << client_fd << std::endl;
-//             return false;
-//         }
-//         sent += static_cast<size_t>(ret);
-//     }
-//     return true;
-// }
+    size_t total = buf.size();
+    size_t sent  = 0;
+    while (sent < total) {
+        ssize_t ret = send(client_fd,
+                           reinterpret_cast<const char*>(buf.data()) + sent,
+                           total - sent, MSG_NOSIGNAL);
+        if (ret <= 0) {
+            std::cerr << "[Session::sendPacket] send 실패 fd=" << client_fd << std::endl;
+            return false;
+        }
+        sent += static_cast<size_t>(ret);
+    }
+    return true;
+}
 
 // ─────────────────────────────────────────────────────────
 //  소켓에서 데이터 수신 (epoll 이벤트 발생 시 호출)
