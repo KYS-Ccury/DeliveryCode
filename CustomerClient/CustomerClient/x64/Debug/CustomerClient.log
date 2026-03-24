@@ -1,2 +1,17 @@
-﻿  SignupDlg.cpp
-  CustomerClient.vcxproj -> C:\Users\LMS\Desktop\bemin\DeliveryCode\CustomerClient\x64\Debug\CustomerClient.exe
+﻿  CartDlg.cpp
+  ChatDlg.cpp
+  CustomerClient.cpp
+  DeliveryOkDlg.cpp
+  LoginDlg.cpp
+  MainHomeDlg.cpp
+  MenuDetailDlg.cpp
+  OptionChangeDlg.cpp
+  OrderHistoryDlg.cpp
+  PaymentDlg.cpp
+  ReviewListDlg.cpp
+  ReviewWriteDlg.cpp
+  SignupDlg.cpp
+  StoreDetailDlg.cpp
+  StoreListDlg.cpp
+  코드를 생성하고 있습니다...
+  CustomerClient.vcxproj -> C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\x64\Debug\CustomerClient.exe
