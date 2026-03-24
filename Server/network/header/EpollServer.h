@@ -1,35 +1,44 @@
 #pragma once
-#include <unordered_map>
-#include <mutex>
-#include <sys/epoll.h>
-#include "Session.h"
 
+#include <sys/epoll.h>
+#include <netinet/in.h>
+#include <map>
+#include <vector>
+#include <mutex>
+#include <memory>
+
+class Session;
 class ThreadPool;
 
 class EpollServer {
-public:
-    // OwnerHandler / RiderHandler에서 Push 전송 시 고객 세션 조회용
-    static EpollServer* s_instance;
+private:
+    static constexpr int MAX_EVENTS = 1024;
 
+    int port;
+    int server_fd;
+    int epoll_fd;
+    ThreadPool* pool;
+
+    std::map<int, std::shared_ptr<Session>> sessions;
+    std::mutex session_mutex;
+
+    bool setupServer();
+    void setNonBlocking(int fd);
+    void acceptConnection();
+
+public:
     EpollServer(int port, ThreadPool* pool);
     ~EpollServer();
 
-    bool setupServer();
-    void start();         // epoll_wait 루프
-    void acceptConnection();
+    void start();
+    void closeConnection(int client_fd);
+    void rearmSocket(int client_fd);
 
-    // userID로 Session 포인터 조회 (로그인된 세션만 반환)
+    // fd → Session 반환 (없으면 nullptr)
+    std::shared_ptr<Session> getSession(int fd);
+
+    // userID → Session 반환 (없으면 nullptr)
     Session* getSessionByUserID(int userID);
 
-private:
-    void setNonBlocking(int fd);
-    void rearmEpoll(int fd);
-
-    int         port;
-    int         server_fd;
-    int         epoll_fd;
-    ThreadPool* pool;
-
-    std::mutex                        session_mutex;
-    std::unordered_map<int, Session*> sessions; // fd → Session*
+    static EpollServer* s_instance;
 };

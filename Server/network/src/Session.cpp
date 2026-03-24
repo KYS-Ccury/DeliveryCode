@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <sys/socket.h>
 #include <arpa/inet.h>  // htons, htonl, ntohs, ntohl
+#include <unistd.h>   // ← 이 줄 추가
 
 Session::Session(int fd) 
     : client_fd(fd), state(State::READING_HEADER), 

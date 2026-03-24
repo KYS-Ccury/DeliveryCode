@@ -200,7 +200,7 @@ void OwnerHandler::handleUpdateStore(Session* session, const std::string& body) 
         field("name","restaurant_name"); field("address","address");
         field("phone","phone"); field("notice","notice");
         if (req.contains("min_order"))
-            q+=(first?"":",")+"min_order_amt="+std::to_string(req.value("min_order",0)), first=false;
+            q += std::string(first ? "" : ",") + "min_order_amt=" + std::to_string(req.value("min_order", 0));
         q+=" WHERE restaurant_id="+std::to_string(restID);
         db.executeUpdate(q);
         json res; res["status"]=Status::SUCCESS;

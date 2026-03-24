@@ -6,26 +6,43 @@ class Session;
 
 class CustomerHandler {
 public:
-    static void process(Session* session, uint16_t protocol, const std::string& jsonBody);
+    static void process(Session* session, uint16_t protocol,
+                        const std::string& jsonBody);
 
-    // NTF_ORDER_STATUS Push (OwnerHandler / RiderHandler에서 호출)
-    // status: "PENDING","ACCEPTED","REJECTED","COOKING","WAITING_PICKUP",
-    //         "DELIVERING","DONE","CANCELED"
-    static void pushOrderStatus(Session* session, int orderId,
-                                 const std::string& status, const std::string& msg);
+    // int status 버전 (0:대기 1:조리중 2:접수 3:배달중 4:취소 등)
+    static void pushOrderStatus(Session* session, int orderID,
+                                int status, const std::string& msg);
 
 private:
-    static void handleSignup      (Session* s, const std::string& b); // 100
-    static void handleLogin       (Session* s, const std::string& b); // 101
-    static void handleLogout      (Session* s, const std::string& b); // 102
-    static void handleGetProfile  (Session* s, const std::string& b); // 104
-    static void handleStoreList   (Session* s, const std::string& b); // 200
-    static void handleMenuList    (Session* s, const std::string& b); // 201
-    static void handleCreateOrder (Session* s, const std::string& b); // 202
-    static void handleOrderHistory(Session* s, const std::string& b); // 203
-    static void handleOrderDetail (Session* s, const std::string& b); // 204
-    static void handlePayment     (Session* s, const std::string& b); // 205
-    static void handleWriteReview (Session* s, const std::string& b); // 206
-    static void handleReviewList  (Session* s, const std::string& b); // 207
-    static void handleCancelOrder (Session* s, const std::string& b); // 208
+    // ── 공통 인증 ─────────────────────────────────────
+    static void handleLogin       (Session* s, const std::string& b);
+    static void handleSignup      (Session* s, const std::string& b);
+    static void handleLogout      (Session* s, const std::string& b);
+    static void handleGetProfile  (Session* s, const std::string& b);
+    static void handleWithdraw    (Session* s, const std::string& b);
+
+    // ── 가게/메뉴 ────────────────────────────────────
+    static void handleStoreList   (Session* s, const std::string& b);
+    static void handleMenuList    (Session* s, const std::string& b);
+
+    // ── 주문 ─────────────────────────────────────────
+    static void handleCreateOrder (Session* s, const std::string& b);
+    static void handleOrderHistory(Session* s, const std::string& b);
+    static void handleOrderDetail (Session* s, const std::string& b);
+    static void handleCancelOrder (Session* s, const std::string& b);
+    static void handlePayment     (Session* s, const std::string& b);
+
+    // ── 리뷰 ─────────────────────────────────────────
+    static void handleWriteReview (Session* s, const std::string& b);
+    static void handleReviewList  (Session* s, const std::string& b);
+
+    // ── 마이페이지 ───────────────────────────────────
+    static void handleRegister    (Session* s, const std::string& b);
+    static void handleGetMyInfo   (Session* s, const std::string& b);
+    static void handleUpdateMyInfo(Session* s, const std::string& b);
+    static void handleAddCard     (Session* s, const std::string& b);
+    static void handleGetCards    (Session* s, const std::string& b);
+    static void handleDeleteCard  (Session* s, const std::string& b);
+    static void handleGetCoupons  (Session* s, const std::string& b);
+    static void handleGetPoints   (Session* s, const std::string& b);
 };

@@ -8,6 +8,7 @@
 #include "Types.h"
 #include <nlohmann/json.hpp>
 #include <iostream>
+#include "EpollServer.h"   // ← 이 줄 추가 (9번 줄 다음)
 
 using json = nlohmann::json;
 
@@ -184,7 +185,7 @@ void AdminHandler::handleForceCancel(Session* session, const std::string& body) 
         auto rows = db.executeQuery("SELECT customer_id FROM orders WHERE order_id=" + std::to_string(orderId));
         if (!rows.empty() && EpollServer::s_instance) {
             Session* cs = EpollServer::s_instance->getSessionByUserID(std::stoi(rows[0]["customer_id"]));
-            if (cs) CustomerHandler::pushOrderStatus(cs, orderId, "CANCELED", "주문이 취소되었습니다: " + reason);
+            if (cs) CustomerHandler::pushOrderStatus(cs, orderId, 4, "주문이 취소되었습니다: " + reason);
         }
 
         json res; res["status"] = Status::SUCCESS;

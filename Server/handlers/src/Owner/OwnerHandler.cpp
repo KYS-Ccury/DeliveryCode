@@ -288,7 +288,7 @@ void OwnerHandler::handleAcceptOrder(Session* session, const std::string& body) 
             "SELECT customer_id FROM orders WHERE order_id=" + std::to_string(orderId));
         if (!rows.empty()) {
             Session* cs = findCustomer(std::stoi(rows[0]["customer_id"]));
-            if (cs) CustomerHandler::pushOrderStatus(cs, orderId, "ACCEPTED",
+            if (cs) CustomerHandler::pushOrderStatus(cs, orderId, 2,
                 "주문이 수락되었습니다. 예상 조리 시간: " + std::to_string(estMin) + "분");
         }
 
@@ -318,7 +318,7 @@ void OwnerHandler::handleRejectOrder(Session* session, const std::string& body) 
         auto rows = db.executeQuery("SELECT customer_id FROM orders WHERE order_id=" + std::to_string(orderId));
         if (!rows.empty()) {
             Session* cs = findCustomer(std::stoi(rows[0]["customer_id"]));
-            if (cs) CustomerHandler::pushOrderStatus(cs, orderId, "REJECTED", "주문이 거절되었습니다: " + reason);
+            if (cs) CustomerHandler::pushOrderStatus(cs, orderId, 4, "주문이 거절되었습니다: " + reason);
         }
 
         json res; res["status"] = Status::SUCCESS;
@@ -344,7 +344,7 @@ void OwnerHandler::handleCookingDone(Session* session, const std::string& body) 
         auto rows = db.executeQuery("SELECT customer_id FROM orders WHERE order_id=" + std::to_string(orderId));
         if (!rows.empty()) {
             Session* cs = findCustomer(std::stoi(rows[0]["customer_id"]));
-            if (cs) CustomerHandler::pushOrderStatus(cs, orderId, "WAITING_PICKUP", "조리가 완료되어 라이더를 기다리고 있습니다.");
+            if (cs) CustomerHandler::pushOrderStatus(cs, orderId, 3, "조리가 완료되어 라이더를 기다리고 있습니다.");
         }
 
         json res; res["status"] = Status::SUCCESS;

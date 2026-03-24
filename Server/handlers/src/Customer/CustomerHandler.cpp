@@ -683,7 +683,7 @@ void CustomerHandler::handleCancelOrder(Session* session, const std::string& bod
 // OwnerHandler/RiderHandler에서 상태 변경 시 호출
 // ──────────────────────────────────────────────────────
 void CustomerHandler::pushOrderStatus(Session* session, int orderId,
-                                       const std::string& status, const std::string& msg) {
+    int status, const std::string& msg) {
     json ntf;
     ntf["order_id"] = orderId;
     ntf["status"]   = status; // "ACCEPTED","COOKING","DELIVERING","DONE","CANCELED"

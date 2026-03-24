@@ -10,6 +10,7 @@
 #include "Types.h"
 #include <nlohmann/json.hpp>
 #include <iostream>
+#include "EpollServer.h"   // ← 추가
 using json = nlohmann::json;
 
 static void sendErr(Session* s, uint16_t p, uint16_t c, const std::string& m) {
