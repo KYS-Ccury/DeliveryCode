@@ -4,45 +4,50 @@
 #include "StoreInfo.h"
 #include <vector>
 
-// ================================================================
-//  MainHomeDlg.h  ─  메인 홈 화면
-//  [추가]
-//    SendStoreListRequest() : 서버에 가게 목록 요청
-//    RebuildStoreListUI()   : 파싱된 StoreInfo 벡터로 리스트 갱신
-//    OnStoreListResponse()  : WM_USER+110 메시지 핸들러
-//    RegisterNetworkCallback() : ReceiveLoop 콜백 등록
-// ================================================================
+#ifndef IDC_STATIC_CONN_STATUS
+#define IDC_STATIC_CONN_STATUS      1903
+#define IDC_BTN_MY_MYPAGE           1960
+#define IDC_BTN_MY_PAYMENT          1961
+#define IDC_BTN_MY_DELIVERY         1962
+#define IDC_BTN_MY_ORDERHISTORY     1963
+#endif
+
 class MainHomeDlg : public CDialogEx
 {
     DECLARE_DYNAMIC(MainHomeDlg)
 public:
     MainHomeDlg(CWnd* pParent = nullptr);
     virtual ~MainHomeDlg();
-
 #ifdef AFX_DESIGN_TIME
     enum { IDD = IDD_MAINHOME_DLG };
 #endif
-
     std::vector<CString>   m_vecCategories;
-    std::vector<StoreInfo> m_vecStoreCache;  // 서버 응답 캐시
+    std::vector<StoreInfo> m_vecStoreCache;
 
 protected:
     virtual void DoDataExchange(CDataExchange* pDX);
     virtual BOOL OnInitDialog();
+    virtual void OnCancel();
 
-    // 서버 연동
     void RegisterNetworkCallback();
     void SendStoreListRequest(const CString& category);
     void RebuildStoreListUI(const std::vector<StoreInfo>& stores);
-    void UpdateStoreListUI(CString categoryName);  // 로컬 폴백
+    void UpdateStoreListUI(CString categoryName);
+    void UpdateConnStatusUI();
 
+    afx_msg void    OnTimer(UINT_PTR nIDEvent);
     afx_msg BOOL    OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
     afx_msg HBRUSH  OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
     afx_msg LRESULT OnScrollMenuClicked(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnStoreListResponse(WPARAM wParam, LPARAM lParam);
-    afx_msg void    OnBnClickedButton1();
+    afx_msg void    OnBnClickedButton1();                  // 장바구니
     afx_msg void    OnNMDblclkListStor(NMHDR* pNMHDR, LRESULT* pResult);
-    afx_msg void    OnBnClickedBtnOrderHistory();
+
+    // ── 하단 4버튼 ─────────────────────────────────────────
+    afx_msg void    OnBnClickedBtnMypage();       // 👤 My 페이지
+    afx_msg void    OnBnClickedBtnPayment();      // 💳 결제수단
+    afx_msg void    OnBnClickedBtnDelivery();     // 🛵 배달현황
+    afx_msg void    OnBnClickedBtnOrderHistory(); // 📋 주문내역
 
     DECLARE_MESSAGE_MAP()
 
@@ -51,4 +56,7 @@ private:
     CScrollMenu m_wndScrollMenu;
     CBrush      m_brushBack;
     CBrush      m_brushWhite;
+    bool        m_bLastConnState = false;
+
+    static const UINT TIMER_CONN_CHECK = 1;
 };

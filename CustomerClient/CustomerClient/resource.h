@@ -1,4 +1,4 @@
-﻿//{{NO_DEPENDENCIES}}
+//{{NO_DEPENDENCIES}}
 // Microsoft Visual C++에서 생성한 포함 파일입니다.
 // CustomerClient.rc에서 사용되고 있습니다.
 //
@@ -112,33 +112,59 @@
 #define IDC_BTN_CHAT                    1806
 // Next default values for new objects
 // 
-// ── LoginDlg 에디트 컨트롤 ───────────────────────────────────
-#define IDC_EDIT_ID                     1900
-#define IDC_EDIT_PW                     1901
-#define IDC_BTN_SIGNUP                  1902
 
-// ── PaymentDlg 에디트 / 리스트 / 버튼 ───────────────────────
-#define IDC_EDIT_CARD_NAME              1910
-#define IDC_EDIT_CARD_NUMBER            1911
-#define IDC_EDIT_EXPIRY                 1912
-#define IDC_EDIT_CVV                    1913
-#define IDC_EDIT_PASSWORD               1914
-#define IDC_LIST_CARDS                  1915
-#define IDC_BTN_SET_DEFAULT             1916
-#define IDC_BTN_DELETE_CARD             1917
+// ── 로그인 화면 ──────────────────────────────────────────────
+#define IDC_EDIT_LOGIN_ID           1900
+#define IDC_EDIT_LOGIN_PW           1901
+#define IDC_BTN_GOTO_SIGNUP         1902
+#define IDC_STATIC_CONN_STATUS      1903
+#define IDC_BTN_CONNECT             1904
+#define IDC_EDIT_SERVER_IP          1905
+#define IDC_EDIT_SERVER_PORT        1906
+#define IDC_STATIC_LOGIN_ERR        1907
 
-// ── CartDlg 삭제 버튼 (선택사항, 수량 0으로 대체 가능) ──────
-// #define IDC_BTN_DELETE_ITEM          1920
+// ── 회원가입 화면 ────────────────────────────────────────────
+#define IDD_SIGNUP_DLG              1950
+#define IDC_EDIT_SIGNUP_ID          1951
+#define IDC_EDIT_SIGNUP_PW          1952
+#define IDC_EDIT_SIGNUP_PW2         1953
+#define IDC_EDIT_SIGNUP_NAME        1954
+#define IDC_EDIT_SIGNUP_PHONE       1955
+#define IDC_EDIT_SIGNUP_ADDR        1956
+#define IDC_COMBO_SIGNUP_ROLE       1957
+#define IDC_STATIC_SIGNUP_ERR       1958
 
-// ── DeliveryOkDlg 추가 컨트롤 ────────────────────────────────
-#define IDC_STATIC_ORDER_ID             1930
-#define IDC_STATIC_STATUS_BAR           1931
+// ── 메인 홈 하단 4버튼 ──────────────────────────────────────
+#define IDC_BTN_MY_MYPAGE           1960
+#define IDC_BTN_MY_PAYMENT          1961
+#define IDC_BTN_MY_DELIVERY         1962
+#define IDC_BTN_MY_ORDERHISTORY     1963
+
+// ── 장바구니 요청사항 ────────────────────────────────────────
+#define IDC_EDIT_DELIVERY_REQUEST   1970
+#define IDC_STATIC_REQUEST_LABEL    1971
+
+// ── 리뷰 목록 ────────────────────────────────────────────────
+#define IDC_LIST_REVIEWS            1980
+#define IDC_STATIC_REVIEW_STORE     1981
+#define IDC_STATIC_AVG_RATING       1982
+#define IDC_BTN_WRITE_MY_REVIEW     1983
+
+// ── 결제수단 ────────────────────────────────────────────────
+#define IDC_EDIT_CARD_NAME          1910
+#define IDC_EDIT_CARD_NUMBER        1911
+#define IDC_EDIT_EXPIRY             1912
+#define IDC_EDIT_CVV                1913
+#define IDC_EDIT_PASSWORD           1914
+#define IDC_LIST_CARDS              1915
+#define IDC_BTN_SET_DEFAULT         1916
+#define IDC_BTN_DELETE_CARD         1917
 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        155
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1900
+#define _APS_NEXT_CONTROL_VALUE         2000
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

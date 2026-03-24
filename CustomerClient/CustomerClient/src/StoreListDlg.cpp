@@ -1,33 +1,10 @@
 // ================================================================
-//  StoreListDlg.cpp  ─  가게 상세 / 메뉴 목록 화면  (서버 연동 완성본)
+//  StoreListDlg.cpp  ─  가게 상세 / 메뉴 목록 (리뷰 버튼 추가)
 //
-//  [연동 프로토콜]
-//    REQ : CmdCustomer::REQ_MENU_LIST (201)
-//          { "store_id":101, "category":"인기메뉴" }
-//          category 가 "전체" 이면 빈 문자열로 전송
-//
-//    RES : { "status":2000,
-//            "menus":[
-//              { "menu_id":1, "name":"황금치킨", "price":18000,
-//                "description":"바삭하고 촉촉한...",
-//                "sub_category":"인기메뉴",
-//                "options":[
-//                  { "group_name":"맵기 선택", "required":true,
-//                    "items":[
-//                      {"option_id":1,"name":"보통맛","price":0},
-//                      {"option_id":2,"name":"매운맛","price":0}
-//                    ]
-//                  }
-//                ]
-//              }, ...
-//            ]
-//          }
-//
-//  [흐름]
-//    OnInitDialog → SendMenuListRequest("전체")
-//    → OnScrollMenuClicked → SendMenuListRequest(subCategory)
-//    → WM_MENU_LIST_RESPONSE → OnMenuListResponse() → UpdateMenuListUI()
-//    → NM_CLICK → MenuDetailDlg (메뉴 객체 전달)
+//  [추가]
+//  IDC_BTN_STORE_INFO 클릭 → 팝업 메뉴
+//    1. 가게 정보 → StoreDetailDlg
+//    2. 리뷰 보기 → ReviewListDlg (m_bCanWriteReview 자동 판단)
 // ================================================================
 #include "pch.h"
 #include "CustomerClient.h"
@@ -37,90 +14,66 @@
 #include "CartDlg.h"
 #include "StoreDetailDlg.h"
 #include "MenuDetailDlg.h"
+#include "ReviewListDlg.h"
 #include "NetworkManager.h"
+#include "AuthManager.h"
 #include "common/header/Types.h"
 
 #define WM_MENU_LIST_RESPONSE (WM_USER + 120)
 
-// ── 간이 JSON 파싱 헬퍼 ───────────────────────────────────────
-static std::string JStr(const std::string& json, const std::string& key)
+// ── JSON 헬퍼 ────────────────────────────────────────────────
+static std::string SLJStr(const std::string& j, const std::string& k)
 {
-    std::string token = "\"" + key + "\":\"";
-    auto pos = json.find(token);
-    if (pos == std::string::npos) return "";
-    pos += token.size();
-    auto end = json.find('"', pos);
-    return (end == std::string::npos) ? "" : json.substr(pos, end - pos);
+    std::string t="\""+k+"\":\""; auto p=j.find(t);
+    if(p==std::string::npos) return "";
+    p+=t.size(); auto e=j.find('"',p);
+    return (e==std::string::npos)?"":j.substr(p,e-p);
 }
-static int JInt(const std::string& json, const std::string& key)
+static int SLJInt(const std::string& j, const std::string& k)
 {
-    std::string token = "\"" + key + "\":";
-    auto pos = json.find(token);
-    if (pos == std::string::npos) return 0;
-    pos += token.size();
-    try { return std::stoi(json.substr(pos)); } catch (...) { return 0; }
+    std::string t="\""+k+"\":"; auto p=j.find(t);
+    if(p==std::string::npos) return 0;
+    try{return std::stoi(j.substr(p+t.size()));}catch(...){return 0;}
 }
-static bool JBool(const std::string& json, const std::string& key)
+static bool SLJBool(const std::string& j, const std::string& k)
 {
-    std::string token = "\"" + key + "\":";
-    auto pos = json.find(token);
-    if (pos == std::string::npos) return false;
-    pos += token.size();
-    return json.substr(pos, 4) == "true";
+    std::string t="\""+k+"\":"; auto p=j.find(t);
+    if(p==std::string::npos) return false;
+    return j.substr(p+t.size(),4)=="true";
 }
-
-// ── JSON에서 객체 1개 추출 (depth 추적) ──────────────────────
-static std::string ExtractObject(const std::string& json, size_t start)
+static std::vector<std::string> SLExtractObjs(const std::string& j, const std::string& arrKey)
 {
-    int depth = 0;
-    for (size_t i = start; i < json.size(); ++i) {
-        if (json[i] == '{') ++depth;
-        else if (json[i] == '}') { if (--depth == 0) return json.substr(start, i - start + 1); }
+    std::vector<std::string> res;
+    std::string t="\""+arrKey+"\":["; auto ap=j.find(t);
+    if(ap==std::string::npos) return res;
+    size_t i=ap+t.size();
+    while(i<j.size()){
+        auto s=j.find('{',i); if(s==std::string::npos) break;
+        int d=0; size_t e=s;
+        for(;e<j.size();++e){ if(j[e]=='{')++d; else if(j[e]=='}'){ if(--d==0) break; } }
+        res.push_back(j.substr(s,e-s+1)); i=e+1;
     }
-    return "";
+    return res;
 }
-
-// ── JSON에서 배열 원소(객체) 목록 추출 ───────────────────────
-static std::vector<std::string> ExtractArray(const std::string& json, const std::string& arrayKey)
-{
-    std::vector<std::string> elems;
-    std::string token = "\"" + arrayKey + "\":[";
-    auto arrPos = json.find(token);
-    if (arrPos == std::string::npos) return elems;
-    size_t i = arrPos + token.size();
-    while (i < json.size()) {
-        auto objStart = json.find('{', i);
-        if (objStart == std::string::npos) break;
-        std::string obj = ExtractObject(json, objStart);
-        if (!obj.empty()) elems.push_back(obj);
-        i = objStart + obj.size();
-    }
-    return elems;
-}
-
-// ── JSON → MenuInfo 파싱 ─────────────────────────────────────
-static MenuInfo ParseMenuObject(const std::string& obj)
+static MenuInfo ParseMenuObj(const std::string& obj)
 {
     MenuInfo m;
-    m.menuID      = JInt(obj, "menu_id");
-    m.menuName    = JStr(obj, "name");
-    m.price       = JInt(obj, "price");
-    m.subCategory = JStr(obj, "sub_category");
-    m.menuImageUrl = JStr(obj, "image_url");
-
-    // 옵션 그룹 파싱
-    auto groups = ExtractArray(obj, "options");
-    for (const auto& grpJson : groups) {
+    m.menuID      = SLJInt(obj,"menu_id");
+    m.menuName    = SLJStr(obj,"name");
+    m.price       = SLJInt(obj,"price");
+    m.subCategory = SLJStr(obj,"sub_category");
+    m.menuImageUrl= SLJStr(obj,"image_url");
+    auto grps = SLExtractObjs(obj,"options");
+    for (const auto& g : grps) {
         OptionGroup og;
-        og.groupName  = JStr(grpJson, "group_name");
-        og.isRequired = JBool(grpJson, "required");
-
-        auto items = ExtractArray(grpJson, "items");
-        for (const auto& itemJson : items) {
+        og.groupName  = SLJStr(g,"group_name");
+        og.isRequired = SLJBool(g,"required");
+        auto items = SLExtractObjs(g,"items");
+        for (const auto& it : items) {
             OptionItem oi;
-            oi.optionID    = JInt(itemJson, "option_id");
-            oi.optionName  = JStr(itemJson, "name");
-            oi.optionPrice = JInt(itemJson, "price");
+            oi.optionID    = SLJInt(it,"option_id");
+            oi.optionName  = SLJStr(it,"name");
+            oi.optionPrice = SLJInt(it,"price");
             og.items.push_back(oi);
         }
         m.optionGroups.push_back(og);
@@ -128,22 +81,7 @@ static MenuInfo ParseMenuObject(const std::string& obj)
     return m;
 }
 
-// ── MenuInfo 목록 파싱 ────────────────────────────────────────
-static std::vector<MenuInfo> ParseMenuArray(const std::string& body)
-{
-    std::vector<MenuInfo> result;
-    auto menuObjs = ExtractArray(body, "menus");
-    for (const auto& obj : menuObjs) {
-        MenuInfo m = ParseMenuObject(obj);
-        if (m.menuID > 0) result.push_back(m);
-    }
-    return result;
-}
-
-// =================================================================
-
 IMPLEMENT_DYNAMIC(StoreListDlg, CDialogEx)
-
 StoreListDlg::StoreListDlg(CWnd* pParent)
     : CDialogEx(IDD_STORELIST_DLG, pParent) {}
 StoreListDlg::~StoreListDlg() {}
@@ -169,185 +107,152 @@ BOOL StoreListDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
     ModifyStyle(WS_CAPTION, 0);
-    ModifyStyle(WS_THICKFRAME, WS_CLIPCHILDREN);
     CenterWindow();
 
-    // ── 리스트 설정 ───────────────────────────────────────────
     m_listMenu.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
     m_listMenu.InsertColumn(0, _T("메뉴명"), LVCFMT_LEFT,  180);
-    m_listMenu.InsertColumn(1, _T("설명"),   LVCFMT_LEFT,  200);
+    m_listMenu.InsertColumn(1, _T("설명"),   LVCFMT_LEFT,  180);
     m_listMenu.InsertColumn(2, _T("가격"),   LVCFMT_RIGHT,  80);
 
     if (!m_strStoreName.IsEmpty()) SetWindowText(m_strStoreName);
 
-    // ── 서브카테고리 탭 ───────────────────────────────────────
-    // 일단 기본값 설정; 서버 응답에 sub_category 종류가 오면 동적으로 교체
-    m_vecSubCategories = { _T("전체"), _T("인기메뉴"), _T("세트메뉴"), _T("단품"), _T("음료") };
+    m_vecSubCategories = { _T("전체"),_T("인기메뉴"),_T("세트메뉴"),_T("단품"),_T("음료") };
     if (m_wndScrollMenu.GetSafeHwnd())
         m_wndScrollMenu.SetMenuItems(m_vecSubCategories);
 
-    // ── 네트워크 콜백 등록 후 서버 요청 ─────────────────────
     RegisterMenuCallback();
     SendMenuListRequest(_T("전체"));
-
     return TRUE;
 }
 
-// ── 네트워크 콜백 등록 ────────────────────────────────────────
 void StoreListDlg::RegisterMenuCallback()
 {
-    auto& net = NetworkManager::GetInstance();
-    net.RegisterCallback(CmdCustomer::REQ_MENU_LIST,
+    NetworkManager::GetInstance().RegisterCallback(CmdCustomer::REQ_MENU_LIST,
         [this](uint16_t, const std::string& body) {
-            std::string* pBody = new std::string(body);
-            PostMessage(WM_MENU_LIST_RESPONSE, 0, (LPARAM)pBody);
+            std::string* p = new std::string(body);
+            PostMessage(WM_MENU_LIST_RESPONSE, 0, (LPARAM)p);
         });
 }
-
-// ── 서버에 메뉴 목록 요청 ────────────────────────────────────
-void StoreListDlg::SendMenuListRequest(const CString& subCategory)
+void StoreListDlg::SendMenuListRequest(const CString& subCat)
 {
     auto& net = NetworkManager::GetInstance();
-    if (!net.IsConnected()) {
-        // 서버 없으면 로컬 더미 데이터 사용
-        UpdateMenuListUI(subCategory);
-        return;
-    }
-
-    std::string cat = (subCategory == _T("전체"))
-        ? "" : std::string(CT2A(subCategory, CP_UTF8));
-
-    std::string json = "{\"store_id\":" + std::to_string(m_storeInfo.storeID)
-                     + ",\"category\":\"" + cat + "\"}";
+    if (!net.IsConnected()) { UpdateMenuListUI(subCat); return; }
+    std::string cat = (subCat==_T("전체")) ? "" : std::string(CT2A(subCat,CP_UTF8));
+    std::string json = "{\"store_id\":"+std::to_string(m_storeInfo.storeID)+",\"category\":\""+cat+"\"}";
     net.SendPacket((uint8_t)ClientType::CUSTOMER, CmdCustomer::REQ_MENU_LIST, json);
-
     m_listMenu.DeleteAllItems();
     m_listMenu.InsertItem(0, _T("메뉴를 불러오는 중..."));
 }
-
-// ── 서버 응답 처리 (UI 스레드) ────────────────────────────────
 LRESULT StoreListDlg::OnMenuListResponse(WPARAM, LPARAM lParam)
 {
     std::string* pBody = reinterpret_cast<std::string*>(lParam);
     if (!pBody) return 0;
-
-    int status = JInt(*pBody, "status");
-
-    if (status == (int)Status::SUCCESS) {
-        m_vecMenuCache = ParseMenuArray(*pBody);
-
-        // 서브카테고리 목록 동적 갱신
+    if (SLJInt(*pBody,"status") == (int)Status::SUCCESS) {
+        m_vecMenuCache.clear();
+        for (const auto& obj : SLExtractObjs(*pBody,"menus")) {
+            MenuInfo m = ParseMenuObj(obj);
+            if (m.menuID > 0) m_vecMenuCache.push_back(m);
+        }
+        // 서브카테고리 동적 갱신
         std::vector<CString> cats = { _T("전체") };
         for (const auto& m : m_vecMenuCache) {
-            CString cat = CA2T(m.subCategory.c_str(), CP_UTF8);
+            CString c = CA2T(m.subCategory.c_str(),CP_UTF8);
             bool found = false;
-            for (const auto& c : cats) if (c == cat) { found = true; break; }
-            if (!found && !cat.IsEmpty()) cats.push_back(cat);
+            for (const auto& x : cats) if(x==c){found=true;break;}
+            if (!found && !c.IsEmpty()) cats.push_back(c);
         }
         m_vecSubCategories = cats;
         if (m_wndScrollMenu.GetSafeHwnd())
             m_wndScrollMenu.SetMenuItems(m_vecSubCategories);
-
         RebuildMenuListUI(m_vecMenuCache, _T("전체"));
     } else {
         m_listMenu.DeleteAllItems();
         m_listMenu.InsertItem(0, _T("메뉴 정보를 가져오지 못했습니다."));
     }
-
-    delete pBody;
-    return 0;
+    delete pBody; return 0;
 }
-
-// ── UI 갱신 ───────────────────────────────────────────────────
 void StoreListDlg::RebuildMenuListUI(const std::vector<MenuInfo>& menus, const CString& filter)
 {
     m_listMenu.DeleteAllItems();
     int row = 0;
     for (const auto& m : menus) {
-        CString subCat = CA2T(m.subCategory.c_str(), CP_UTF8);
-        if (filter != _T("전체") && subCat != filter) continue;
-
-        CString strName  = CA2T(m.menuName.c_str(), CP_UTF8);
-        CString strPrice; strPrice.Format(_T("%d원"), m.price);
-        int nRow = m_listMenu.InsertItem(row++, strName);
-        m_listMenu.SetItemText(nRow, 1, _T(""));  // 설명은 상세 화면에서
-        m_listMenu.SetItemText(nRow, 2, strPrice);
+        CString sub = CA2T(m.subCategory.c_str(),CP_UTF8);
+        if (filter != _T("전체") && sub != filter) continue;
+        CString n = CA2T(m.menuName.c_str(),CP_UTF8);
+        CString p; p.Format(_T("%d원"), m.price);
+        int r = m_listMenu.InsertItem(row++, n);
+        m_listMenu.SetItemText(r,1,_T(""));
+        m_listMenu.SetItemText(r,2,p);
     }
-    if (row == 0)
-        m_listMenu.InsertItem(0, _T("해당 카테고리의 메뉴가 없습니다."));
+    if (row == 0) m_listMenu.InsertItem(0, _T("메뉴가 없습니다."));
 }
-
-// 기존 OrderManager 기반 로컬 폴백
-void StoreListDlg::UpdateMenuListUI(CString subCategory)
+void StoreListDlg::UpdateMenuListUI(CString subCat)
 {
-    m_listMenu.DeleteAllItems();
-    m_vecMenuCache.clear();
-    std::string sub = CT2A(subCategory, CP_UTF8);
-    m_vecMenuCache = OrderManager::GetInstance().GetMenuData(m_storeInfo.storeID, sub);
-    RebuildMenuListUI(m_vecMenuCache, subCategory);
+    m_listMenu.DeleteAllItems(); m_vecMenuCache.clear();
+    std::string subCatStr = CT2A(subCat, CP_UTF8);
+    m_vecMenuCache = OrderManager::GetInstance().GetMenuData(m_storeInfo.storeID, subCatStr);
+    RebuildMenuListUI(m_vecMenuCache, subCat);
 }
-
-// ── 서브카테고리 탭 클릭 ─────────────────────────────────────
-LRESULT StoreListDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM lParam)
+LRESULT StoreListDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM)
 {
-    int nIndex = (UINT)wParam - 2000;
-    if (nIndex < 0 || nIndex >= (int)m_vecSubCategories.size()) return 0;
-
-    CString selected = m_vecSubCategories[nIndex];
-
-    if (m_vecMenuCache.empty()) {
-        // 아직 서버 응답 없음 → 요청 전송
-        SendMenuListRequest(selected);
-    } else {
-        // 이미 캐시 있음 → 클라이언트 필터링
-        RebuildMenuListUI(m_vecMenuCache, selected);
-    }
+    int n=(UINT)wParam-2000;
+    if(n<0||n>=(int)m_vecSubCategories.size()) return 0;
+    CString sel=m_vecSubCategories[n];
+    if(m_vecMenuCache.empty()) SendMenuListRequest(sel);
+    else RebuildMenuListUI(m_vecMenuCache,sel);
     return 0;
 }
-
-// ── 메뉴 클릭 → MenuDetailDlg ────────────────────────────────
 void StoreListDlg::OnNMClickListMenuItems(NMHDR* pNMHDR, LRESULT* pResult)
 {
-    LPNMITEMACTIVATE pNMIA = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
-    int nIndex = pNMIA->iItem;
-
-    // 리스트의 visible 인덱스가 m_vecMenuCache와 다를 수 있으므로
-    // 리스트 첫 번째 열 텍스트로 매칭
-    if (nIndex < 0) { *pResult = 0; return; }
-
-    CString strSelected = m_listMenu.GetItemText(nIndex, 0);
-    MenuInfo* pFound = nullptr;
+    int n = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR)->iItem;
+    if (n < 0) { *pResult=0; return; }
+    CString sel = m_listMenu.GetItemText(n,0);
     for (auto& m : m_vecMenuCache) {
-        CString name = CA2T(m.menuName.c_str(), CP_UTF8);
-        if (name == strSelected) { pFound = &m; break; }
+        if (CA2T(m.menuName.c_str(),CP_UTF8) == sel) {
+            MenuDetailDlg dlg(this);
+            dlg.m_strMenuName = sel;
+            dlg.m_menuInfo    = m;
+            dlg.DoModal(); break;
+        }
     }
-
-    if (pFound) {
-        MenuDetailDlg dlg(this);
-        dlg.m_strMenuName = CA2T(pFound->menuName.c_str(), CP_UTF8);
-        dlg.m_menuInfo    = *pFound;
-        dlg.DoModal();
-    }
-    *pResult = 0;
+    *pResult=0;
 }
-
-// ── 장바구니 버튼 ─────────────────────────────────────────────
 void StoreListDlg::OnBnClickedBtnCart()
 {
-    CartDlg dlg(this);
-    if (dlg.DoModal() == IDOK) CDialogEx::OnOK();
+    CartDlg dlg(this); if(dlg.DoModal()==IDOK) CDialogEx::OnOK();
 }
 
-// ── 가게 정보 버튼 ────────────────────────────────────────────
+// ── 가게정보 버튼 → 팝업 메뉴 (가게정보 / 리뷰 보기) ──────
 void StoreListDlg::OnBnClickedBtnStoreInfo()
 {
-    StoreDetailDlg dlg(this);
-    dlg.m_strName = CA2T(m_storeInfo.storeName.c_str(), CP_UTF8);
-    dlg.m_strAddr = CA2T(m_storeInfo.address.c_str(), CP_UTF8);
-    dlg.m_strTime = CA2T(m_storeInfo.openTime.c_str(), CP_UTF8);
-    dlg.m_strOff  = CA2T(m_storeInfo.holiday.c_str(), CP_UTF8);
-    dlg.m_strTel  = CA2T(m_storeInfo.phoneNumber.c_str(), CP_UTF8);
-    dlg.DoModal();
+    CMenu menu; menu.CreatePopupMenu();
+    menu.AppendMenu(MF_STRING, 1, _T("가게 정보"));
+    menu.AppendMenu(MF_STRING, 2, _T("리뷰 보기"));
+
+    CRect rect; this->GetDlgItem(IDC_BTN_STORE_INFO)->GetWindowRect(&rect);
+    int nCmd = (int)menu.TrackPopupMenu(
+        TPM_RETURNCMD | TPM_LEFTALIGN | TPM_BOTTOMALIGN,
+        rect.left, rect.top, this);
+
+    if (nCmd == 1) {
+        // 가게 정보
+        StoreDetailDlg dlg(this);
+        dlg.m_strName = CA2T(m_storeInfo.storeName.c_str(), CP_UTF8);
+        dlg.m_strAddr = CA2T(m_storeInfo.address.c_str(),   CP_UTF8);
+        dlg.m_strTime = CA2T(m_storeInfo.openTime.c_str(),  CP_UTF8);
+        dlg.m_strOff  = CA2T(m_storeInfo.holiday.c_str(),   CP_UTF8);
+        dlg.m_strTel  = CA2T(m_storeInfo.phoneNumber.c_str(),CP_UTF8);
+        dlg.DoModal();
+    } else if (nCmd == 2) {
+        // 리뷰 목록
+        ReviewListDlg dlg(this);
+        dlg.m_nStoreID      = m_storeInfo.storeID;
+        dlg.m_strStoreName  = CA2T(m_storeInfo.storeName.c_str(), CP_UTF8);
+        // 이 가게에서 주문한 적 있으면 리뷰 작성 가능
+        // (간단히 OrderManager 주문 내역 확인 또는 서버에서 판단)
+        dlg.m_bCanWriteReview = true; // TODO: 실제 구매이력 확인
+        dlg.DoModal();
+    }
 }
 
 void StoreListDlg::OnBnClickedBtnBack()
@@ -355,11 +260,9 @@ void StoreListDlg::OnBnClickedBtnBack()
     NetworkManager::GetInstance().UnregisterCallback(CmdCustomer::REQ_MENU_LIST);
     CDialogEx::OnCancel();
 }
-
 BOOL StoreListDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 {
-    CRect rect;
-    m_wndScrollMenu.GetWindowRect(&rect);
-    if (rect.PtInRect(pt)) return m_wndScrollMenu.OnMouseWheel(nFlags, zDelta, pt);
-    return CDialogEx::OnMouseWheel(nFlags, zDelta, pt);
+    CRect r; m_wndScrollMenu.GetWindowRect(&r);
+    if(r.PtInRect(pt)) return m_wndScrollMenu.OnMouseWheel(nFlags,zDelta,pt);
+    return CDialogEx::OnMouseWheel(nFlags,zDelta,pt);
 }

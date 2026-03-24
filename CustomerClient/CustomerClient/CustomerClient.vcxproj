@@ -203,6 +203,7 @@
     <ClInclude Include="header\DeliveryOkDlg.h" />
     <ClInclude Include="header\json.hpp" />
     <ClInclude Include="header\LoginDlg.h" />
+    <ClInclude Include="header\SignupDlg.h" />
     <ClInclude Include="header\MainHomeDlg.h" />
     <ClInclude Include="header\MenuDetailDlg.h" />
     <ClInclude Include="header\MenuInfo.h" />
@@ -233,6 +234,7 @@
     <ClCompile Include="src\CustomerClient.cpp" />
     <ClCompile Include="src\DeliveryOkDlg.cpp" />
     <ClCompile Include="src\LoginDlg.cpp" />
+    <ClCompile Include="src\SignupDlg.cpp" />
     <ClCompile Include="src\MainHomeDlg.cpp" />
     <ClCompile Include="src\MenuDetailDlg.cpp" />
     <ClCompile Include="src\MenuInfo.cpp" />
