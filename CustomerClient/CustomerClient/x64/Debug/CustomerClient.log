@@ -1,2 +1,95 @@
-﻿  MainHomeDlg.cpp
-  CustomerClient.vcxproj -> C:\Users\LMS\Desktop\bemin\DeliveryCode\CustomerClient\x64\Debug\CustomerClient.exe
+﻿  pch.cpp
+  AuthManager.cpp
+  CartDlg.cpp
+  CartItem.cpp
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\CartItem.cpp(1,1): warning C4335: Mac 파일 형식이 발견되었습니다. 소스 파일을 DOS나 UNIX 형식으로 변환하십시오.
+  ChatDlg.cpp
+  ChatManager.cpp
+  CustomerClient.cpp
+  DeliveryOkDlg.cpp
+  LoginDlg.cpp
+  MainHomeDlg.cpp
+  MenuDetailDlg.cpp
+  MenuInfo.cpp
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\MenuInfo.cpp(1,1): warning C4335: Mac 파일 형식이 발견되었습니다. 소스 파일을 DOS나 UNIX 형식으로 변환하십시오.
+  NetworkManager.cpp
+  OptionChangeDlg.cpp
+  OrderHistoryDlg.cpp
+  OrderInfo.cpp
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderInfo.cpp(1,1): warning C4335: Mac 파일 형식이 발견되었습니다. 소스 파일을 DOS나 UNIX 형식으로 변환하십시오.
+  OrderManager.cpp
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(273,19): warning C4129: 'E': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(273,19): warning C4129: '8': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(273,19): warning C4129: '9': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(273,19): warning C4129: 'A': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(273,19): warning C4129: 'B': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(275,22): warning C4129: 'E': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(275,22): warning C4129: '9': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(275,22): warning C4129: 'B': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(275,22): warning C4129: 'A': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(275,22): warning C4129: '8': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(280,19): warning C4129: 'E': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(280,19): warning C4129: '8': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(280,19): warning C4129: '9': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(280,19): warning C4129: 'A': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(280,19): warning C4129: 'B': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(282,22): warning C4129: 'E': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(282,22): warning C4129: '9': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(282,22): warning C4129: 'B': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(282,22): warning C4129: 'A': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\OrderManager.cpp(282,22): warning C4129: '8': 인식할 수 없는 문자 이스케이프 시퀀스입니다.
+  (소스 파일 '/src/OrderManager.cpp'을(를) 컴파일하는 중)
+  
+  PaymentDlg.cpp
+  ReviewListDlg.cpp
+  ReviewWriteDlg.cpp
+  ScrollMenu.cpp
+  코드를 생성하고 있습니다...
+  컴파일하고 있습니다...
+  StoreDetailDlg.cpp
+  StoreInfo.cpp
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\StoreInfo.cpp(1,1): warning C4335: Mac 파일 형식이 발견되었습니다. 소스 파일을 DOS나 UNIX 형식으로 변환하십시오.
+  StoreListDlg.cpp
+  StoreListDlg_patch.cpp
+  UserInfo.cpp
+C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\UserInfo.cpp(1,1): warning C4335: Mac 파일 형식이 발견되었습니다. 소스 파일을 DOS나 UNIX 형식으로 변환하십시오.
+  코드를 생성하고 있습니다...
+  CustomerClient.vcxproj -> C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\x64\Debug\CustomerClient.exe
