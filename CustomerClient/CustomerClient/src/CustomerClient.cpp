@@ -40,7 +40,7 @@ BOOL CCustomerClientApp::InitInstance()
     // ── 로그인 다이얼로그 ──────────────────────────────
     {
         LoginDlg loginDlg;
-        m_pMainWnd = &loginDlg;
+        //m_pMainWnd = &loginDlg;
         INT_PTR res = loginDlg.DoModal();
         // IDCANCEL(취소) 이면 종료
         if (res == IDCANCEL) {

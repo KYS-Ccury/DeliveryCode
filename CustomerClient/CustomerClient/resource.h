@@ -112,6 +112,28 @@
 #define IDC_BTN_CHAT                    1806
 // Next default values for new objects
 // 
+// ── LoginDlg 에디트 컨트롤 ───────────────────────────────────
+#define IDC_EDIT_ID                     1900
+#define IDC_EDIT_PW                     1901
+#define IDC_BTN_SIGNUP                  1902
+
+// ── PaymentDlg 에디트 / 리스트 / 버튼 ───────────────────────
+#define IDC_EDIT_CARD_NAME              1910
+#define IDC_EDIT_CARD_NUMBER            1911
+#define IDC_EDIT_EXPIRY                 1912
+#define IDC_EDIT_CVV                    1913
+#define IDC_EDIT_PASSWORD               1914
+#define IDC_LIST_CARDS                  1915
+#define IDC_BTN_SET_DEFAULT             1916
+#define IDC_BTN_DELETE_CARD             1917
+
+// ── CartDlg 삭제 버튼 (선택사항, 수량 0으로 대체 가능) ──────
+// #define IDC_BTN_DELETE_ITEM          1920
+
+// ── DeliveryOkDlg 추가 컨트롤 ────────────────────────────────
+#define IDC_STATIC_ORDER_ID             1930
+#define IDC_STATIC_STATUS_BAR           1931
+
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        155
