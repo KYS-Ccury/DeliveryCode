@@ -124,6 +124,27 @@ void BaseHandler::handleSignup(Session* session, const std::string& jsonBody) {
     try {
         json req = json::parse(jsonBody);
 
+        // ── 아이디 중복확인 요청 분기 ────────────────────────
+        // 클라이언트: { "action":"CHECK_ID", "id":"..." }
+        std::string action = req.value("action", "");
+        if (action == "CHECK_ID") {
+            std::string checkId = escapeStr(req.value("id", ""));
+            if (checkId.empty()) {
+                sendError(session, CmdCommon::REQ_SIGNUP,
+                          Status::BAD_REQUEST, "아이디를 입력하세요.");
+                return;
+            }
+            auto& db = MariaDBManager::getInstance();
+            auto dup = db.executeQuery(
+                "SELECT user_id FROM users WHERE login_id='" + checkId + "' LIMIT 1");
+            json res;
+            res["status"]    = Status::SUCCESS;
+            res["available"] = dup.empty();  // true = 사용 가능
+            session->sendPacket(static_cast<uint8_t>(m_clientType),
+                                CmdCommon::REQ_SIGNUP, res.dump());
+            return;
+        }
+
         std::string loginId = escapeStr(req.value("id",      ""));
         std::string pw      = escapeStr(req.value("pw",      ""));
         std::string name    = escapeStr(req.value("name",    ""));

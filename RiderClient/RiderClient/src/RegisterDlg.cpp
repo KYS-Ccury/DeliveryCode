@@ -69,13 +69,19 @@ void RegisterDlg::OnBtnCheckId()
         MessageBox(_T("아이디는 4자 이상 입력하세요."), _T("알림"), MB_OK | MB_ICONWARNING);
         return;
     }
+
     CT2A idUtf8(strId, CP_UTF8);
-    json req; req["action"] = "CHECK_ID"; req["login_id"] = std::string(idUtf8);
+    json req;
+    req["action"] = "CHECK_ID";
+    req["id"]     = std::string(idUtf8);   // 서버 handleSignup → "CHECK_ID" 분기
+
     bool bSent = AppContext::Get().socket.SendPacket(CMD_SIGNUP, req.dump());
     if (!bSent) {
+        // 오프라인: 클라이언트에서 즉시 허용
         m_bIdChecked = true;
         MessageBox(_T("사용 가능한 아이디입니다."), _T("중복 확인"), MB_OK | MB_ICONINFORMATION);
     }
+    // 서버 응답은 OnSocketRecv에서 처리
 }
 
 void RegisterDlg::OnBtnNext()
@@ -155,14 +161,15 @@ void RegisterDlg::DoRegister()
         CT2A u(s, CP_UTF8); return std::string(u);
     };
     json req;
-    req["action"]       = "REGISTER";
-    req["login_id"]     = toU(strId);
-    req["password"]     = toU(strPw);
-    req["name"]         = toU(strId);  // use ID as name placeholder
+    // 서버 Basehandler::handleSignup 기대 키: id, pw, name, phone, address
+    req["id"]           = toU(strId);
+    req["pw"]           = toU(strPw);
+    req["name"]         = toU(strId);       // 이름 미입력 시 ID로 대체
     req["phone"]        = toU(strPhone);
     req["address"]      = toU(strRegion);
-    req["vehicle_type"] = toU(strVehicle);
-    req["role"]         = "RIDER";
+    // vehicle_type은 서버 onSignup(RiderHandler)에서 rider_profiles INSERT 시 기본 BIKE 사용
+    // → 클라이언트 선택값을 profile 변경으로 별도 전송
+    req["vehicle_type"] = toU(strVehicle);  // onSignup에서 참조
 
     bool bSent = AppContext::Get().socket.SendPacket(CMD_SIGNUP, req.dump());
     if (!bSent) {
@@ -200,6 +207,14 @@ LRESULT RegisterDlg::OnSocketRecv(WPARAM, LPARAM lParam)
         }
 
         if (status == STATUS_SUCCESS) {
+            // 회원가입 완료 후 차량 종류 업데이트 (REQ_GET_PROFILE 104)
+            // → 서버 onGetProfile에서 vehicle_type 업데이트 처리
+            if (!AppContext::Get().session.vehicleType.IsEmpty()) {
+                CT2A vtUtf8(AppContext::Get().session.vehicleType, CP_UTF8);
+                json vtReq;
+                vtReq["vehicle_type"] = std::string(vtUtf8);
+                AppContext::Get().socket.SendPacket(CMD_GET_MY_INFO, vtReq.dump());
+            }
             MessageBox(_T("신규 가입이 완료되었습니다!\n로그인 후 배달을 시작하세요."),
                        _T("완료"), MB_OK | MB_ICONINFORMATION);
             EndDialog(IDOK);

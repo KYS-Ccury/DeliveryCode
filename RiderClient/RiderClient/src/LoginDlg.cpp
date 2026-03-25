@@ -74,8 +74,8 @@ void LoginDlg::OnBtnLogin()
     CT2A idUtf8(strId, CP_UTF8);
     CT2A pwUtf8(strPw, CP_UTF8);
     json req;
-    req["login_id"] = std::string(idUtf8);
-    req["password"] = std::string(pwUtf8);
+    req["id"] = std::string(idUtf8);   // 서버 Basehandler: "id" 키
+    req["pw"] = std::string(pwUtf8);   // 서버 Basehandler: "pw" 키
 
     bool bSent = AppContext::Get().socket.SendPacket(CMD_LOGIN, req.dump());
     if (!bSent) {
