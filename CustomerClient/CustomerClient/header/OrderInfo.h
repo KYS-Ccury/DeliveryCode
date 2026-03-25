@@ -23,6 +23,14 @@ enum DeliveryStatus {
 };
 
 
+// ── 주문 메뉴 항목 ────────────────────────────────────────────
+struct OrderItem {
+    std::string menuName;   // 메뉴 이름
+    int         quantity;   // 수량
+    int         price;      // 단가 (원)
+
+    OrderItem() : quantity(0), price(0) {}
+};
 
 class OrderInfo
 
@@ -54,6 +62,8 @@ public:
 
     std::string riderID;         // 배정된 라이더 ID
 
+    // ── 주문 메뉴 목록 (서버 응답 items 배열) ─────────────────
+    std::vector<OrderItem> items;
 
 
     OrderInfo();

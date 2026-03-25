@@ -204,6 +204,7 @@
     <ClInclude Include="header\DeliveryOkDlg.h" />
     <ClInclude Include="header\json.hpp" />
     <ClInclude Include="header\LoginDlg.h" />
+    <ClInclude Include="header\OrderListDlg.h" />
     <ClInclude Include="header\SignupDlg.h" />
     <ClInclude Include="header\MainHomeDlg.h" />
     <ClInclude Include="header\MenuDetailDlg.h" />
@@ -222,6 +223,7 @@
     <ClInclude Include="header\StoreInfo.h" />
     <ClInclude Include="header\StoreListDlg.h" />
     <ClInclude Include="header\UserInfo.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -235,6 +237,7 @@
     <ClCompile Include="src\CustomerClient.cpp" />
     <ClCompile Include="src\DeliveryOkDlg.cpp" />
     <ClCompile Include="src\LoginDlg.cpp" />
+    <ClCompile Include="src\OrderListDlg.cpp" />
     <ClCompile Include="src\SignupDlg.cpp" />
     <ClCompile Include="src\MainHomeDlg.cpp" />
     <ClCompile Include="src\MenuDetailDlg.cpp" />

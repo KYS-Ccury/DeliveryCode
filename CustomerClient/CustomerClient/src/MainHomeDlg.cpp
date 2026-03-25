@@ -7,6 +7,7 @@
 #include "StoreListDlg.h"
 #include "OrderHistoryDlg.h"
 #include "PaymentDlg.h"
+#include "OrderListDlg.h"
 #include "AuthManager.h"
 #include "NetworkManager.h"
 #include "common/header/Types.h"
@@ -279,7 +280,7 @@ void MainHomeDlg::OnBnClickedBtnDelivery()
 void MainHomeDlg::OnBnClickedBtnOrderHistory()
 {
     // 전체 주문 내역
-    OrderHistoryDlg dlg(this);
+    OrderListDlg dlg(this);
     dlg.DoModal();
 }
 
