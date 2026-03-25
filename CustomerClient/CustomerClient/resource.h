@@ -1,12 +1,13 @@
-//{{NO_DEPENDENCIES}}
-// Microsoft Visual C++에서 생성한 포함 파일입니다.
-// CustomerClient.rc에서 사용되고 있습니다.
-//
-#define IDM_ABOUTBOX                    0x0010
+// ================================================================
+//  resource.h  ─  CustomerClient 리소스 ID 정의 (완성판)
+// ================================================================
+
+#ifndef RESOURCE_H
+#define RESOURCE_H
+
+// ── 대화상자 IDD ──────────────────────────────────────────────
 #define IDD_ABOUTBOX                    100
-#define IDS_ABOUTBOX                    101
 #define IDD_CUSTOMERCLIENT_DIALOG       102
-#define IDP_SOCKETS_INIT_FAILED         103
 #define IDR_MAINFRAME                   128
 #define IDD_LOGIN_DLG                   129
 #define IDD_MAINHOME_DLG                131
@@ -23,6 +24,9 @@
 #define IDD_REVIEW_WRITE_DLG            151
 #define IDD_DIALOG2                     153
 #define IDD_DIALOG_OPTION_CHANGE        153
+#define IDD_SIGNUP_DLG                  1950
+
+// ── 메인홈 컨트롤 ─────────────────────────────────────────────
 #define IDC_BUTTON1                     1000
 #define IDC_BUTTON2                     1002
 #define IDC_LIST_STOR                   1004
@@ -36,6 +40,8 @@
 #define IDC_BTN_NEXT                    1012
 #define IDC_BTN_MYPAGE                  1013
 #define IDC_STATIC_BG                   1014
+
+// ── 가게/메뉴 목록 컨트롤 ─────────────────────────────────────
 #define IDC_BTN_CART                    1200
 #define IDC_STATIC_STORE_IMG            1201
 #define IDC_BTN_STORE_INFO              1202
@@ -44,6 +50,8 @@
 #define IDC_BTN_PREV_PAGE               1205
 #define IDC_BTN_NEXT_PAGE               1206
 #define IDC_STATIC_PAGE_NUM             1207
+
+// ── 메뉴 상세 컨트롤 ─────────────────────────────────────────
 #define IDC_STATIC_MENU_NAME_D          1251
 #define IDC_EDIT_MENU_DESC_D            1252
 #define IDC_STATIC_OPTION_GROUP_D       1253
@@ -53,13 +61,14 @@
 #define IDC_STATIC_OPTION_PRICE_D       1257
 #define IDC_BTN_ADD_CART_D              1258
 
-// 1300번대: 리뷰 작성(ReviewWrite) 관련
+// ── 리뷰 작성 컨트롤 ─────────────────────────────────────────
 #define IDC_BTN_REVIEW_BACK             1300
 #define IDC_STATIC_REVIEW_TITLE         1301
-#define IDC_COMBO_STAR_RATING           1302 // 별점 선택 (콤보박스 또는 라디오)
-#define IDC_EDIT_REVIEW_CONTENT         1303 // 리뷰 작성란 (멀티라인 에디트)
-#define IDC_BTN_REVIEW_SUBMIT           1304 // 확인 버튼 (IDOK 대체 가능)
+#define IDC_COMBO_STAR_RATING           1302
+#define IDC_EDIT_REVIEW_CONTENT         1303
+#define IDC_BTN_REVIEW_SUBMIT           1304
 
+// ── 공통 컨트롤 ──────────────────────────────────────────────
 #define IDC_BTN_BACK                    1400
 #define IDC_RADIO_DELIVERY              1401
 #define IDC_RADIO_PICKUP                1402
@@ -73,7 +82,7 @@
 #define IDC_STATIC_TOTAL_PRICE          1410
 #define IDC_LIST_CART                   1411
 
-// 1500번대: 옵션 변경 창 관련
+// ── 옵션 변경 팝업 컨트롤 ─────────────────────────────────────
 #define IDD_EDIT_OPTION_DLG             1500
 #define IDC_STATIC_SELECTED_MENU        1501
 #define IDC_LIST_OPTIONS                1502
@@ -82,27 +91,28 @@
 #define IDC_EDIT_COUNT                  1505
 #define IDC_STATIC_TOTAL_PRICE_POPUP    1506
 
+// ── 가게 상세 컨트롤 ─────────────────────────────────────────
 #define IDC_EDIT_STORE_NAME             1601
 #define IDC_EDIT_STORE_ADDR             1602
 #define IDC_EDIT_STORE_TIME             1603
 #define IDC_EDIT_STORE_OFF              1604
 #define IDC_EDIT_STORE_TEL              1605
 
-
+// ── 주문완료 / 주문내역 컨트롤 ───────────────────────────────
 #define IDC_STATIC_STORE_NAME           1700
 #define IDC_STATIC_ORDER_LIST           1701
 #define IDC_STATIC_PRICE                1702
 #define IDC_STATIC_TIME                 1703
 #define IDC_BTN_WRITE_REVIEW            1704
 
-// 1750번대: 1:1 채팅(Chat) 관련
+// ── 채팅 컨트롤 ──────────────────────────────────────────────
 #define IDC_BTN_CHAT_BACK               1750
 #define IDC_STATIC_CHAT_TITLE           1751
-#define IDC_LIST_CHAT_MSGS              1752 // 메시지가 표시될 리스트박스 (또는 에디트)
-#define IDC_EDIT_CHAT_INPUT             1753 // 메시지 입력창
-#define IDC_BTN_CHAT_SEND               1754 // 송신 버튼
+#define IDC_LIST_CHAT_MSGS              1752
+#define IDC_EDIT_CHAT_INPUT             1753
+#define IDC_BTN_CHAT_SEND               1754
 
-// 1800번대: 주문 현황(OrderHistory) 관련
+// ── 주문현황 컨트롤 ──────────────────────────────────────────
 #define IDC_STATIC_ORDER_STATUS         1800
 #define IDC_STATIC_ORDER_NUM            1801
 #define IDC_STATIC_SHOP_NAME            1802
@@ -110,61 +120,74 @@
 #define IDC_LIST_ORDER_ITEMS            1804
 #define IDC_STATIC_FINAL_TOTAL          1805
 #define IDC_BTN_CHAT                    1806
-// Next default values for new objects
-// 
 
-// ── 로그인 화면 ──────────────────────────────────────────────
-#define IDC_EDIT_LOGIN_ID           1900
-#define IDC_EDIT_LOGIN_PW           1901
-#define IDC_BTN_GOTO_SIGNUP         1902
-#define IDC_STATIC_CONN_STATUS      1903
-#define IDC_BTN_CONNECT             1904
-#define IDC_EDIT_SERVER_IP          1905
-#define IDC_EDIT_SERVER_PORT        1906
-#define IDC_STATIC_LOGIN_ERR        1907
+// ── 로그인 컨트롤 ─────────────────────────────────────────────
+#define IDC_EDIT_LOGIN_ID               1900
+#define IDC_EDIT_LOGIN_PW               1901
+#define IDC_BTN_GOTO_SIGNUP             1902
+#define IDC_STATIC_CONN_STATUS          1903
+#define IDC_BTN_CONNECT                 1904
+#define IDC_EDIT_SERVER_IP              1905
+#define IDC_EDIT_SERVER_PORT            1906
+#define IDC_STATIC_LOGIN_ERR            1907
 
-// ── 회원가입 화면 ────────────────────────────────────────────
-#define IDD_SIGNUP_DLG              1950
-#define IDC_EDIT_SIGNUP_ID          1951
-#define IDC_EDIT_SIGNUP_PW          1952
-#define IDC_EDIT_SIGNUP_PW2         1953
-#define IDC_EDIT_SIGNUP_NAME        1954
-#define IDC_EDIT_SIGNUP_PHONE       1955
-#define IDC_EDIT_SIGNUP_ADDR        1956
-#define IDC_COMBO_SIGNUP_ROLE       1957
-#define IDC_STATIC_SIGNUP_ERR       1958
+// ── 결제수단 컨트롤 ──────────────────────────────────────────
+#define IDC_EDIT_CARD_NAME              1910
+#define IDC_EDIT_CARD_NUMBER            1911
+#define IDC_EDIT_EXPIRY                 1912
+#define IDC_EDIT_CVV                    1913
+#define IDC_EDIT_PASSWORD               1914
+#define IDC_LIST_CARDS                  1915
+#define IDC_BTN_SET_DEFAULT             1916
+#define IDC_BTN_DELETE_CARD             1917
 
-// ── 메인 홈 하단 4버튼 ──────────────────────────────────────
-#define IDC_BTN_MY_MYPAGE           1960
-#define IDC_BTN_MY_PAYMENT          1961
-#define IDC_BTN_MY_DELIVERY         1962
-#define IDC_BTN_MY_ORDERHISTORY     1963
+// ── 회원가입 컨트롤 ──────────────────────────────────────────
+#define IDC_EDIT_SIGNUP_ID              1951
+#define IDC_EDIT_SIGNUP_PW              1952
+#define IDC_EDIT_SIGNUP_PW2             1953
+#define IDC_EDIT_SIGNUP_NAME            1954
+#define IDC_EDIT_SIGNUP_PHONE           1955
+#define IDC_EDIT_SIGNUP_ADDR            1956
+#define IDC_COMBO_SIGNUP_ROLE           1957
+#define IDC_STATIC_SIGNUP_ERR           1958
 
-// ── 장바구니 요청사항 ────────────────────────────────────────
-#define IDC_EDIT_DELIVERY_REQUEST   1970
-#define IDC_STATIC_REQUEST_LABEL    1971
+// ── 마이페이지 하단 버튼 ──────────────────────────────────────
+#define IDC_BTN_MY_MYPAGE               1960
+#define IDC_BTN_MY_PAYMENT              1961
+#define IDC_BTN_MY_DELIVERY             1962
+#define IDC_BTN_MY_ORDERHISTORY         1963
 
-// ── 리뷰 목록 ────────────────────────────────────────────────
-#define IDC_LIST_REVIEWS            1980
-#define IDC_STATIC_REVIEW_STORE     1981
-#define IDC_STATIC_AVG_RATING       1982
-#define IDC_BTN_WRITE_MY_REVIEW     1983
+// ── 장바구니 요청사항 컨트롤 ─────────────────────────────────
+#define IDC_EDIT_DELIVERY_REQUEST       1970
+#define IDC_STATIC_REQUEST_LABEL        1971
 
-// ── 결제수단 ────────────────────────────────────────────────
-#define IDC_EDIT_CARD_NAME          1910
-#define IDC_EDIT_CARD_NUMBER        1911
-#define IDC_EDIT_EXPIRY             1912
-#define IDC_EDIT_CVV                1913
-#define IDC_EDIT_PASSWORD           1914
-#define IDC_LIST_CARDS              1915
-#define IDC_BTN_SET_DEFAULT         1916
-#define IDC_BTN_DELETE_CARD         1917
+// ── 리뷰 목록 컨트롤 ─────────────────────────────────────────
+#define IDC_LIST_REVIEWS                1980
+#define IDC_STATIC_REVIEW_STORE         1981
+#define IDC_STATIC_AVG_RATING           1982
+#define IDC_BTN_WRITE_MY_REVIEW         1983
 
+// ── 메뉴 상세 수량/합계 컨트롤 (신규) ────────────────────────
+#define IDC_BTN_COUNT_MINUS_D           2010
+#define IDC_BTN_COUNT_PLUS_D            2011
+#define IDC_EDIT_COUNT_D                2012
+#define IDC_STATIC_TOTAL_D              2013
+
+// ── 장바구니 주소/포인트/쿠폰 컨트롤 (신규) ──────────────────
+#define IDC_EDIT_DELIVERY_ADDR          2020
+#define IDC_STATIC_ADDR_LABEL           2021
+#define IDC_EDIT_USE_POINT              2022
+#define IDC_STATIC_MY_POINT             2023
+#define IDC_EDIT_COUPON_ID              2024
+
+// ── VS 자동 생성 매크로 (APSTUDIO 전용) ──────────────────────
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        155
+#define _APS_NEXT_RESOURCE_VALUE        200
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         2000
+#define _APS_NEXT_CONTROL_VALUE         2030
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
+#endif
+
 #endif

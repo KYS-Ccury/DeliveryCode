@@ -35,6 +35,7 @@ protected:
 
     afx_msg void    OnBnClickedBtnBack();
     afx_msg void    OnBnClickedBtnChat();
+    afx_msg void    OnBnClickedBtnWriteReview();  // ★ 리뷰 작성 버튼
 
     // 서버 응답 핸들러
     afx_msg LRESULT OnOrderHistoryResponse(WPARAM wParam, LPARAM lParam);

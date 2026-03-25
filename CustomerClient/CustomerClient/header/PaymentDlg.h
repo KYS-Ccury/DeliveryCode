@@ -4,10 +4,11 @@
 #include <atomic>
 
 // ================================================================
-//  PaymentDlg.h  ─  결제 수단 관리 화면 (최종 완전판)
+//  PaymentDlg.h  ─  결제 수단 관리 화면 (완성판)
 //
-//  ※ PaymentCard 는 이 헤더에서만 정의 (cpp 재정의 금지)
-//  ※ 멤버 함수/변수가 h/cpp 완전히 일치
+//  [변경사항]
+//  - OnBnClickedDeleteCard / OnBnClickedSetDefault 핸들러 추가
+//  - OnDelCardResponse 응답 핸들러 추가
 // ================================================================
 
 struct PaymentCard {
@@ -18,18 +19,18 @@ struct PaymentCard {
     bool    isDefault = false;
 };
 
+// ── 앱 전역 카드 캐시 (PaymentDlg 닫혀도 유지, CartDlg에서 참조) ──
+extern std::vector<PaymentCard> g_cachedCards;
+
 class PaymentDlg : public CDialogEx
 {
     DECLARE_DYNAMIC(PaymentDlg)
 public:
     PaymentDlg(CWnd* pParent = nullptr);
     virtual ~PaymentDlg();
-
 #ifdef AFX_DESIGN_TIME
     enum { IDD = IDD_PAYMENT_DLG };
 #endif
-
-    // ── 입력 필드 (DDX 또는 GetDlgItemText 로 채워짐) ────────
     CString m_strCardName;
     CString m_strCardNumber;
     CString m_strExpiry;
@@ -42,20 +43,22 @@ protected:
 
     afx_msg void    OnBnClickedOk();
     afx_msg void    OnBnClickedCancel();
+    afx_msg void    OnBnClickedDeleteCard();   // ← 카드 삭제
+    afx_msg void    OnBnClickedSetDefault();   // ← 기본 카드 설정
 
-    // ── 서버 응답 핸들러 ─────────────────────────────────────
     afx_msg LRESULT OnProfileResponse(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnAddCardResponse(WPARAM wParam, LPARAM lParam);
+    afx_msg LRESULT OnDelCardResponse(WPARAM wParam, LPARAM lParam); // ← 삭제 응답
 
     DECLARE_MESSAGE_MAP()
 
 private:
-    // ── 데이터 ───────────────────────────────────────────────
     std::vector<PaymentCard> m_vecCards;
     std::atomic<bool>        m_bWaiting{ false };
 
-    // ── 내부 헬퍼 ────────────────────────────────────────────
     void RebuildCardListUI();
     bool ValidateInputs();
-    void ReadInputFields();   // GetDlgItemText 로 m_str* 채우기
+    void ReadInputFields();
+    void SaveCardsToCache();    // 카드 목록을 전역 캐시에 저장
+    void LoadCardsFromCache();  // 전역 캐시에서 카드 목록 복원
 };
