@@ -200,6 +200,7 @@
     <ClInclude Include="header\CartItem.h" />
     <ClInclude Include="header\ChatDlg.h" />
     <ClInclude Include="header\ChatManager.h" />
+    <ClInclude Include="header\CustomerClient.h" />
     <ClInclude Include="header\DeliveryOkDlg.h" />
     <ClInclude Include="header\json.hpp" />
     <ClInclude Include="header\LoginDlg.h" />

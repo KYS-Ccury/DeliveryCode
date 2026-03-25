@@ -105,6 +105,12 @@
     <ClInclude Include="header\UserInfo.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="header\SignupDlg.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="header\CustomerClient.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\AuthManager.cpp">
@@ -181,6 +187,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="src\UserInfo.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\SignupDlg.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
