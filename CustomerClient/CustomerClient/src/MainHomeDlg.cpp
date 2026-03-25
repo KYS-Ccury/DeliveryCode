@@ -11,8 +11,6 @@
 #include "MyMenuPopup.h"
 #include "PointDlg.h"
 #include "EditInfoDlg.h"
-#include "MyInfoDlg.h"
-#include "ChatDlg.h"
 #include "AuthManager.h"
 #include "NetworkManager.h"
 #include "common/header/Types.h"
@@ -57,11 +55,14 @@ static std::vector<StoreInfo> ParseStoreArray(const std::string& json)
         si.storeName         = MHJStr(o,"name");
         si.category          = MHJStr(o,"category");
         si.deliveryTime      = MHJStr(o,"delivery_time");
-        si.deliveryPriceRange= MHJStr(o,"delivery_fee");
+        // ★ delivery_fee는 서버가 int로 전송 → delivery_fee_str(문자열)로 읽기
+        si.deliveryPriceRange= MHJStr(o,"delivery_fee_str");
         si.address           = MHJStr(o,"address");
         si.openTime          = MHJStr(o,"open_time");
         si.phoneNumber       = MHJStr(o,"phone");
         si.holiday           = MHJStr(o,"holiday");
+        // ★ 가게 소개글 → storeImageUrl 필드 재활용 (StoreInfo에 별도 필드 없으면)
+        si.storeImageUrl     = MHJStr(o,"description");
         si.minOrderAmount    = MHJInt(o,"min_order");
         si.distance          = MHJDouble(o,"distance");
         if (si.storeID > 0) stores.push_back(si);
@@ -107,10 +108,12 @@ BOOL MainHomeDlg::OnInitDialog()
     m_brushWhite.CreateSolidBrush(RGB(255, 255, 255));
 
     m_listStore.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-    m_listStore.InsertColumn(0, _T("매장명"),       LVCFMT_LEFT,   170);
-    m_listStore.InsertColumn(1, _T("배달시간"),     LVCFMT_CENTER,  80);
-    m_listStore.InsertColumn(2, _T("최소주문"),     LVCFMT_RIGHT,  100);
-    m_listStore.InsertColumn(3, _T("거리"),         LVCFMT_CENTER,  55);
+    m_listStore.InsertColumn(0, _T("매장명"),     LVCFMT_LEFT,   150);
+    m_listStore.InsertColumn(1, _T("배달시간"),   LVCFMT_CENTER,  75);
+    m_listStore.InsertColumn(2, _T("배달비"),     LVCFMT_CENTER,  70);
+    m_listStore.InsertColumn(3, _T("최소주문"),   LVCFMT_RIGHT,   90);
+    m_listStore.InsertColumn(4, _T("거리"),       LVCFMT_CENTER,  55);
+    m_listStore.InsertColumn(5, _T("가게소개"),   LVCFMT_LEFT,   200);
 
     CWnd* pPH = GetDlgItem(IDC_STATIC_MENU_BAR);
     if (pPH) {
@@ -218,14 +221,24 @@ void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
 {
     m_listStore.DeleteAllItems();
     for (int i = 0; i < (int)stores.size(); ++i) {
-        CString n=CA2T(stores[i].storeName.c_str(),CP_UTF8);
-        CString t=CA2T(stores[i].deliveryTime.c_str(),CP_UTF8);
+        // 컬럼 0: 매장명
+        CString n = CA2T(stores[i].storeName.c_str(), CP_UTF8);
         int r = m_listStore.InsertItem(i, n);
-        m_listStore.SetItemText(r,1,t);
-        CString a; a.Format(_T("%d원"),stores[i].minOrderAmount);
-        m_listStore.SetItemText(r,2,a);
-        CString d; d.Format(_T("%.1fkm"),stores[i].distance);
-        m_listStore.SetItemText(r,3,d);
+        // 컬럼 1: 배달시간
+        CString t = CA2T(stores[i].deliveryTime.c_str(), CP_UTF8);
+        m_listStore.SetItemText(r, 1, t.IsEmpty() ? _T("--") : t);
+        // 컬럼 2: 배달비 ("무료" or "X,XXX원")
+        CString f = CA2T(stores[i].deliveryPriceRange.c_str(), CP_UTF8);
+        m_listStore.SetItemText(r, 2, f.IsEmpty() ? _T("--") : f);
+        // 컬럼 3: 최소주문
+        CString a; a.Format(_T("%d원"), stores[i].minOrderAmount);
+        m_listStore.SetItemText(r, 3, a);
+        // 컬럼 4: 거리
+        CString d; d.Format(_T("%.1fkm"), stores[i].distance);
+        m_listStore.SetItemText(r, 4, d);
+        // 컬럼 5: 가게 소개 (storeImageUrl 재활용)
+        CString desc = CA2T(stores[i].storeImageUrl.c_str(), CP_UTF8);
+        m_listStore.SetItemText(r, 5, desc);
     }
     if (stores.empty()) m_listStore.InsertItem(0,_T("해당 카테고리의 가게가 없습니다."));
 }
@@ -328,12 +341,6 @@ LRESULT MainHomeDlg::OnMyMenuSelected(WPARAM wParam, LPARAM)
     int id = (int)wParam;
     switch (id)
     {
-    case MYMENU_MY_INFO:                    // ★ 개인정보 확인
-    {
-        MyInfoDlg dlg(this);
-        dlg.DoModal();
-        break;
-    }
     case MYMENU_EDIT_INFO:
     {
         EditInfoDlg dlg(this);
@@ -343,15 +350,6 @@ LRESULT MainHomeDlg::OnMyMenuSelected(WPARAM wParam, LPARAM)
     case MYMENU_POINT:
     {
         PointDlg dlg(this);
-        dlg.DoModal();
-        break;
-    }
-    case MYMENU_ADMIN_CHAT:                 // ★ 관리자 채팅
-    {
-        ChatDlg dlg(this);
-        dlg.m_strTargetName = _T("관리자 문의");
-        dlg.m_strTargetID = _T("admin");
-        dlg.m_strTargetType = _T("admin");
         dlg.DoModal();
         break;
     }

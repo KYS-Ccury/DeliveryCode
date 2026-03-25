@@ -61,6 +61,7 @@ static MenuInfo ParseMenuObj(const std::string& obj)
     // 서버가 "id" 키로 전송 (menu_id 아님)
     m.menuID      = SLJInt(obj,"id");
     m.menuName    = SLJStr(obj,"name");
+    m.description = SLJStr(obj,"desc");    // ★ 메뉴 설명 파싱 추가
     m.price       = SLJInt(obj,"price");
     m.subCategory = SLJStr(obj,"sub_category");
     m.menuImageUrl= SLJStr(obj,"image_url");
@@ -183,9 +184,10 @@ void StoreListDlg::RebuildMenuListUI(const std::vector<MenuInfo>& menus, const C
         CString sub = CA2T(m.subCategory.c_str(),CP_UTF8);
         if (filter != _T("전체") && sub != filter) continue;
         CString n = CA2T(m.menuName.c_str(),CP_UTF8);
+        CString d = CA2T(m.description.c_str(),CP_UTF8);  // ★ 메뉴 설명
         CString p; p.Format(_T("%d원"), m.price);
         int r = m_listMenu.InsertItem(row++, n);
-        m_listMenu.SetItemText(r,1,_T(""));
+        m_listMenu.SetItemText(r,1,d);                     // ★ 설명 표시
         m_listMenu.SetItemText(r,2,p);
     }
     if (row == 0) m_listMenu.InsertItem(0, _T("메뉴가 없습니다."));
