@@ -16,6 +16,7 @@ protected:
     afx_msg void   OnPaint();
 private:
     HBRUSH        m_hBrushBg     = nullptr;
+    HWND          m_hParentWnd   = nullptr;   // stored in constructor, safe in destructor
     CString       m_strPhotoPath;
     CBitmap       m_bitmap;
     bool          m_bHasPhoto    = false;

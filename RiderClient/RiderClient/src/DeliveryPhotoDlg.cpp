@@ -26,6 +26,10 @@ DeliveryPhotoDlg::DeliveryPhotoDlg(CWnd* pParent)
     , m_bHasPhoto(false)
     , m_gdiplusToken(0)
 {
+    // Store parent HWND now - GetParent() is unsafe in destructor
+    m_hParentWnd = (pParent && IsWindow(pParent->GetSafeHwnd()))
+                   ? pParent->GetSafeHwnd() : nullptr;
+
     GdiplusStartupInput input;
     GdiplusStartup(&m_gdiplusToken, &input, nullptr);
 }
@@ -36,6 +40,13 @@ DeliveryPhotoDlg::~DeliveryPhotoDlg()
         m_bitmap.DeleteObject();
     if (m_gdiplusToken)
         GdiplusShutdown(m_gdiplusToken);
+
+    // Restore CMD_RIDER_DELIVERY_DONE routing to parent (MainDlg)
+    // Use pre-stored HWND - GetParent() is UNSAFE in destructor (MFC ASSERT)
+    if (m_hParentWnd && IsWindow(m_hParentWnd))
+        AppContext::Get().socket.RegisterWnd(CMD_RIDER_DELIVERY_DONE, m_hParentWnd);
+    else
+        AppContext::Get().socket.UnregisterWnd(CMD_RIDER_DELIVERY_DONE);
 }
 
 void DeliveryPhotoDlg::DoDataExchange(CDataExchange* pDX)
@@ -46,7 +57,9 @@ void DeliveryPhotoDlg::DoDataExchange(CDataExchange* pDX)
 BOOL DeliveryPhotoDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
-    AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
+    // Register this dialog for delivery done response
+    // (overrides MainDlg's registration while this dialog is open)
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_DELIVERY_DONE, GetSafeHwnd());
     GetDlgItem(IDC_BTN_CONFIRM_PHOTO)->EnableWindow(FALSE);
     SetDlgItemText(IDC_STATIC_PHOTO_PATH, _T(""));
     return TRUE;

@@ -51,11 +51,26 @@ MainDlg::~MainDlg()
 // ──────────────────────────────────────────────────────
 void MainDlg::OnClose()
 {
+    // 1. 타이머 먼저 정리 (WM_TIMER가 소멸된 창에 전달되는 것 방지)
+    KillTimer(1);
+    KillTimer(2);
+
+    // 2. 소켓 수신 라우팅 해제 (RecvThread PostMessage 방지)
+    AppContext::Get().socket.UnregisterWnd(CMD_RIDER_STATUS_UPDATE);
+    AppContext::Get().socket.UnregisterWnd(CMD_RIDER_ACCEPT);
+    AppContext::Get().socket.UnregisterWnd(CMD_RIDER_PICKUP_DONE);
+    AppContext::Get().socket.UnregisterWnd(CMD_RIDER_DELIVERY_DONE);
+    AppContext::Get().socket.UnregisterWnd(CMD_RIDER_ORDER_LIST);
+    AppContext::Get().socket.UnregisterWnd(CMD_RIDER_MY_LIST);
+    AppContext::Get().socket.SetNotifyWnd(nullptr);
+
+    // 3. 서버에 로그아웃 전송 후 연결 해제
     if (AppContext::Get().session.isLoggedIn) {
         AppContext::Get().socket.SendPacket(CMD_LOGOUT, "{}");
         AppContext::Get().session.isLoggedIn = false;
     }
     AppContext::Get().socket.Disconnect();
+
     CDialogEx::OnClose();
 }
 
@@ -91,6 +106,8 @@ BOOL MainDlg::OnInitDialog()
     AppContext::Get().socket.RegisterWnd(CMD_RIDER_ACCEPT,        GetSafeHwnd());
     AppContext::Get().socket.RegisterWnd(CMD_RIDER_PICKUP_DONE,   GetSafeHwnd());
     AppContext::Get().socket.RegisterWnd(CMD_RIDER_DELIVERY_DONE, GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_ORDER_LIST,    GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_MY_LIST,       GetSafeHwnd());
     m_checkNewDispatch.SetCheck(BST_CHECKED);
     SetTimer(1, 1000, nullptr);
     SetStep(DeliveryStep::IDLE);
@@ -151,6 +168,8 @@ void MainDlg::OnBtnMyPage()
 {
     MyPageDlg dlg(this);
     dlg.DoModal();
+    // Restore routing back to MainDlg after sub-dialog closes
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_MY_LIST, GetSafeHwnd());
     if (!AppContext::Get().session.isLoggedIn)
         EndDialog(IDCANCEL);
 }
@@ -159,6 +178,9 @@ void MainDlg::OnBtnDeliveryList()
 {
     DeliveryListDlg dlg(this);
     dlg.DoModal();
+    // Restore routing back to MainDlg after sub-dialog closes
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_ORDER_LIST, GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_MY_LIST,    GetSafeHwnd());
     if (AppContext::Get().currentOrder.IsActive() &&
         m_step == DeliveryStep::ONLINE)
     {

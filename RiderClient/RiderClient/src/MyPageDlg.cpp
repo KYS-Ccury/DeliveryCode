@@ -23,7 +23,9 @@ BEGIN_MESSAGE_MAP(MyPageDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 MyPageDlg::MyPageDlg(CWnd* pParent) : CDialogEx(IDD_MYPAGE_DLG, pParent) {}
-MyPageDlg::~MyPageDlg() {}
+MyPageDlg::~MyPageDlg() {
+    AppContext::Get().socket.UnregisterWnd(CMD_RIDER_MY_LIST);
+}
 
 void MyPageDlg::DoDataExchange(CDataExchange* pDX) { CDialogEx::DoDataExchange(pDX); }
 

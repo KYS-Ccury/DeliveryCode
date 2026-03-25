@@ -21,7 +21,10 @@ BEGIN_MESSAGE_MAP(DeliveryListDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 DeliveryListDlg::DeliveryListDlg(CWnd* pParent) : CDialogEx(IDD_DELIVERY_LIST_DLG, pParent) {}
-DeliveryListDlg::~DeliveryListDlg() {}
+DeliveryListDlg::~DeliveryListDlg() {
+    AppContext::Get().socket.UnregisterWnd(CMD_RIDER_ORDER_LIST);
+    AppContext::Get().socket.UnregisterWnd(CMD_RIDER_MY_LIST);
+}
 
 void DeliveryListDlg::DoDataExchange(CDataExchange* pDX)
 {

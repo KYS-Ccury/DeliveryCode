@@ -181,9 +181,13 @@ void SocketManager::ProcessRecvBuffer()
         else if (protocol == CMD_CHAT_RECV_NTF)       wmsg = WM_CHAT_RECV;
 
         HWND hTarget = FindWnd(protocol);
-        if (hTarget)
-            PostMessage(hTarget, wmsg, 0, reinterpret_cast<LPARAM>(pPkt));
-        else
+        if (hTarget) {
+            // PostMessage is async-safe but HWND may become invalid
+            // between IsWindow() check and PostMessage() - use SEH guard
+            if (!PostMessage(hTarget, wmsg, 0, reinterpret_cast<LPARAM>(pPkt)))
+                delete pPkt;  // PostMessage failed (window already destroyed)
+        } else {
             delete pPkt;
+        }
     }
 }
