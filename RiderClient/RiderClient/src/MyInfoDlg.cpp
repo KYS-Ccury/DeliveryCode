@@ -50,7 +50,7 @@ void MyInfoDlg::DoDataExchange(CDataExchange* pDX) { CDialogEx::DoDataExchange(p
 BOOL MyInfoDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
-    AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_GET_MY_INFO, GetSafeHwnd());
     CenterInParent(this, GetParent());
 
     const RiderSession& s = AppContext::Get().session;
@@ -154,7 +154,7 @@ void ChangePwDlg::DoDataExchange(CDataExchange* pDX)
 BOOL ChangePwDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
-    AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_GET_MY_INFO, GetSafeHwnd());
     CenterInParent(this, GetParent());
     return TRUE;
 }
@@ -269,7 +269,7 @@ void ChangeAcctDlg::DoDataExchange(CDataExchange* pDX)
 BOOL ChangeAcctDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
-    AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_GET_MY_INFO, GetSafeHwnd());
     CenterInParent(this, GetParent());
 
     const RiderSession& s = AppContext::Get().session;
@@ -350,6 +350,12 @@ void ChangeAcctDlg::DoSaveAcct()
     AppContext::Get().session.bankName      = bank;
     AppContext::Get().session.accountHolder = holder;
     AppContext::Get().session.accountNumber = account;
+
+    // Remove whitespace/tab chars before JSON encoding
+    bank.Replace(_T("\t"), _T(""));
+    holder.Replace(_T("\t"), _T(""));
+    account.Replace(_T("\t"), _T(""));
+    bank.Trim(); holder.Trim(); account.Trim();
 
     auto toU = [](const CString& s) -> std::string {
         CT2A u(s, CP_UTF8); return std::string(u);

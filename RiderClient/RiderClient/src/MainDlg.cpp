@@ -65,7 +65,10 @@ void MainDlg::OnBtnHelp()
     ChatDlg dlg(this);
     dlg.DoModal();
     // 채팅 종료 후 이전 WM_SOCKET_RECV 핸들러 복원
-    AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_STATUS_UPDATE, GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_ACCEPT,        GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_PICKUP_DONE,   GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_DELIVERY_DONE, GetSafeHwnd());
 }
 
 void MainDlg::DoDataExchange(CDataExchange* pDX)
@@ -84,6 +87,10 @@ BOOL MainDlg::OnInitDialog()
     CDialogEx::OnInitDialog();
 
     AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_STATUS_UPDATE, GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_ACCEPT,        GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_PICKUP_DONE,   GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_DELIVERY_DONE, GetSafeHwnd());
     m_checkNewDispatch.SetCheck(BST_CHECKED);
     SetTimer(1, 1000, nullptr);
     SetStep(DeliveryStep::IDLE);

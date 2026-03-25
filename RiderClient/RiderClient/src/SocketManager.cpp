@@ -9,7 +9,6 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-// ── 전송용 mutex (UI 스레드 / RecvThread 동시 send 방지) ─────
 static std::mutex s_sendMutex;
 
 SocketManager::SocketManager()
@@ -24,18 +23,44 @@ SocketManager::~SocketManager()
     WSACleanup();
 }
 
+void SocketManager::RegisterWnd(UINT16 protocol, HWND hWnd)
+{
+    std::lock_guard<std::mutex> lock(m_wndMutex);
+    m_wndMap[protocol] = hWnd;
+}
+
+void SocketManager::UnregisterWnd(UINT16 protocol)
+{
+    std::lock_guard<std::mutex> lock(m_wndMutex);
+    m_wndMap.erase(protocol);
+}
+
+void SocketManager::SetNotifyWnd(HWND hWnd)
+{
+    m_hFallbackWnd = hWnd;
+}
+
+HWND SocketManager::FindWnd(UINT16 protocol)
+{
+    std::lock_guard<std::mutex> lock(m_wndMutex);
+    auto it = m_wndMap.find(protocol);
+    if (it != m_wndMap.end() && IsWindow(it->second))
+        return it->second;
+    if (m_hFallbackWnd && IsWindow(m_hFallbackWnd))
+        return m_hFallbackWnd;
+    return nullptr;
+}
+
 bool SocketManager::Connect(const CString& host, int port)
 {
-    if (m_socket != INVALID_SOCKET)
-        Disconnect();
+    if (m_socket != INVALID_SOCKET) Disconnect();
 
     m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (m_socket == INVALID_SOCKET) return false;
 
-    // 연결 타임아웃 2초
-    DWORD timeout = 2000;
+    DWORD tvMs = 2000;
     setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO,
-               reinterpret_cast<const char*>(&timeout), sizeof(timeout));
+               reinterpret_cast<const char*>(&tvMs), sizeof(tvMs));
 
     sockaddr_in addr = {};
     addr.sin_family = AF_INET;
@@ -44,30 +69,23 @@ bool SocketManager::Connect(const CString& host, int port)
     CT2A hostA(host);
     if (inet_pton(AF_INET, hostA, &addr.sin_addr) != 1) {
         addrinfo hints = {}, *res = nullptr;
-        hints.ai_family   = AF_INET;
-        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_family = AF_INET; hints.ai_socktype = SOCK_STREAM;
         if (getaddrinfo(hostA, nullptr, &hints, &res) == 0 && res) {
-            addr.sin_addr =
-                reinterpret_cast<sockaddr_in*>(res->ai_addr)->sin_addr;
+            addr.sin_addr = reinterpret_cast<sockaddr_in*>(res->ai_addr)->sin_addr;
             freeaddrinfo(res);
         } else {
-            closesocket(m_socket);
-            m_socket = INVALID_SOCKET;
-            return false;
+            closesocket(m_socket); m_socket = INVALID_SOCKET; return false;
         }
     }
 
     if (connect(m_socket, reinterpret_cast<sockaddr*>(&addr),
                 sizeof(addr)) == SOCKET_ERROR) {
-        closesocket(m_socket);
-        m_socket = INVALID_SOCKET;
-        return false;
+        closesocket(m_socket); m_socket = INVALID_SOCKET; return false;
     }
 
-    // 연결 성공 후 recv 타임아웃 제거 (블로킹 수신)
-    timeout = 0;
+    tvMs = 0;
     setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO,
-               reinterpret_cast<const char*>(&timeout), sizeof(timeout));
+               reinterpret_cast<const char*>(&tvMs), sizeof(tvMs));
 
     m_bRunning = true;
     m_recvBuf.clear();
@@ -87,13 +105,12 @@ void SocketManager::Disconnect()
     m_recvBuf.clear();
 }
 
-// ── 바이너리 전송: [clientType=3][protocol BE][bodyLen BE][body] ─
 bool SocketManager::SendPacket(UINT16 protocol, const std::string& jsonBody)
 {
     if (m_socket == INVALID_SOCKET) return false;
 
     PacketHeader hdr;
-    hdr.clientType = CLIENT_TYPE_RIDER;   // 3
+    hdr.clientType = CLIENT_TYPE_RIDER;
     hdr.protocol   = htons(protocol);
     hdr.bodyLength = htonl(static_cast<UINT32>(jsonBody.size()));
 
@@ -114,7 +131,6 @@ bool SocketManager::SendPacket(UINT16 protocol, const std::string& jsonBody)
     return true;
 }
 
-// ── Legacy 래퍼 ──────────────────────────────────────────────────
 bool SocketManager::SendPacket(int cmd, const CString& payload)
 {
     CT2A utf8(payload, CP_UTF8);
@@ -125,18 +141,16 @@ bool SocketManager::SendPacket(int cmd, const CString& payload)
                       "{\"payload\":\"" + bodyStr + "\"}");
 }
 
-// ── 수신 스레드 ──────────────────────────────────────────────────
 UINT SocketManager::RecvThread(LPVOID pParam)
 {
     SocketManager* self = static_cast<SocketManager*>(pParam);
     char buf[8192];
-
     while (self->m_bRunning) {
         int ret = recv(self->m_socket, buf, sizeof(buf), 0);
         if (ret <= 0) {
-            // 서버 연결 끊김
-            if (self->m_hNotifyWnd && IsWindow(self->m_hNotifyWnd))
-                PostMessage(self->m_hNotifyWnd, WM_SERVER_DISCONN, 0, 0);
+            HWND hFall = self->m_hFallbackWnd;
+            if (hFall && IsWindow(hFall))
+                PostMessage(hFall, WM_SERVER_DISCONN, 0, 0);
             break;
         }
         self->m_recvBuf.append(buf, ret);
@@ -145,22 +159,14 @@ UINT SocketManager::RecvThread(LPVOID pParam)
     return 0;
 }
 
-// ── 수신 버퍼 처리: 완전한 패킷 단위로 PostMessage ──────────────
 void SocketManager::ProcessRecvBuffer()
 {
-    // NotifyWnd가 유효할 때까지 대기 (LoginDlg 초기화 전 응답 방어)
-    if (!m_hNotifyWnd || !IsWindow(m_hNotifyWnd)) return;
-
-    const size_t HDR = sizeof(PacketHeader);  // 7 bytes
-
+    const size_t HDR = sizeof(PacketHeader);
     while (m_recvBuf.size() >= HDR) {
         PacketHeader hdr;
         memcpy(&hdr, m_recvBuf.data(), HDR);
-
         UINT16 protocol   = ntohs(hdr.protocol);
         UINT32 bodyLength = ntohl(hdr.bodyLength);
-
-        // 아직 body가 다 안 왔으면 대기
         if (m_recvBuf.size() < HDR + bodyLength) break;
 
         std::string body = m_recvBuf.substr(HDR, bodyLength);
@@ -170,15 +176,13 @@ void SocketManager::ProcessRecvBuffer()
         pPkt->protocol   = protocol;
         pPkt->body       = body;
 
-        // 프로토콜 번호에 따라 메시지 구분
         UINT wmsg = WM_SOCKET_RECV;
         if      (protocol == CMD_RIDER_DISPATCH_PUSH) wmsg = WM_DISPATCH_PUSH;
         else if (protocol == CMD_CHAT_RECV_NTF)       wmsg = WM_CHAT_RECV;
 
-        // NotifyWnd 재확인 (버퍼 처리 중 창이 닫힐 수 있음)
-        if (m_hNotifyWnd && IsWindow(m_hNotifyWnd))
-            PostMessage(m_hNotifyWnd, wmsg, 0,
-                        reinterpret_cast<LPARAM>(pPkt));
+        HWND hTarget = FindWnd(protocol);
+        if (hTarget)
+            PostMessage(hTarget, wmsg, 0, reinterpret_cast<LPARAM>(pPkt));
         else
             delete pPkt;
     }

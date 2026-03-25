@@ -38,6 +38,8 @@ BOOL LoginDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
     AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_LOGIN, GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_SIGNUP, GetSafeHwnd());
 
     // Connect to server (10.10.10.122:8080)
     // Show result in title bar to avoid IDC_STATIC_CONN_STATUS dependency
@@ -74,8 +76,8 @@ void LoginDlg::OnBtnLogin()
     CT2A idUtf8(strId, CP_UTF8);
     CT2A pwUtf8(strPw, CP_UTF8);
     json req;
-    req["id"] = std::string(idUtf8);   // 서버 Basehandler: "id" 키
-    req["pw"] = std::string(pwUtf8);   // 서버 Basehandler: "pw" 키
+    req["login_id"] = std::string(idUtf8);
+    req["password"] = std::string(pwUtf8);
 
     bool bSent = AppContext::Get().socket.SendPacket(CMD_LOGIN, req.dump());
     if (!bSent) {
@@ -90,11 +92,21 @@ void LoginDlg::OnBtnLogin()
 
 void LoginDlg::OnBtnRegister()
 {
+    AppContext::Get().socket.UnregisterWnd(CMD_LOGIN);
+    AppContext::Get().socket.UnregisterWnd(CMD_SIGNUP);
     RegisterDlg dlg(this);
     if (dlg.DoModal() == IDOK) {
         PrepareDeliveryDlg prepDlg(this);
         prepDlg.DoModal();
     }
+    // Restore notification after sub-dialogs close
+    AppContext::Get().socket.RegisterWnd(CMD_LOGIN, GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_SIGNUP, GetSafeHwnd());
+}
+
+void LoginDlg::~LoginDlg() {
+    AppContext::Get().socket.UnregisterWnd(CMD_LOGIN);
+    AppContext::Get().socket.UnregisterWnd(CMD_SIGNUP);
 }
 
 void LoginDlg::OnBtnFindId()

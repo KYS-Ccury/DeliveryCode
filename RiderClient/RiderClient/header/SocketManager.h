@@ -1,30 +1,28 @@
 #pragma once
 // SocketManager.h
-// Binary packet protocol: [clientType:1B][protocol:2B BE][bodyLength:4B BE][JSON body]
-// NOTE: pch.h already includes <afxwin.h> <winsock2.h> <ws2tcpip.h> <string> <vector>
-//       Do NOT re-include them here.
-// IMPORTANT: m_recvBuf uses std::string (not vector<BYTE>) to avoid
-//            nlohmann/json picking BYTE as its BinaryType and breaking parse().
+// Binary packet: [clientType:1B][protocol:2B BE][bodyLength:4B BE][JSON body]
+// NOTE: pch.h includes <afxwin.h> <winsock2.h> <ws2tcpip.h>
 
 #define WM_SOCKET_RECV    (WM_USER + 100)
 #define WM_DISPATCH_PUSH  (WM_USER + 101)
 #define WM_CHAT_RECV      (WM_USER + 102)
 #define WM_SERVER_DISCONN (WM_USER + 103)
 
-// Packet header - matches server Common/header/Packet.h exactly (7 bytes packed)
+#include <map>
+#include <mutex>
+
 #pragma pack(push, 1)
 struct PacketHeader {
-    UINT8  clientType;   // 1 byte : 3 = RIDER
-    UINT16 protocol;     // 2 bytes: big-endian
-    UINT32 bodyLength;   // 4 bytes: big-endian
+    UINT8  clientType;
+    UINT16 protocol;
+    UINT32 bodyLength;
 };
 #pragma pack(pop)
 
-// Completed received packet - passed as lParam via PostMessage.
-// Receiver MUST delete after use.
+// Completed received packet - receiver MUST delete after use.
 struct RecvPacket {
     UINT16      protocol;
-    std::string body;    // UTF-8 JSON
+    std::string body;
 };
 
 class SocketManager {
@@ -35,25 +33,31 @@ public:
     bool Connect(const CString& host, int port);
     void Disconnect();
 
-    // Binary send (new style): protocol + UTF-8 JSON body
     bool SendPacket(UINT16 protocol, const std::string& jsonBody = "{}");
-
-    // Legacy wrapper for gradual migration
     bool SendPacket(int cmd, const CString& payload = _T(""));
 
     bool IsConnected() const { return m_socket != INVALID_SOCKET; }
-    void SetNotifyWnd(HWND hWnd) { m_hNotifyWnd = hWnd; }
+
+    // ── 창 등록 API ────────────────────────────────────────────
+    // RegisterWnd  : 특정 protocol 수신 시 해당 HWND로 WM_SOCKET_RECV 전송
+    // UnregisterWnd: 창이 닫힐 때 반드시 호출 (무효 HWND 방지)
+    // SetNotifyWnd : 레거시 호환 - 모든 미등록 protocol의 fallback 창 설정
+    void RegisterWnd(UINT16 protocol, HWND hWnd);
+    void UnregisterWnd(UINT16 protocol);
+    void SetNotifyWnd(HWND hWnd);   // fallback (MainDlg 등 항상 살아있는 창)
 
 private:
     static UINT RecvThread(LPVOID pParam);
     void ProcessRecvBuffer();
+    HWND FindWnd(UINT16 protocol);  // protocol → HWND 라우팅
 
     SOCKET      m_socket      = INVALID_SOCKET;
-    HWND        m_hNotifyWnd  = nullptr;
+    HWND        m_hFallbackWnd = nullptr;       // fallback (SetNotifyWnd)
     CWinThread* m_pRecvThread = nullptr;
     bool        m_bRunning    = false;
-
-    // Use std::string as accumulation buffer (avoids json.hpp picking
-    // vector<BYTE> as BinaryType which changes the parser constructor).
     std::string m_recvBuf;
+
+    // protocol → HWND 맵 (thread-safe)
+    std::map<UINT16, HWND> m_wndMap;
+    std::mutex             m_wndMutex;
 };

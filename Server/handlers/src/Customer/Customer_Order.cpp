@@ -106,9 +106,6 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
         res["estimated_minutes"] = 30;
         session->sendPacket(static_cast<uint8_t>(m_clientType), CmdCustomer::REQ_CREATE_ORDER, res.dump());
 
-        json res; res["status"] = Status::SUCCESS; res["order_id"] = (int)orderID;
-        session->sendPacket(static_cast<uint8_t>(m_clientType), CmdCustomer::REQ_CREATE_ORDER, res.dump());
-
     } catch (const std::exception& e) {
         sendError(session, CmdCustomer::REQ_CREATE_ORDER, Status::SERVER_ERROR, e.what());
     }

@@ -30,7 +30,7 @@ void MyPageDlg::DoDataExchange(CDataExchange* pDX) { CDialogEx::DoDataExchange(p
 BOOL MyPageDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
-    AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_MY_LIST, GetSafeHwnd());
 
     const RiderSession& s = AppContext::Get().session;
     CString nameText;

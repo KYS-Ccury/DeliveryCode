@@ -40,7 +40,8 @@ BOOL DeliveryListDlg::OnInitDialog()
     ti.pszText = const_cast<LPTSTR>(_T("이전 내역"));
     m_tabList.InsertItem(1, &ti);
 
-    AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_ORDER_LIST, GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_MY_LIST,    GetSafeHwnd());
     InitListCtrl();
     RefreshCurrentList();
     SetTimer(1, 1000, nullptr);
