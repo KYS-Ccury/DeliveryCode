@@ -117,6 +117,15 @@
     <ClInclude Include="header\OrderListDlg.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="header\MyMenuPopup.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="header\PointDlg.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="header\EditInfoDlg.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\AuthManager.cpp">
@@ -189,9 +198,6 @@
     <ClCompile Include="src\StoreInfo.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\StoreListDlg_patch.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="src\UserInfo.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -199,6 +205,15 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="src\OrderListDlg.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\MyMenuPopup.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\PointDlg.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\EditInfoDlg.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

@@ -48,6 +48,7 @@ namespace CmdCommon {
 
 // [200번대] 고객용 (Customer)
 namespace CmdCustomer {
+    
     constexpr uint16_t REQ_STORE_LIST    = 200; // 매장 목록 조회
     constexpr uint16_t REQ_MENU_LIST     = 201; // 메뉴 조회
     constexpr uint16_t REQ_CREATE_ORDER  = 202; // 주문 생성
@@ -57,8 +58,10 @@ namespace CmdCustomer {
     constexpr uint16_t REQ_WRITE_REVIEW  = 206; // 리뷰 작성
     constexpr uint16_t REQ_REVIEW_LIST   = 207; // 리뷰 목록 조회
     constexpr uint16_t REQ_CANCEL_ORDER  = 208; // 주문 취소
-    
+    constexpr uint16_t REQ_MY_POINT      = 209; // 포인트조회
+
     constexpr uint16_t NTF_ORDER_STATUS  = 210; // [알림] 주문 상태 변경 알림
+    constexpr uint16_t REQ_CHANGE_PASSWORD = 211; // 개인정보 변경
 }
 
 // [300번대] 사장님용 (Owner)

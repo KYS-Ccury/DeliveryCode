@@ -2,6 +2,8 @@
 #include "afxdialogex.h"
 #include "ScrollMenu.h"
 #include "StoreInfo.h"
+#include "MyMenuPopup.h"
+
 #include <vector>
 
 #ifndef IDC_STATIC_CONN_STATUS
@@ -45,6 +47,7 @@ protected:
 
     // ── 하단 4버튼 ─────────────────────────────────────────
     afx_msg void    OnBnClickedBtnMypage();       // 👤 My 페이지
+    afx_msg LRESULT OnMyMenuSelected(WPARAM wParam, LPARAM lParam);
     afx_msg void    OnBnClickedBtnPayment();      // 💳 결제수단
     afx_msg void    OnBnClickedBtnDelivery();     // 🛵 배달현황
     afx_msg void    OnBnClickedBtnOrderHistory(); // 📋 주문내역
@@ -59,4 +62,6 @@ private:
     bool        m_bLastConnState = false;
 
     static const UINT TIMER_CONN_CHECK = 1;
+
+    MyMenuPopup* m_pMyMenuPopup = nullptr;
 };
