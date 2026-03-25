@@ -1,8 +1,41 @@
 #include "CustomerHandler.h"
 #include "MariaDBManager.h"
 #include "Protocol.h"
+#include <cmath>   // sqrt, pow
 
 using json = nlohmann::json;
+
+// ── 위도/경도 → 거리(km) 계산 (Haversine 근사) ────────────────
+static double calcDistanceKm(double lat1, double lng1,
+                              double lat2, double lng2) {
+    const double R = 6371.0;
+    double dLat = (lat2 - lat1) * M_PI / 180.0;
+    double dLng = (lng2 - lng1) * M_PI / 180.0;
+    double a = std::sin(dLat/2)*std::sin(dLat/2)
+             + std::cos(lat1*M_PI/180.0)*std::cos(lat2*M_PI/180.0)
+             * std::sin(dLng/2)*std::sin(dLng/2);
+    double c = 2.0 * std::atan2(std::sqrt(a), std::sqrt(1.0-a));
+    return R * c;
+}
+
+// ── 거리(km) → 예상 배달시간 문자열 ──────────────────────────
+static std::string estimateDeliveryTime(double distKm) {
+    // 기본 준비 시간 15분 + km당 약 4분 (오토바이 기준)
+    int minutes = 15 + static_cast<int>(distKm * 4.0);
+    int lo = (minutes / 5) * 5;        // 5분 단위 내림
+    int hi = lo + 10;                  // 범위 상한
+    return std::to_string(lo) + "~" + std::to_string(hi) + "분";
+}
+
+// ── 배달비 숫자 → "무료" or "X,XXX원" 문자열 ──────────────────
+static std::string formatDeliveryFee(int fee) {
+    if (fee <= 0) return "무료";
+    // 천 단위 콤마 포맷
+    std::string s = std::to_string(fee);
+    if (s.size() > 3)
+        s.insert(s.size() - 3, ",");
+    return s + "원";
+}
 
 void CustomerHandler::handleStoreList(Session* session, const std::string& body) {
     try {
@@ -15,15 +48,19 @@ void CustomerHandler::handleStoreList(Session* session, const std::string& body)
         auto& db = MariaDBManager::getInstance();
         json  req = json::parse(body.empty() ? "{}" : body);
 
-        // 빈 문자열 또는 "전체" → 전체 조회
         std::string category = req.value("category", "");
+
+        // ★ 고객 위치: 클라이언트가 보내면 사용, 없으면 광주 중심(광주시청)
+        double userLat = req.value("user_lat", 35.1595);
+        double userLng = req.value("user_lng", 126.8526);
 
         std::string q =
             "SELECT r.restaurant_id AS id, r.restaurant_name AS name, "
             "       fc.category_name AS category, "
             "       r.base_delivery_fee AS delivery_fee, "
             "       r.min_order_amt, r.rating_avg AS rating, "
-            "       r.address, r.phone, r.notice AS description "
+            "       r.address, r.phone, r.notice AS description, "
+            "       r.latitude, r.longitude "             // ★ 추가
             "FROM restaurants r "
             "JOIN food_categories fc ON fc.category_id = r.category_id "
             "WHERE r.is_open = TRUE ";
@@ -37,19 +74,38 @@ void CustomerHandler::handleStoreList(Session* session, const std::string& body)
         json stores = json::array();
         for (auto& r : rows) {
             json s;
-            s["id"]           = std::stoi(r.at("id"));
-            s["name"]         = r.at("name");
-            s["category"]     = r.count("category")      ? r.at("category")     : "";
-            s["delivery_time"]= "20~40분";
-            s["min_order"]    = r.count("min_order_amt") && !r.at("min_order_amt").empty()
-                                  ? std::stoi(r.at("min_order_amt")) : 0;
-            s["delivery_fee"] = r.count("delivery_fee")  && !r.at("delivery_fee").empty()
-                                  ? std::stoi(r.at("delivery_fee"))  : 0;
-            s["rating"]       = r.count("rating")        && !r.at("rating").empty()
-                                  ? std::stod(r.at("rating")) : 0.0;
-            s["address"]      = r.count("address")       ? r.at("address")      : "";
-            s["phone"]        = r.count("phone")         ? r.at("phone")        : "";
-            s["description"]  = r.count("description")   ? r.at("description")  : "";
+            s["id"]          = std::stoi(r.at("id"));
+            s["name"]        = r.at("name");
+            s["category"]    = r.count("category")     ? r.at("category")    : "";
+            s["address"]     = r.count("address")      ? r.at("address")     : "";
+            s["phone"]       = r.count("phone")        ? r.at("phone")       : "";
+            s["description"] = r.count("description")  ? r.at("description") : "";
+
+            // ★ 배달비: 숫자(int)와 문자열(string) 둘 다 전송
+            int feeInt = (r.count("delivery_fee") && !r.at("delivery_fee").empty())
+                         ? std::stoi(r.at("delivery_fee")) : 0;
+            s["delivery_fee"]     = feeInt;
+            s["delivery_fee_str"] = formatDeliveryFee(feeInt);   // "무료" or "2,000원"
+
+            s["min_order"] = (r.count("min_order_amt") && !r.at("min_order_amt").empty())
+                              ? std::stoi(r.at("min_order_amt")) : 0;
+
+            s["rating"] = (r.count("rating") && !r.at("rating").empty())
+                           ? std::stod(r.at("rating")) : 0.0;
+
+            // ★ 거리 계산
+            double storeLat = (r.count("latitude")  && !r.at("latitude").empty())
+                               ? std::stod(r.at("latitude"))  : userLat;
+            double storeLng = (r.count("longitude") && !r.at("longitude").empty())
+                               ? std::stod(r.at("longitude")) : userLng;
+
+            double distKm = calcDistanceKm(userLat, userLng, storeLat, storeLng);
+            // 소수점 1자리로 반올림
+            distKm = std::round(distKm * 10.0) / 10.0;
+
+            s["distance"]      = distKm;                           // 숫자 (km)
+            s["delivery_time"] = estimateDeliveryTime(distKm);     // ★ "25~35분" 등 동적 계산
+
             stores.push_back(s);
         }
 
@@ -91,7 +147,7 @@ void CustomerHandler::handleMenuList(Session* session, const std::string& body) 
 
         std::string menuQ =
             "SELECT m.menu_id, m.menu_name, m.description, m.price, "
-            "       m.is_sold_out, mc.category_name AS sub_category "
+            "       m.image_url, m.is_sold_out, mc.category_name AS sub_category "
             "FROM menus m "
             "JOIN menu_categories mc ON mc.menu_category_id = m.menu_category_id "
             "WHERE mc.restaurant_id=" + std::to_string(storeID);
@@ -111,6 +167,7 @@ void CustomerHandler::handleMenuList(Session* session, const std::string& body) 
             m["name"]        = mr.at("menu_name");
             m["desc"]        = mr.count("description") ? mr.at("description") : "";
             m["price"]       = std::stoi(mr.at("price"));
+            m["image_url"]   = mr.count("image_url")   ? mr.at("image_url")   : "";
             m["is_sold_out"] = (mr.count("is_sold_out") && mr.at("is_sold_out") == "1");
             m["sub_category"]= mr.at("sub_category");
 
