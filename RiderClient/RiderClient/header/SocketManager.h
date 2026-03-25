@@ -38,18 +38,18 @@ public:
 
     bool IsConnected() const { return m_socket != INVALID_SOCKET; }
 
-    // ── 창 등록 API ────────────────────────────────────────────
-    // RegisterWnd  : 특정 protocol 수신 시 해당 HWND로 WM_SOCKET_RECV 전송
-    // UnregisterWnd: 창이 닫힐 때 반드시 호출 (무효 HWND 방지)
-    // SetNotifyWnd : 레거시 호환 - 모든 미등록 protocol의 fallback 창 설정
+    // -- Window registration API --
+    // RegisterWnd  : route incoming protocol to specified HWND
+    // UnregisterWnd: call when dialog closes (prevents stale HWND)
+    // SetNotifyWnd : fallback window for unregistered protocols
     void RegisterWnd(UINT16 protocol, HWND hWnd);
     void UnregisterWnd(UINT16 protocol);
-    void SetNotifyWnd(HWND hWnd);   // fallback (MainDlg 등 항상 살아있는 창)
+    void SetNotifyWnd(HWND hWnd);   // fallback for unregistered protocols
 
 private:
     static UINT RecvThread(LPVOID pParam);
     void ProcessRecvBuffer();
-    HWND FindWnd(UINT16 protocol);  // protocol → HWND 라우팅
+    HWND FindWnd(UINT16 protocol);  // internal routing lookup
 
     SOCKET      m_socket      = INVALID_SOCKET;
     HWND        m_hFallbackWnd = nullptr;       // fallback (SetNotifyWnd)
@@ -57,7 +57,7 @@ private:
     bool        m_bRunning    = false;
     std::string m_recvBuf;
 
-    // protocol → HWND 맵 (thread-safe)
+    // protocol -> HWND map (thread-safe)
     std::map<UINT16, HWND> m_wndMap;
     std::mutex             m_wndMutex;
 };

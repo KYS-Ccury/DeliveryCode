@@ -22,7 +22,10 @@ BEGIN_MESSAGE_MAP(LoginDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 LoginDlg::LoginDlg(CWnd* pParent) : CDialogEx(IDD_LOGIN_DLG, pParent) {}
-LoginDlg::~LoginDlg() {}
+LoginDlg::~LoginDlg() {
+    AppContext::Get().socket.UnregisterWnd(CMD_LOGIN);
+    AppContext::Get().socket.UnregisterWnd(CMD_SIGNUP);
+}
 
 void LoginDlg::DoDataExchange(CDataExchange* pDX)
 {
@@ -76,8 +79,8 @@ void LoginDlg::OnBtnLogin()
     CT2A idUtf8(strId, CP_UTF8);
     CT2A pwUtf8(strPw, CP_UTF8);
     json req;
-    req["login_id"] = std::string(idUtf8);
-    req["password"] = std::string(pwUtf8);
+    req["id"] = std::string(idUtf8);
+    req["pw"] = std::string(pwUtf8);
 
     bool bSent = AppContext::Get().socket.SendPacket(CMD_LOGIN, req.dump());
     if (!bSent) {
@@ -104,10 +107,6 @@ void LoginDlg::OnBtnRegister()
     AppContext::Get().socket.RegisterWnd(CMD_SIGNUP, GetSafeHwnd());
 }
 
-void LoginDlg::~LoginDlg() {
-    AppContext::Get().socket.UnregisterWnd(CMD_LOGIN);
-    AppContext::Get().socket.UnregisterWnd(CMD_SIGNUP);
-}
 
 void LoginDlg::OnBtnFindId()
 {

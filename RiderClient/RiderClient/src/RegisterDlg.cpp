@@ -70,7 +70,9 @@ void RegisterDlg::OnBtnCheckId()
         return;
     }
     CT2A idUtf8(strId, CP_UTF8);
-    json req; req["action"] = "CHECK_ID"; req["login_id"] = std::string(idUtf8);
+    json req;
+    req["action"] = "CHECK_ID";
+    req["id"]     = std::string(idUtf8);   // server expects "id" key
     bool bSent = AppContext::Get().socket.SendPacket(CMD_SIGNUP, req.dump());
     if (!bSent) {
         m_bIdChecked = true;
