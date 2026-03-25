@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include "Packet.h" // PacketHeader 구조체가 정의된 공통 헤더
+#include "Struct.h"
 
 // 순환 참조(Circular Dependency) 방지를 위해 헤더 포함 대신 전방 선언만 수행
 class Session;

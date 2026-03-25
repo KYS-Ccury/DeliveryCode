@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "Packet.h"
+#include "Struct.h"
 #include "ThreadPool.h"
 
 class Session {

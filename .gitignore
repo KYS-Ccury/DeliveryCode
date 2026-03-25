@@ -1,17 +1,31 @@
-# --- [ CMake 관련 ] ---
-**/build/
-**/CMakeFiles/
-**/CMakeScripts/
-CMakeCache.txt
-cmake_install.cmake
-Makefile
-*.cmake
-
-
-# --- [ 운영체제 및 에디터 ] ---
+# ==========================================
+# [ OS & Editors ]
+# ==========================================
+.DS_Store
+Thumbs.db
 .vscode/
+.idea/
 
-# --- [ MFC / C++ 빌드 결과물 ] ---
+# ==========================================
+# [ Visual Studio & MFC ]
+# ==========================================
+.vs/
+**/[Dd]ebug/
+**/[Rr]elease/
+**/x64/
+**/x86/
+**/*.aps
+**/*.user
+**/*.suo
+**/*.ncb
+**/*.openeddf
+**/*.classview
+**/*.db
+**/*.VC.db
+**/*.sln.doclayouts
+**/*.slnx.sqlite
+
+# MFC/C++ 빌드 결과물 확장자
 *.exe
 *.dll
 *.pdb
@@ -23,58 +37,33 @@ Makefile
 *.tlog
 *.lastbuildstate
 *.idb
-
-# --- [ 특정 프로젝트 구조 대응 ] ---
-# server/build, client/build 처럼 생성될 폴더를 명시적으로 제외
-/server/build/
-/client/build/
-/server/bin/
-/client/bin/
-
-# --- [ Visual Studio 프로젝트 작업 파일 ] ---
-.vs/
-**/.vs/
-*.aps
-*.suo
-*.user
-*.ncb
-*.openeddf
-*.classview
-*.db
-*.VC.db
-*.sln.doclayouts
-*.slnx.sqlite
-
-# --- [ 빌드 결과물 및 임시 폴더 ] ---
-# 모든 프로젝트 내의 x64, Debug, Release 폴더 제외
-[Dd]ebug/
-[Rr]elease/
-x64/
-x86/
-**/x64/
-**/Debug/
-**/Release/
-
-# 구체적인 파일 확장자
-*.exe
-*.pdb
-*.ilk
-*.obj
-*.pch
-*.tlog
-*.lastbuildstate
-*.idb
 *.iobj
 *.ipdb
 *.log
 *.recipe
 *.res
 
-# --- [ 하위 프로젝트별 예외 처리 ] ---
-# RiderClient, CustomerClient 내부의 빌드 폴더들
-/RiderClient/RiderClient/x64/
-/RiderClient/x64/
+# ==========================================
+# [ Server - CMake & Build ]
+# ==========================================
+# Server 내부의 빌드 폴더 전체 제외
+Server/build/
+**/CMakeFiles/
+**/CMakeScripts/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+compile_commands.json
+
+# ==========================================
+# [ Client Specific - Build Artifacts ]
+# ==========================================
+# 구체적인 프로젝트 경로 내 x64/Debug 제외
 /CustomerClient/CustomerClient/x64/
-/CustomerClient/x64/
+/RiderClient/RiderClient/x64/
 /Owner/Owner/x64/
-/Owner/.vs/
+
+# NuGet 패키지 (RiderClient에서 사용하는 경우)
+**/packages/
+!**/packages/repository.config
