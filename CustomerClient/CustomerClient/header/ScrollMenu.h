@@ -2,7 +2,7 @@
 
 #include <vector>                // 메뉴 아이템 목록 저장을 위한 std::vector 사용
 
-
+#define SCROLL_MENU_BTN_ID 5000  // 동적 생성할 버튼 ID (5000 ~ 5100 사용)
 
 // ─────────────────────────────────────────────
 
@@ -65,7 +65,6 @@ public:
     void SetMenuItems(const std::vector<CString>& items);
 
 
-
 protected:
 
     // ─────────────────────────────────────────────
@@ -101,7 +100,6 @@ protected:
     int     m_nUnitSize;               // 단위 크기 (너비 + 간격)
 
     int     m_nLeftMargin = 0;        // 왼쪽 시작 여백
-
 
 
     // ─────────────────────────────────────────────

@@ -181,6 +181,8 @@
 #define IDC_EDIT_COUPON_ID              2024
 
 // ── VS 자동 생성 매크로 (APSTUDIO 전용) ──────────────────────
+// 동적 생성할 버튼 ID (5000 ~ 5100 사용, 이 번호 사용하지 말 것), SCROLL_MENU_BTN_ID
+
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        200

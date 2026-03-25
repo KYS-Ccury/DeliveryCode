@@ -80,11 +80,11 @@ BEGIN_MESSAGE_MAP(CScrollMenu, CStatic)
 
 
 
-    // 버튼 클릭 처리 (ID 2000번부터 2100번까지)
+    // 버튼 클릭 처리 (ID 5000번부터 5100번까지)
 
     // 여러 개의 버튼 클릭 이벤트를 'OnBtnClicked'라는 하나의 함수에서 통합 관리함
 
-    ON_COMMAND_RANGE(2000, 2100, &CScrollMenu::OnBtnClicked)
+    ON_COMMAND_RANGE(SCROLL_MENU_BTN_ID, SCROLL_MENU_BTN_ID + 100, &CScrollMenu::OnBtnClicked)
 
 END_MESSAGE_MAP()
 
@@ -172,11 +172,11 @@ void CScrollMenu::SetMenuItems(const std::vector<CString>& items)
 
         //
 
-        // 2000 + i: 2000번부터 시작하는 고유 번호 부여
+        // m_ScrollMenuBtnID + i: 해당번호부터 시작하는 고유 번호 부여
 
         pBtn->Create(items[i], WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_CLIPSIBLINGS,
 
-            CRect(startX, topMargin, startX + m_nBtnWidth, topMargin + btnHeight), this, 2000 + i);
+            CRect(startX, topMargin, startX + m_nBtnWidth, topMargin + btnHeight), this, SCROLL_MENU_BTN_ID + i);
 
 
 
@@ -590,7 +590,7 @@ void CScrollMenu::OnBtnClicked(UINT nID) {
 
     //  - WM_SCROLL_MENU_CLICKED: "스크롤 메뉴에서 버튼이 눌렸다"라는 신호
 
-    //  - nID: "몇 번째 버튼(ID)"이 눌렸는지에 대한 정보 (예: 2000, 2001...)
+    //  - nID: "몇 번째 버튼(ID)"이 눌렸는지에 대한 정보 (예: 5000, 5001...)
 
     //  - 0: 추가로 보낼 데이터 (여기서는 필요 없으므로 0)
 
