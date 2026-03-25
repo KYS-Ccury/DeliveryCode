@@ -1,5 +1,4 @@
 #include "pch.h"
-#include "resource.h"
 #include "CustomerClient.h"
 #include "afxdialogex.h"
 #include "MainHomeDlg.h"
@@ -48,7 +47,7 @@ static std::vector<StoreInfo> ParseStoreArray(const std::string& json)
         }
         std::string o = json.substr(s, e - s + 1);
         StoreInfo si;
-        si.storeID           = MHJInt(o,"store_id");
+        si.storeID           = MHJInt(o,"id");          // 서버가 "id" 로 전송
         si.storeName         = MHJStr(o,"name");
         si.category          = MHJStr(o,"category");
         si.deliveryTime      = MHJStr(o,"delivery_time");
@@ -105,7 +104,6 @@ BOOL MainHomeDlg::OnInitDialog()
     m_listStore.InsertColumn(1, _T("배달시간"),     LVCFMT_CENTER,  80);
     m_listStore.InsertColumn(2, _T("최소주문"),     LVCFMT_RIGHT,  100);
     m_listStore.InsertColumn(3, _T("거리"),         LVCFMT_CENTER,  55);
-
 
     CWnd* pPH = GetDlgItem(IDC_STATIC_MENU_BAR);
     if (pPH) {
@@ -233,7 +231,7 @@ void MainHomeDlg::UpdateStoreListUI(CString cat)
 }
 LRESULT MainHomeDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM)
 {
-    int n = (UINT)wParam - SCROLL_MENU_BTN_ID;
+    int n = (UINT)wParam - 2000;
     if (n >= 0 && n < (int)m_vecCategories.size())
         SendStoreListRequest(m_vecCategories[n]);
     return 0;

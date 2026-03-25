@@ -39,10 +39,10 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
 
         std::string method = isDel ? "DELIVERY" : "PICKUP";
 
-        // ★ 2. 초기 주문 상태를 'WAITING_PAYMENT' (결제 대기) 로 변경
+        // orders INSERT - status 기본값 PENDING (결제 완료 전 접수 상태)
         bool ok = db.executeUpdate(
             "INSERT INTO orders (customer_id, restaurant_id, status, total_price, delivery_method, delivery_address) VALUES ("
-            + std::to_string(uid) + "," + std::to_string(storeID) + ",'WAITING_PAYMENT'," + std::to_string(totalPrice) + ",'"
+            + std::to_string(uid) + "," + std::to_string(storeID) + ",'PENDING'," + std::to_string(totalPrice) + ",'"
             + method + "','" + escapeStr(delAddr) + "')");
         if (!ok) { sendError(session, CmdCustomer::REQ_CREATE_ORDER, Status::SERVER_ERROR, "주문 생성 실패"); return; }
         
@@ -53,30 +53,58 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
             int qty    = it.value("qty",     1);
             int price  = it.value("price",   0);
 
-            db.executeUpdate("INSERT INTO order_items (order_id, menu_id, quantity, unit_price) VALUES ("
-                + std::to_string(orderID) + "," + std::to_string(menuID) + "," + std::to_string(qty) + "," + std::to_string(price) + ")");
+            // menu_name 스냅샷 조회
+            std::string menuName = "";
+            auto mnRows = db.executeQuery(
+                "SELECT menu_name FROM menus WHERE menu_id=" + std::to_string(menuID));
+            if (!mnRows.empty()) menuName = escapeStr(mnRows[0].at("menu_name"));
+
+            db.executeUpdate(
+                "INSERT INTO order_items "
+                "(order_id, menu_id, menu_name, price_at_order, quantity) VALUES ("
+                + std::to_string(orderID) + "," + std::to_string(menuID)
+                + ",'" + menuName + "'," + std::to_string(price)
+                + "," + std::to_string(qty) + ")");
             uint64_t oiID = db.getLastInsertId();
 
             if (it.contains("options")) {
                 for (auto& opt : it["options"]) {
                     int optItemID  = opt.value("option_item_id", 0);
                     int extraPrice = opt.value("extra_price",    0);
+
+                    // option_name 스냅샷 조회
+                    std::string optName = "";
+                    auto onRows = db.executeQuery(
+                        "SELECT option_name FROM option_items WHERE option_item_id="
+                        + std::to_string(optItemID));
+                    if (!onRows.empty()) optName = escapeStr(onRows[0].at("option_name"));
+
                     if (optItemID)
-                        db.executeUpdate("INSERT INTO order_item_options (order_item_id, option_item_id, extra_price) VALUES ("
-                            + std::to_string(oiID) + "," + std::to_string(optItemID) + "," + std::to_string(extraPrice) + ")");
+                        db.executeUpdate(
+                            "INSERT INTO order_item_options "
+                            "(order_item_id, option_item_id, option_name, extra_price) VALUES ("
+                            + std::to_string(oiID) + "," + std::to_string(optItemID)
+                            + ",'" + optName + "'," + std::to_string(extraPrice) + ")");
                 }
             }
         }
 
         if (usePoint > 0) {
             db.executeUpdate("UPDATE customer_profiles SET point = point - " + std::to_string(usePoint) + " WHERE user_id=" + std::to_string(uid));
-            db.executeUpdate("INSERT INTO point_log (user_id, change_amount, reason, order_id) VALUES ("
-                + std::to_string(uid) + ",-" + std::to_string(usePoint) + ",'ORDER_USE'," + std::to_string(orderID) + ")");
+            // point_log: amount, reason (order_id 컬럼 없음)
+            db.executeUpdate("INSERT INTO point_log (user_id, amount, reason) VALUES ("
+                + std::to_string(uid) + ",-" + std::to_string(usePoint) + ",'ORDER_USE')");
         }
 
-        // ★ 3. 로그에도 초기 상태를 'WAITING_PAYMENT' 로 반영
+        // 주문 상태 로그 (PENDING = 기본 초기 상태)
         db.executeUpdate("INSERT INTO order_status_logs (order_id, from_status, to_status, changed_by) VALUES ("
-            + std::to_string(orderID) + ",'','WAITING_PAYMENT'," + std::to_string(uid) + ")");
+            + std::to_string(orderID) + ",'','PENDING'," + std::to_string(uid) + ")");
+
+        json res;
+        res["status"]            = Status::SUCCESS;
+        res["order_id"]          = (int)orderID;
+        res["estimated_minutes"] = 30;
+        session->sendPacket(static_cast<uint8_t>(m_clientType), CmdCustomer::REQ_CREATE_ORDER, res.dump());
 
         json res; res["status"] = Status::SUCCESS; res["order_id"] = (int)orderID;
         session->sendPacket(static_cast<uint8_t>(m_clientType), CmdCustomer::REQ_CREATE_ORDER, res.dump());
@@ -164,7 +192,7 @@ void CustomerHandler::handleOrderDetail(Session* session, const std::string& bod
         res["order_time"]   = r.count("order_time") ? r.at("order_time") : "";
 
         auto itemRows = db.executeQuery(
-            "SELECT m.menu_name AS name, oi.quantity, oi.unit_price AS price "
+            "SELECT m.menu_name AS name, oi.quantity, oi.price_at_order AS price "
             "FROM order_items oi JOIN menus m ON oi.menu_id = m.menu_id "
             "WHERE oi.order_id=" + std::to_string(orderID));
             
@@ -208,9 +236,18 @@ void CustomerHandler::handlePayment(Session* session, const std::string& body) {
             return; 
         }
 
-        // 3. 결제 로직 진행
-        bool ok = db.executeUpdate("INSERT INTO payments (order_id, payment_method_id, amount, paid_at) VALUES ("
-            + std::to_string(orderID) + "," + std::to_string(pmID) + "," + std::to_string(amount) + ",NOW())");
+        // payments: order_id, method_type, total_amount, status
+        std::string pmType = "CARD";
+        if (pmID > 0) {
+            auto pmRows = db.executeQuery(
+                "SELECT method_type FROM payment_methods WHERE payment_method_id="
+                + std::to_string(pmID));
+            if (!pmRows.empty()) pmType = pmRows[0].at("method_type");
+        }
+        bool ok = db.executeUpdate(
+            "INSERT INTO payments (order_id, method_type, total_amount, status) VALUES ("
+            + std::to_string(orderID) + ",'" + pmType + "',"
+            + std::to_string(amount) + ",'SUCCESS')");
 
         if (ok) db.executeUpdate("UPDATE orders SET status='PENDING' WHERE order_id=" + std::to_string(orderID));
 
@@ -248,12 +285,19 @@ void CustomerHandler::handleCancelOrder(Session* session, const std::string& bod
 
         db.executeUpdate("UPDATE orders SET status='CANCELED' WHERE order_id=" + std::to_string(orderID));
 
-        auto plRows = db.executeQuery("SELECT change_amount FROM point_log WHERE order_id=" + std::to_string(orderID) + " AND reason='ORDER_USE'");
+        // point_log에서 ORDER_USE 내역 찾아 포인트 환불
+        // point_log 스키마: user_id, amount, reason (order_id 컬럼 없음 → user+reason으로 최근 것 조회)
+        auto plRows = db.executeQuery(
+            "SELECT amount FROM point_log WHERE user_id=" + std::to_string(uid)
+            + " AND reason='ORDER_USE' ORDER BY log_id DESC LIMIT 1");
         if (!plRows.empty()) {
-            int usedPoint = std::abs(std::stoi(plRows[0].at("change_amount")));
-            db.executeUpdate("UPDATE customer_profiles SET point = point + " + std::to_string(usedPoint) + " WHERE user_id=" + std::to_string(uid));
-            db.executeUpdate("INSERT INTO point_log (user_id, change_amount, reason, order_id) VALUES ("
-                + std::to_string(uid) + "," + std::to_string(usedPoint) + ",'CANCEL_REFUND'," + std::to_string(orderID) + ")");
+            int usedPoint = std::abs(std::stoi(plRows[0].at("amount")));
+            db.executeUpdate(
+                "UPDATE customer_profiles SET point = point + "
+                + std::to_string(usedPoint) + " WHERE user_id=" + std::to_string(uid));
+            db.executeUpdate(
+                "INSERT INTO point_log (user_id, amount, reason) VALUES ("
+                + std::to_string(uid) + "," + std::to_string(usedPoint) + ",'CANCEL_REFUND')");
         }
 
         json res; res["status"] = Status::SUCCESS;

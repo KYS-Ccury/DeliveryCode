@@ -1,17 +1,12 @@
 ﻿  CartDlg.cpp
-  CartItem.cpp
-C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\CartItem.cpp(1,1): warning C4335: Mac 파일 형식이 발견되었습니다. 소스 파일을 DOS나 UNIX 형식으로 변환하십시오.
   ChatDlg.cpp
   CustomerClient.cpp
   DeliveryOkDlg.cpp
   LoginDlg.cpp
   MainHomeDlg.cpp
   MenuDetailDlg.cpp
-  MenuInfo.cpp
-C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\MenuInfo.cpp(1,1): warning C4335: Mac 파일 형식이 발견되었습니다. 소스 파일을 DOS나 UNIX 형식으로 변환하십시오.
   OptionChangeDlg.cpp
   OrderHistoryDlg.cpp
-  OrderManager.cpp
   PaymentDlg.cpp
   ReviewListDlg.cpp
   ReviewWriteDlg.cpp
@@ -20,4 +15,4 @@ C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\CustomerClient\src\Menu
   StoreDetailDlg.cpp
   StoreListDlg.cpp
   코드를 생성하고 있습니다...
-  CustomerClient.vcxproj -> C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\x64\Debug\CustomerClient.exe
+  CustomerClient.vcxproj -> C:\Users\LMS\Desktop\bemin\DeliveryCode\CustomerClient\x64\Debug\CustomerClient.exe

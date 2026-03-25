@@ -18,14 +18,14 @@ void CustomerHandler::handleStoreList(Session* session, const std::string& body)
 
         std::string q =
             "SELECT r.restaurant_id AS id, r.restaurant_name AS name, "
-            "       fc.name AS category, r.base_delivery_fee AS delivery_fee, "
+            "       fc.category_name AS category, r.base_delivery_fee AS delivery_fee, "
             "       r.min_order_amt, r.rating_avg AS rating, r.address, r.phone, "
             "       r.notice AS description "
             "FROM restaurants r "
             "JOIN food_categories fc ON fc.category_id = r.category_id "
             "WHERE r.is_open = TRUE ";
         if (category != "전체")
-            q += "AND fc.name='" + escapeStr(category) + "' ";
+            q += "AND fc.category_name='" + escapeStr(category) + "' ";
         q += "ORDER BY r.rating_avg DESC";
 
         auto rows = db.executeQuery(q);
@@ -93,7 +93,7 @@ void CustomerHandler::handleMenuList(Session* session, const std::string& body) 
             m["sub_category"] = mr.at("sub_category");
 
             auto ogRows = db.executeQuery(
-                "SELECT og.option_group_id, og.group_name, og.is_required, og.max_select "
+                "SELECT og.option_group_id, og.group_name, og.is_essential, og.max_select "
                 "FROM option_groups og WHERE og.menu_id=" + std::to_string(menuID));
 
             json optGroups = json::array();
@@ -102,18 +102,20 @@ void CustomerHandler::handleMenuList(Session* session, const std::string& body) 
                 json grp;
                 grp["group_id"]   = ogID;
                 grp["group_name"] = og.at("group_name");
-                grp["is_required"]= (og.at("is_required") == "1");
+                grp["is_required"]= (og.at("is_essential") == "1");
                 grp["max_select"] = std::stoi(og.at("max_select"));
 
-                auto oiRows = db.executeQuery("SELECT option_item_id, item_name, extra_price FROM option_items WHERE option_group_id=" + std::to_string(ogID));
-                json items = json::array();
-                for (auto& oi : oiRows) {
-                    json opt;
-                    opt["option_id"] = std::stoi(oi.at("option_item_id"));
-                    opt["name"]      = oi.at("item_name");
-                    opt["price"]     = std::stoi(oi.at("extra_price"));
-                    items.push_back(opt);
-                }
+            auto oiRows = db.executeQuery(
+                "SELECT option_item_id, option_name, extra_price "
+                "FROM option_items WHERE option_group_id=" + std::to_string(ogID));
+            json items = json::array();
+            for (auto& oi : oiRows) {
+                json opt;
+                opt["option_id"] = std::stoi(oi.at("option_item_id"));
+                opt["name"]      = oi.at("option_name");
+                opt["price"]     = std::stoi(oi.at("extra_price"));
+                items.push_back(opt);
+            }
                 grp["options"] = items;
                 optGroups.push_back(grp);
             }

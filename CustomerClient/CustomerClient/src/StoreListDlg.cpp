@@ -58,17 +58,19 @@ static std::vector<std::string> SLExtractObjs(const std::string& j, const std::s
 static MenuInfo ParseMenuObj(const std::string& obj)
 {
     MenuInfo m;
-    m.menuID      = SLJInt(obj,"menu_id");
+    // 서버가 "id" 키로 전송 (menu_id 아님)
+    m.menuID      = SLJInt(obj,"id");
     m.menuName    = SLJStr(obj,"name");
     m.price       = SLJInt(obj,"price");
     m.subCategory = SLJStr(obj,"sub_category");
     m.menuImageUrl= SLJStr(obj,"image_url");
-    auto grps = SLExtractObjs(obj,"options");
+    // 서버가 "option_groups":[{group_name, options:[{option_id,name,price}]}] 형태로 전송
+    auto grps = SLExtractObjs(obj,"option_groups");
     for (const auto& g : grps) {
         OptionGroup og;
         og.groupName  = SLJStr(g,"group_name");
-        og.isRequired = SLJBool(g,"required");
-        auto items = SLExtractObjs(g,"items");
+        og.isRequired = SLJBool(g,"is_required");
+        auto items = SLExtractObjs(g,"options");   // "options" 키 (서버 응답 기준)
         for (const auto& it : items) {
             OptionItem oi;
             oi.optionID    = SLJInt(it,"option_id");
@@ -138,7 +140,9 @@ void StoreListDlg::SendMenuListRequest(const CString& subCat)
     auto& net = NetworkManager::GetInstance();
     if (!net.IsConnected()) { UpdateMenuListUI(subCat); return; }
     std::string cat = (subCat==_T("전체")) ? "" : std::string(CT2A(subCat,CP_UTF8));
-    std::string json = "{\"store_id\":"+std::to_string(m_storeInfo.storeID)+",\"category\":\""+cat+"\"}";
+    // 서버가 "store_id"와 "sub_category" 키를 사용
+    std::string json = "{\"store_id\":" + std::to_string(m_storeInfo.storeID)
+                     + ",\"sub_category\":\"" + cat + "\"}";
     net.SendPacket((uint8_t)ClientType::CUSTOMER, CmdCustomer::REQ_MENU_LIST, json);
     m_listMenu.DeleteAllItems();
     m_listMenu.InsertItem(0, _T("메뉴를 불러오는 중..."));
@@ -195,7 +199,7 @@ void StoreListDlg::UpdateMenuListUI(CString subCat)
 }
 LRESULT StoreListDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM)
 {
-    int n=(UINT)wParam-5000;
+    int n=(UINT)wParam-2000;
     if(n<0||n>=(int)m_vecSubCategories.size()) return 0;
     CString sel=m_vecSubCategories[n];
     if(m_vecMenuCache.empty()) SendMenuListRequest(sel);

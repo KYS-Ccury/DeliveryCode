@@ -85,17 +85,17 @@ static std::string BuildOrderJson(
     for (size_t i = 0; i < cart.size(); ++i) {
         if (i) j += ",";
         const CartItem& item = cart[i];
-        j += "{\"menu_id\":"         + std::to_string(item.menuID)    + ",";
-        j += "\"menu_name\":\""      + EscJ(item.menuName)            + "\",";
-        j += "\"price_at_order\":"   + std::to_string(item.basePrice) + ",";
-        j += "\"quantity\":"         + std::to_string(item.quantity)  + ",";
+        j += "{\"menu_id\":"    + std::to_string(item.menuID)    + ",";
+        j += "\"name\":\""      + EscJ(item.menuName)            + "\",";
+        j += "\"price\":"       + std::to_string(item.basePrice) + ",";  // 서버: price
+        j += "\"qty\":"         + std::to_string(item.quantity)  + ",";  // 서버: qty
         j += "\"options\":[";
         for (size_t k = 0; k < item.selectedOptions.size(); ++k) {
             if (k) j += ",";
             const OptionItem& opt = item.selectedOptions[k];
-            j += "{\"option_id\":"     + std::to_string(opt.optionID)   + ",";
+            j += "{\"option_item_id\":"  + std::to_string(opt.optionID)   + ",";  // 서버: option_item_id
             j += "\"option_name\":\"" + EscJ(opt.optionName)            + "\",";
-            j += "\"option_price\":"  + std::to_string(opt.optionPrice) + "}";
+            j += "\"extra_price\":"   + std::to_string(opt.optionPrice) + "}";   // 서버: extra_price
         }
         j += "]}";
     }
