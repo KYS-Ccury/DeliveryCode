@@ -1,14 +1,14 @@
-//  연결 매니저 구현부이다.
+﻿//  ?곌껐 留ㅻ땲? 援ы쁽遺?대떎.
 
 #include "ConnectionManager.h"
 #include <sys/socket.h>
 #include <unistd.h>
 
-//  특정 클라이언트에게 문자열 응답을 보낸다.
+//  ?뱀젙 ?대씪?댁뼵?몄뿉寃?臾몄옄???묐떟??蹂대궦??
 void ConnectionManager::sendToClient(int fd, const std::string& message) {
-    //  개행을 포함해서 클라이언트가 한 줄 단위로 읽기 쉽게 보낸다.
+    //  媛쒗뻾???ы븿?댁꽌 ?대씪?댁뼵?멸? ??以??⑥쐞濡??쎄린 ?쎄쾶 蹂대궦??
     const std::string finalMsg = message + "\n";
 
-    //  send로 소켓에 전송한다.
+    //  send濡??뚯폆???꾩넚?쒕떎.
     ::send(fd, finalMsg.c_str(), finalMsg.size(), 0);
 }

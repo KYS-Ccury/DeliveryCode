@@ -1,5 +1,5 @@
-//  서버 전체를 관리하는 핵심 클래스이다.
-//  accept, epoll, read, worker enqueue를 담당한다.
+﻿//  ?쒕쾭 ?꾩껜瑜?愿由ы븯???듭떖 ?대옒?ㅼ씠??
+//  accept, epoll, read, worker enqueue瑜??대떦?쒕떎.
 
 #pragma once
 
@@ -12,47 +12,47 @@
 
 class Server {
 public:
-    //  생성자이다.
+    //  ?앹꽦?먯씠??
     Server(int port, int workerCount);
 
-    //  서버를 시작한다.
+    //  ?쒕쾭瑜??쒖옉?쒕떎.
     void start();
 
 private:
-    //  서버 초기화 함수이다.
+    //  ?쒕쾭 珥덇린???⑥닔?대떎.
     void initServerSocket();
 
-    //  epoll 초기화 함수이다.
+    //  epoll 珥덇린???⑥닔?대떎.
     void initEpoll();
 
-    //  새 클라이언트를 accept 한다.
+    //  ???대씪?댁뼵?몃? accept ?쒕떎.
     void acceptClient();
 
-    //  읽기 이벤트를 처리한다.
+    //  ?쎄린 ?대깽?몃? 泥섎━?쒕떎.
     void handleReadable(int clientFd);
 
 private:
-    //  리슨 포트 번호이다.
+    //  由ъ뒯 ?ы듃 踰덊샇?대떎.
     int m_port = 0;
 
-    //  리슨 소켓 fd이다.
+    //  由ъ뒯 ?뚯폆 fd?대떎.
     int m_listenFd = -1;
 
-    //  epoll fd이다.
+    //  epoll fd?대떎.
     int m_epollFd = -1;
 
-    //  세션 매니저이다.
+    //  ?몄뀡 留ㅻ땲??대떎.
     SessionManager m_sessionManager;
 
-    //  주문 매니저이다.
+    //  二쇰Ц 留ㅻ땲??대떎.
     OrderManager m_orderManager;
 
-    //  DB 매니저이다.
+    //  DB 留ㅻ땲??대떎.
     DatabaseManager m_dbManager;
 
-    //  라우터이다.
+    //  ?쇱슦?곗씠??
     Router m_router;
 
-    //  워커 풀이다.
+    //  ?뚯빱 ??대떎.
     WorkerPool m_workerPool;
 };

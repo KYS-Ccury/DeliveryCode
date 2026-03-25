@@ -1,4 +1,4 @@
-//  인증 관련 요청을 처리하는 핸들러이다.
+﻿//  ?몄쬆 愿???붿껌??泥섎━?섎뒗 ?몃뱾?ъ씠??
 
 #pragma once
 
@@ -7,13 +7,13 @@
 
 class AuthHandler : public IHandler {
 public:
-    //  생성자이다.
+    //  ?앹꽦?먯씠??
     explicit AuthHandler(SessionManager& sessionManager);
 
-    //  로그인 요청을 처리한다.
+    //  濡쒓렇???붿껌??泥섎━?쒕떎.
     void handle(const Packet& packet) override;
 
 private:
-    //  세션 매니저 참조이다.
+    //  ?몄뀡 留ㅻ땲? 李몄“?대떎.
     SessionManager& m_sessionManager;
 };

@@ -1,5 +1,5 @@
-//  주문 객체들을 관리하는 매니저이다.
-//  생성, 조회, 상태 변경 같은 주문 관련 책임을 가진다.
+﻿//  二쇰Ц 媛앹껜?ㅼ쓣 愿由ы븯??留ㅻ땲??대떎.
+//  ?앹꽦, 議고쉶, ?곹깭 蹂寃?媛숈? 二쇰Ц 愿??梨낆엫??媛吏꾨떎.
 
 #pragma once
 
@@ -10,28 +10,28 @@
 
 class OrderManager {
 public:
-    //  생성자이다.
+    //  ?앹꽦?먯씠??
     OrderManager();
 
-    //  주문을 생성하고 주문 ID를 반환한다.
+    //  二쇰Ц???앹꽦?섍퀬 二쇰Ц ID瑜?諛섑솚?쒕떎.
     int createOrder(int userId, const std::string& menuInfo);
 
-    //  주문 상태를 변경한다.
+    //  二쇰Ц ?곹깭瑜?蹂寃쏀븳??
     bool changeState(int orderId, OrderState nextState);
 
-    //  주문을 조회한다.
+    //  二쇰Ц??議고쉶?쒕떎.
     bool getOrder(int orderId, Order& outOrder);
 
 private:
-    //  주문 저장소이다.
+    //  二쇰Ц ??μ냼?대떎.
     std::unordered_map<int, Order> m_orders;
 
-    //  주문 저장소 보호용 뮤텍스이다.
+    //  二쇰Ц ??μ냼 蹂댄샇??裕ㅽ뀓?ㅼ씠??
     std::mutex m_mtx;
 
-    //  주문 ID 자동 증가 값이다.
+    //  二쇰Ц ID ?먮룞 利앷? 媛믪씠??
     int m_nextOrderId = 1;
 
-    //  상태 검증 객체이다.
+    //  ?곹깭 寃利?媛앹껜?대떎.
     StateManager m_stateManager;
 };

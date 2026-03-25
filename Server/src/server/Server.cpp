@@ -1,4 +1,4 @@
-// : 서버 구현부이다.
+﻿// : ?쒕쾭 援ы쁽遺?대떎.
 
 #include "Server.h"
 #include "Utils.h"
@@ -19,91 +19,91 @@ Server::Server(int port, int workerCount)
       m_workerPool(workerCount, m_router) {
 }
 
-// : 서버를 시작한다.
+// : ?쒕쾭瑜??쒖옉?쒕떎.
 void Server::start() {
-    // : DB 연결을 먼저 해 둔다.
+    // : DB ?곌껐??癒쇱? ???붾떎.
     m_dbManager.connect("demo_connection_string");
 
-    // : 리슨 소켓을 초기화한다.
+    // : 由ъ뒯 ?뚯폆??珥덇린?뷀븳??
     initServerSocket();
 
-    // : epoll을 초기화한다.
+    // : epoll??珥덇린?뷀븳??
     initEpoll();
 
-    // : 워커 스레드들을 시작한다.
+    // : ?뚯빱 ?ㅻ젅?쒕뱾???쒖옉?쒕떎.
     m_workerPool.start();
 
-    // : 이벤트 버퍼를 준비한다.
+    // : ?대깽??踰꾪띁瑜?以鍮꾪븳??
     epoll_event events[64];
 
     std::cout << "[SERVER] started on port " << m_port << std::endl;
 
-    // : 메인 이벤트 루프이다.
+    // : 硫붿씤 ?대깽??猷⑦봽?대떎.
     while (true) {
-        // : epoll 이벤트를 기다린다.
+        // : epoll ?대깽?몃? 湲곕떎由곕떎.
         int count = epoll_wait(m_epollFd, events, 64, -1);
         if (count < 0) {
-            // : epoll_wait 실패 시 예외를 던진다.
+            // : epoll_wait ?ㅽ뙣 ???덉쇅瑜??섏쭊??
             throw std::runtime_error("epoll_wait failed");
         }
 
-        // : 발생한 이벤트들을 순회한다.
+        // : 諛쒖깮???대깽?몃뱾???쒗쉶?쒕떎.
         for (int i = 0; i < count; ++i) {
             int fd = events[i].data.fd;
 
-            // : 리슨 소켓이면 새 연결을 받는다.
+            // : 由ъ뒯 ?뚯폆?대㈃ ???곌껐??諛쏅뒗??
             if (fd == m_listenFd) {
                 acceptClient();
             }
             else {
-                // : 일반 클라이언트 소켓이면 읽기 처리를 한다.
+                // : ?쇰컲 ?대씪?댁뼵???뚯폆?대㈃ ?쎄린 泥섎━瑜??쒕떎.
                 handleReadable(fd);
             }
         }
     }
 }
 
-// : 서버 리슨 소켓을 초기화한다.
+// : ?쒕쾭 由ъ뒯 ?뚯폆??珥덇린?뷀븳??
 void Server::initServerSocket() {
-    // : TCP 소켓을 생성한다.
+    // : TCP ?뚯폆???앹꽦?쒕떎.
     m_listenFd = socket(AF_INET, SOCK_STREAM, 0);
     if (m_listenFd < 0) {
         throw std::runtime_error("socket failed");
     }
 
-    // : 재사용 옵션을 켠다.
+    // : ?ъ궗???듭뀡??耳좊떎.
     int opt = 1;
     setsockopt(m_listenFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
-    // : non-blocking 모드로 바꾼다.
+    // : non-blocking 紐⑤뱶濡?諛붽씔??
     setNonBlocking(m_listenFd);
 
-    // : 바인딩 주소 구조체를 만든다.
+    // : 諛붿씤??二쇱냼 援ъ“泥대? 留뚮뱺??
     sockaddr_in addr {};
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons(m_port);
 
-    // : 포트에 바인딩한다.
+    // : ?ы듃??諛붿씤?⑺븳??
     if (bind(m_listenFd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
         throw std::runtime_error("bind failed");
     }
 
-    // : 리슨 상태로 전환한다.
+    // : 由ъ뒯 ?곹깭濡??꾪솚?쒕떎.
     if (listen(m_listenFd, SOMAXCONN) < 0) {
         throw std::runtime_error("listen failed");
     }
 }
 
-// : epoll을 초기화한다.
+// : epoll??珥덇린?뷀븳??
 void Server::initEpoll() {
-    // : epoll 인스턴스를 생성한다.
+    // : epoll ?몄뒪?댁뒪瑜??앹꽦?쒕떎.
     m_epollFd = epoll_create1(0);
     if (m_epollFd < 0) {
         throw std::runtime_error("epoll_create1 failed");
     }
 
-    // : 리슨 소켓을 epoll에 등록한다.
+    // : 由ъ뒯 ?뚯폆??epoll???깅줉?쒕떎.
     epoll_event ev {};
     ev.events = EPOLLIN;
     ev.data.fd = m_listenFd;
@@ -113,23 +113,23 @@ void Server::initEpoll() {
     }
 }
 
-// : 새 클라이언트를 accept 한다.
+// : ???대씪?댁뼵?몃? accept ?쒕떎.
 void Server::acceptClient() {
     while (true) {
-        // : 클라이언트를 accept 한다.
+        // : ?대씪?댁뼵?몃? accept ?쒕떎.
         int clientFd = accept(m_listenFd, nullptr, nullptr);
         if (clientFd < 0) {
-            // : 더 이상 받을 연결이 없으면 루프를 종료한다.
+            // : ???댁긽 諛쏆쓣 ?곌껐???놁쑝硫?猷⑦봽瑜?醫낅즺?쒕떎.
             break;
         }
 
-        // : 클라이언트 소켓도 non-blocking 모드로 설정한다.
+        // : ?대씪?댁뼵???뚯폆??non-blocking 紐⑤뱶濡??ㅼ젙?쒕떎.
         setNonBlocking(clientFd);
 
-        // : 세션을 등록한다.
+        // : ?몄뀡???깅줉?쒕떎.
         m_sessionManager.addSession(clientFd);
 
-        // : epoll에 클라이언트 소켓을 등록한다.
+        // : epoll???대씪?댁뼵???뚯폆???깅줉?쒕떎.
         epoll_event ev {};
         ev.events = EPOLLIN | EPOLLET;
         ev.data.fd = clientFd;
@@ -140,9 +140,9 @@ void Server::acceptClient() {
     }
 }
 
-// : 클라이언트 읽기 이벤트를 처리한다.
+// : ?대씪?댁뼵???쎄린 ?대깽?몃? 泥섎━?쒕떎.
 void Server::handleReadable(int clientFd) {
-    // : 세션을 조회한다.
+    // : ?몄뀡??議고쉶?쒕떎.
     auto session = m_sessionManager.getSession(clientFd);
     if (!session) {
         return;
@@ -151,10 +151,10 @@ void Server::handleReadable(int clientFd) {
     char buffer[1024];
 
     while (true) {
-        // : 소켓에서 데이터를 읽는다.
+        // : ?뚯폆?먯꽌 ?곗씠?곕? ?쎈뒗??
         ssize_t n = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
 
-        // : 정상 종료이면 연결을 정리한다.
+        // : ?뺤긽 醫낅즺?대㈃ ?곌껐???뺣━?쒕떎.
         if (n == 0) {
             std::cout << "[DISCONNECT] fd=" << clientFd << std::endl;
             close(clientFd);
@@ -162,37 +162,37 @@ void Server::handleReadable(int clientFd) {
             return;
         }
 
-        // : 음수이면 더 읽을 데이터가 없거나 에러이다.
+        // : ?뚯닔?대㈃ ???쎌쓣 ?곗씠?곌? ?녾굅???먮윭?대떎.
         if (n < 0) {
             break;
         }
 
-        // : 문자열 끝을 붙인다.
+        // : 臾몄옄???앹쓣 遺숈씤??
         buffer[n] = '\0';
 
-        // : 세션 버퍼에 누적한다.
+        // : ?몄뀡 踰꾪띁???꾩쟻?쒕떎.
         {
             std::lock_guard<std::mutex> lock(session->mtx);
             session->readBuffer += buffer;
 
-            // : 개행 단위로 패킷을 분리한다.
+            // : 媛쒗뻾 ?⑥쐞濡??⑦궥??遺꾨━?쒕떎.
             std::size_t pos;
             while ((pos = session->readBuffer.find('\n')) != std::string::npos) {
-                // : 한 줄을 잘라낸다.
+                // : ??以꾩쓣 ?섎씪?몃떎.
                 std::string line = session->readBuffer.substr(0, pos);
 
-                // : 처리한 부분을 버퍼에서 제거한다.
+                // : 泥섎━??遺遺꾩쓣 踰꾪띁?먯꽌 ?쒓굅?쒕떎.
                 session->readBuffer.erase(0, pos + 1);
 
-                // : 빈 줄은 무시한다.
+                // : 鍮?以꾩? 臾댁떆?쒕떎.
                 if (line.empty()) {
                     continue;
                 }
 
-                // : 문자열을 Packet으로 파싱한다.
+                // : 臾몄옄?댁쓣 Packet?쇰줈 ?뚯떛?쒕떎.
                 Packet packet = parsePacket(clientFd, line);
 
-                // : 워커 큐에 작업을 넣는다.
+                // : ?뚯빱 ?먯뿉 ?묒뾽???ｋ뒗??
                 m_workerPool.enqueue(packet);
             }
         }

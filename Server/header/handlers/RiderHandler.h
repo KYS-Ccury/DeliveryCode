@@ -1,4 +1,4 @@
-//  라이더 관련 요청을 처리하는 핸들러이다.
+﻿//  ?쇱씠??愿???붿껌??泥섎━?섎뒗 ?몃뱾?ъ씠??
 
 #pragma once
 
@@ -6,6 +6,6 @@
 
 class RiderHandler : public IHandler {
 public:
-    //  라이더 요청을 처리한다.
+    //  ?쇱씠???붿껌??泥섎━?쒕떎.
     void handle(const Packet& packet) override;
 };

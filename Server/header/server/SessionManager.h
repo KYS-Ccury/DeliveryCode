@@ -1,5 +1,5 @@
-//  세션 객체들을 중앙에서 관리하는 매니저이다.
-//  로그인 상태, 연결 상태, 사용자 ID 같은 공통 정보를 관리한다.
+﻿//  ?몄뀡 媛앹껜?ㅼ쓣 以묒븰?먯꽌 愿由ы븯??留ㅻ땲??대떎.
+//  濡쒓렇???곹깭, ?곌껐 ?곹깭, ?ъ슜??ID 媛숈? 怨듯넻 ?뺣낫瑜?愿由ы븳??
 
 #pragma once
 
@@ -10,19 +10,19 @@
 
 class SessionManager {
 public:
-    //  세션을 추가한다.
+    //  ?몄뀡??異붽??쒕떎.
     void addSession(int fd);
 
-    //  세션을 제거한다.
+    //  ?몄뀡???쒓굅?쒕떎.
     void removeSession(int fd);
 
-    //  세션을 조회한다.
+    //  ?몄뀡??議고쉶?쒕떎.
     std::shared_ptr<Session> getSession(int fd);
 
 private:
-    //  fd 기준 세션 저장소이다.
+    //  fd 湲곗? ?몄뀡 ??μ냼?대떎.
     std::unordered_map<int, std::shared_ptr<Session>> m_sessions;
 
-    //  저장소 보호용 뮤텍스이다.
+    //  ??μ냼 蹂댄샇??裕ㅽ뀓?ㅼ씠??
     std::mutex m_mtx;
 };

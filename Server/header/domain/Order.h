@@ -1,11 +1,11 @@
-//  주문 도메인 객체이다.
-//  주문은 단순 데이터가 아니라 상태를 가지는 객체라는 관점으로 정의한다.
+﻿//  二쇰Ц ?꾨찓??媛앹껜?대떎.
+//  二쇰Ц? ?⑥닚 ?곗씠?곌? ?꾨땲???곹깭瑜?媛吏??媛앹껜?쇰뒗 愿?먯쑝濡??뺤쓽?쒕떎.
 
 #pragma once
 
 #include <string>
 
-//  주문 상태 열거형이다.
+//  二쇰Ц ?곹깭 ?닿굅?뺤씠??
 enum class OrderState {
     CREATED,
     ACCEPTED,
@@ -17,17 +17,17 @@ enum class OrderState {
     FAILED
 };
 
-//  주문 객체이다.
+//  二쇰Ц 媛앹껜?대떎.
 struct Order {
-    //  주문 ID이다.
+    //  二쇰Ц ID?대떎.
     int orderId = 0;
 
-    //  주문한 사용자 ID이다.
+    //  二쇰Ц???ъ슜??ID?대떎.
     int userId = 0;
 
-    //  메뉴 정보 문자열이다.
+    //  硫붾돱 ?뺣낫 臾몄옄?댁씠??
     std::string menuInfo;
 
-    //  현재 주문 상태이다.
+    //  ?꾩옱 二쇰Ц ?곹깭?대떎.
     OrderState state = OrderState::CREATED;
 };

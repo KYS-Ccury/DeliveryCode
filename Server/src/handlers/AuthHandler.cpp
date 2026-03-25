@@ -1,4 +1,4 @@
-//  인증 핸들러 구현부이다.
+﻿//  ?몄쬆 ?몃뱾??援ы쁽遺?대떎.
 
 #include "AuthHandler.h"
 #include "../server/ConnectionManager.h"
@@ -7,22 +7,22 @@ AuthHandler::AuthHandler(SessionManager& sessionManager)
     : m_sessionManager(sessionManager) {
 }
 
-//  로그인 요청을 처리한다.
+//  濡쒓렇???붿껌??泥섎━?쒕떎.
 void AuthHandler::handle(const Packet& packet) {
-    //  세션을 가져온다.
+    //  ?몄뀡??媛?몄삩??
     auto session = m_sessionManager.getSession(packet.clientFd);
     if (!session) {
-        //  세션이 없으면 종료한다.
+        //  ?몄뀡???놁쑝硫?醫낅즺?쒕떎.
         return;
     }
 
-    //  예제에서는 payload를 그대로 사용자 이름처럼 취급한다.
+    //  ?덉젣?먯꽌??payload瑜?洹몃?濡??ъ슜???대쫫泥섎읆 痍④툒?쒕떎.
     std::lock_guard<std::mutex> lock(session->mtx);
 
-    //  데모용으로 userId를 1로 고정한다.
+    //  ?곕え?⑹쑝濡?userId瑜?1濡?怨좎젙?쒕떎.
     session->userId = 1;
     session->isLoggedIn = true;
 
-    //  로그인 성공 응답을 보낸다.
+    //  濡쒓렇???깃났 ?묐떟??蹂대궦??
     ConnectionManager::sendToClient(packet.clientFd, "AUTH_OK");
 }

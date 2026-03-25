@@ -1,10 +1,10 @@
-// Common/Packet.h
+﻿// Common/Packet.h
 
 #pragma once
 
 #include <string>
 
-// 패킷 종류
+// ?⑦궥 醫낅쪟
 enum class PacketType {
     UNKNOWN = 0,
 
@@ -14,15 +14,15 @@ enum class PacketType {
     RIDER_UPDATE = 400
 };
 
-// 서버 내부 패킷 구조
+// ?쒕쾭 ?대? ?⑦궥 援ъ“
 struct Packet {
-    int clientFd = -1;          // 소켓 FD
+    int clientFd = -1;          // ?뚯폆 FD
 
     PacketType type = PacketType::UNKNOWN;
 
-    std::string raw;            // 원본 (디버깅용)
-    std::string payload;        // 현재 사용 데이터
+    std::string raw;            // ?먮낯 (?붾쾭源낆슜)
+    std::string payload;        // ?꾩옱 ?ъ슜 ?곗씠??
 
-    // 추가 (나중 JSON용)
-    std::string jsonBody;       // JSON 문자열 (확장용)
+    // 異붽? (?섏쨷 JSON??
+    std::string jsonBody;       // JSON 臾몄옄??(?뺤옣??
 };

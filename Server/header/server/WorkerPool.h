@@ -1,4 +1,4 @@
-// Server/header/server/WorkerPool.h
+﻿// Server/header/server/WorkerPool.h
 
 #pragma once
 #include <vector>
@@ -14,7 +14,7 @@ public:
 
     void start();
 
-    //  변경됨
+    //  蹂寃쎈맖
     void enqueue(const Task& task);
 
 private:
@@ -26,7 +26,7 @@ private:
 
     std::vector<std::thread> m_threads;
 
-    // 변경됨
+    // 蹂寃쎈맖
     ThreadSafeQueue<Task> m_queue;
 
     Router& m_router;

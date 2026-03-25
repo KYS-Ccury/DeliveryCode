@@ -1,64 +1,64 @@
-//“주문 객체들을 관리하는 관리자”//  주문 매니저 구현부이다.
+﻿//?쒖＜臾?媛앹껜?ㅼ쓣 愿由ы븯??愿由ъ옄??/  二쇰Ц 留ㅻ땲? 援ы쁽遺?대떎.
 
 #include "OrderManager.h"
 
 OrderManager::OrderManager() = default;
 
-//  주문을 생성한다.
+//  二쇰Ц???앹꽦?쒕떎.
 int OrderManager::createOrder(int userId, const std::string& menuInfo) {
-    //  주문 저장소를 잠근다.
+    //  二쇰Ц ??μ냼瑜??좉렐??
     std::lock_guard<std::mutex> lock(m_mtx);
 
-    //  새 주문 객체를 만든다.
+    //  ??二쇰Ц 媛앹껜瑜?留뚮뱺??
     Order order;
     order.orderId = m_nextOrderId++;
     order.userId = userId;
     order.menuInfo = menuInfo;
     order.state = OrderState::CREATED;
 
-    //  저장소에 넣는다.
+    //  ??μ냼???ｋ뒗??
     m_orders[order.orderId] = order;
 
-    //  생성된 주문 ID를 반환한다.
+    //  ?앹꽦??二쇰Ц ID瑜?諛섑솚?쒕떎.
     return order.orderId;
 }
 
-//  주문 상태를 변경한다.
+//  二쇰Ц ?곹깭瑜?蹂寃쏀븳??
 bool OrderManager::changeState(int orderId, OrderState nextState) {
-    //  주문 저장소를 잠근다.
+    //  二쇰Ц ??μ냼瑜??좉렐??
     std::lock_guard<std::mutex> lock(m_mtx);
 
-    //  해당 주문을 찾는다.
+    //  ?대떦 二쇰Ц??李얜뒗??
     auto it = m_orders.find(orderId);
     if (it == m_orders.end()) {
-        //  주문이 없으면 실패한다.
+        //  二쇰Ц???놁쑝硫??ㅽ뙣?쒕떎.
         return false;
     }
 
-    //  현재 상태에서 다음 상태로 갈 수 있는지 검사한다.
+    //  ?꾩옱 ?곹깭?먯꽌 ?ㅼ쓬 ?곹깭濡?媛????덈뒗吏 寃?ы븳??
     if (!m_stateManager.canTransition(it->second.state, nextState)) {
-        //  불가능한 상태 전이면 실패한다.
+        //  遺덇??ν븳 ?곹깭 ?꾩씠硫??ㅽ뙣?쒕떎.
         return false;
     }
 
-    //  상태를 변경한다.
+    //  ?곹깭瑜?蹂寃쏀븳??
     it->second.state = nextState;
     return true;
 }
 
-//  주문을 조회한다.
+//  二쇰Ц??議고쉶?쒕떎.
 bool OrderManager::getOrder(int orderId, Order& outOrder) {
-    //  주문 저장소를 잠근다.
+    //  二쇰Ц ??μ냼瑜??좉렐??
     std::lock_guard<std::mutex> lock(m_mtx);
 
-    //  주문을 찾는다.
+    //  二쇰Ц??李얜뒗??
     auto it = m_orders.find(orderId);
     if (it == m_orders.end()) {
-        //  주문이 없으면 실패한다.
+        //  二쇰Ц???놁쑝硫??ㅽ뙣?쒕떎.
         return false;
     }
 
-    //  결과를 복사한다.
+    //  寃곌낵瑜?蹂듭궗?쒕떎.
     outOrder = it->second;
     return true;
 }

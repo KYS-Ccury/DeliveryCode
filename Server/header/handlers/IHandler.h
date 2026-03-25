@@ -1,4 +1,4 @@
-//  모든 핸들러가 따라야 하는 공통 인터페이스이다.
+﻿//  紐⑤뱺 ?몃뱾?ш? ?곕씪???섎뒗 怨듯넻 ?명꽣?섏씠?ㅼ씠??
 
 #pragma once
 
@@ -6,9 +6,9 @@
 
 class IHandler {
 public:
-    //  가상 소멸자이다.
+    //  媛???뚮㈇?먯씠??
     virtual ~IHandler() = default;
 
-    //  패킷을 처리하는 인터페이스이다.
+    //  ?⑦궥??泥섎━?섎뒗 ?명꽣?섏씠?ㅼ씠??
     virtual void handle(const Packet& packet) = 0;
 };

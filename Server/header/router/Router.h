@@ -1,4 +1,4 @@
-//  패킷 타입에 따라 알맞은 핸들러로 요청을 분기하는 라우터이다.
+﻿//  ?⑦궥 ??낆뿉 ?곕씪 ?뚮쭪? ?몃뱾?щ줈 ?붿껌??遺꾧린?섎뒗 ?쇱슦?곗씠??
 
 #pragma once
 
@@ -16,17 +16,17 @@
 
 class Router {
 public:
-    //  생성자이다.
+    //  ?앹꽦?먯씠??
     Router(SessionManager& sessionManager, OrderManager& orderManager, DatabaseManager& dbManager);
 
-    //  패킷을 라우팅한다.
+    //  ?⑦궥???쇱슦?낇븳??
     void route(const Packet& packet);
 
 private:
-    //  패킷 타입별 핸들러 매핑이다.
+    //  ?⑦궥 ??낅퀎 ?몃뱾??留ㅽ븨?대떎.
     std::unordered_map<PacketType, IHandler*> m_routes;
 
-    //  각 기능별 핸들러 객체이다.
+    //  媛?湲곕뒫蹂??몃뱾??媛앹껜?대떎.
     std::unique_ptr<AuthHandler>  m_authHandler;
     std::unique_ptr<OrderHandler> m_orderHandler;
     std::unique_ptr<ChatHandler>  m_chatHandler;

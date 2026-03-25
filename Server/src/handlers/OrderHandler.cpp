@@ -1,4 +1,4 @@
-//  주문 핸들러 구현부이다.
+﻿//  二쇰Ц ?몃뱾??援ы쁽遺?대떎.
 
 #include "OrderHandler.h"
 #include "../server/ConnectionManager.h"
@@ -8,16 +8,16 @@ OrderHandler::OrderHandler(OrderManager& orderManager, DatabaseManager& dbManage
     : m_orderManager(orderManager), m_dbManager(dbManager), m_sessionManager(sessionManager) {
 }
 
-//  주문 요청을 처리한다.
+//  二쇰Ц ?붿껌??泥섎━?쒕떎.
 void OrderHandler::handle(const Packet& packet) {
-    //  세션을 조회한다.
+    //  ?몄뀡??議고쉶?쒕떎.
     auto session = m_sessionManager.getSession(packet.clientFd);
     if (!session) {
-        //  세션이 없으면 처리하지 않는다.
+        //  ?몄뀡???놁쑝硫?泥섎━?섏? ?딅뒗??
         return;
     }
 
-    //  로그인 여부를 확인한다.
+    //  濡쒓렇???щ?瑜??뺤씤?쒕떎.
     {
         std::lock_guard<std::mutex> lock(session->mtx);
         if (!session->isLoggedIn) {
@@ -26,12 +26,12 @@ void OrderHandler::handle(const Packet& packet) {
         }
     }
 
-    //  주문을 생성한다.
+    //  二쇰Ц???앹꽦?쒕떎.
     int orderId = m_orderManager.createOrder(session->userId, packet.payload);
 
-    //  DB 로그를 남긴다.
+    //  DB 濡쒓렇瑜??④릿??
     m_dbManager.saveOrderLog(orderId, "ORDER_CREATED");
 
-    //  주문 생성 성공 응답을 보낸다.
+    //  二쇰Ц ?앹꽦 ?깃났 ?묐떟??蹂대궦??
     ConnectionManager::sendToClient(packet.clientFd, "ORDER_OK|" + std::to_string(orderId));
 }

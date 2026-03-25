@@ -1,5 +1,5 @@
-//  데이터베이스 접근을 담당하는 매니저이다.
-//  지금은 뼈대만 두고 나중에 MariaDB 또는 SQLite 연결을 붙일 수 있게 설계한다.
+﻿//  ?곗씠?곕쿋?댁뒪 ?묎렐???대떦?섎뒗 留ㅻ땲??대떎.
+//  吏湲덉? 堉덈?留??먭퀬 ?섏쨷??MariaDB ?먮뒗 SQLite ?곌껐??遺숈씪 ???덇쾶 ?ㅺ퀎?쒕떎.
 
 #pragma once
 
@@ -8,16 +8,16 @@
 
 class DatabaseManager {
 public:
-    //  DB 연결을 시도한다.
+    //  DB ?곌껐???쒕룄?쒕떎.
     bool connect(const std::string& connStr);
 
-    //  로그성 저장 예시 함수이다.
+    //  濡쒓렇??????덉떆 ?⑥닔?대떎.
     void saveOrderLog(int orderId, const std::string& message);
 
 private:
-    //  DB 보호용 뮤텍스이다.
+    //  DB 蹂댄샇??裕ㅽ뀓?ㅼ씠??
     std::mutex m_mtx;
 
-    //  연결 여부이다.
+    //  ?곌껐 ?щ??대떎.
     bool m_connected = false;
 };

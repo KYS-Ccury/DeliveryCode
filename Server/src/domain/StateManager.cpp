@@ -1,22 +1,22 @@
-//  상태 전이 규칙 구현부이다.
+﻿//  ?곹깭 ?꾩씠 洹쒖튃 援ы쁽遺?대떎.
 
 #include "StateManager.h"
 
-//  상태 전이가 가능한지 여부를 반환한다.
+//  ?곹깭 ?꾩씠媛 媛?ν븳吏 ?щ?瑜?諛섑솚?쒕떎.
 bool StateManager::canTransition(OrderState from, OrderState to) const {
-    //  정상 흐름 전이 규칙을 정의한다.
+    //  ?뺤긽 ?먮쫫 ?꾩씠 洹쒖튃???뺤쓽?쒕떎.
     if (from == OrderState::CREATED   && to == OrderState::ACCEPTED) return true;
     if (from == OrderState::ACCEPTED  && to == OrderState::COOKING)  return true;
     if (from == OrderState::COOKING   && to == OrderState::PICKUP)   return true;
     if (from == OrderState::PICKUP    && to == OrderState::DELIVERY) return true;
     if (from == OrderState::DELIVERY  && to == OrderState::DONE)     return true;
 
-    //  예외 흐름 전이 규칙을 정의한다.
+    //  ?덉쇅 ?먮쫫 ?꾩씠 洹쒖튃???뺤쓽?쒕떎.
     if (from == OrderState::CREATED   && to == OrderState::CANCELED) return true;
     if (from == OrderState::ACCEPTED  && to == OrderState::CANCELED) return true;
     if (from == OrderState::COOKING   && to == OrderState::FAILED)   return true;
     if (from == OrderState::DELIVERY  && to == OrderState::FAILED)   return true;
 
-    //  위 규칙에 없으면 불가능한 전이로 본다.
+    //  ??洹쒖튃???놁쑝硫?遺덇??ν븳 ?꾩씠濡?蹂몃떎.
     return false;
 }

@@ -1,4 +1,4 @@
-//  주문 관련 요청을 처리하는 핸들러이다.
+﻿//  二쇰Ц 愿???붿껌??泥섎━?섎뒗 ?몃뱾?ъ씠??
 
 #pragma once
 
@@ -9,19 +9,19 @@
 
 class OrderHandler : public IHandler {
 public:
-    //  생성자이다.
+    //  ?앹꽦?먯씠??
     OrderHandler(OrderManager& orderManager, DatabaseManager& dbManager, SessionManager& sessionManager);
 
-    //  주문 요청을 처리한다.
+    //  二쇰Ц ?붿껌??泥섎━?쒕떎.
     void handle(const Packet& packet) override;
 
 private:
-    //  주문 매니저 참조이다.
+    //  二쇰Ц 留ㅻ땲? 李몄“?대떎.
     OrderManager& m_orderManager;
 
-    //  DB 매니저 참조이다.
+    //  DB 留ㅻ땲? 李몄“?대떎.
     DatabaseManager& m_dbManager;
 
-    //  세션 매니저 참조이다.
+    //  ?몄뀡 留ㅻ땲? 李몄“?대떎.
     SessionManager& m_sessionManager;
 };

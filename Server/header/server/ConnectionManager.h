@@ -1,4 +1,4 @@
-//  연결 종료, 송신 같은 네트워크 연결 관련 공통 유틸 책임을 가진다.
+﻿//  ?곌껐 醫낅즺, ?≪떊 媛숈? ?ㅽ듃?뚰겕 ?곌껐 愿??怨듯넻 ?좏떥 梨낆엫??媛吏꾨떎.
 
 #pragma once
 
@@ -6,6 +6,6 @@
 
 class ConnectionManager {
 public:
-    //  특정 클라이언트에게 문자열 응답을 보낸다.
+    //  ?뱀젙 ?대씪?댁뼵?몄뿉寃?臾몄옄???묐떟??蹂대궦??
     static void sendToClient(int fd, const std::string& message);
 };

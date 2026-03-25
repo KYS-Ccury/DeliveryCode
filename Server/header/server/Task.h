@@ -1,11 +1,11 @@
-// Server/header/server/Task.h
+﻿// Server/header/server/Task.h
 
 #pragma once
 #include "Session.h"
 #include "../../Common/Packet.h"
 
-// 큐에 들어가는 작업 단위
+// ?먯뿉 ?ㅼ뼱媛???묒뾽 ?⑥쐞
 struct Task {
-    Session* session; // 요청 보낸 클라이언트
-    Packet packet;    // 요청 데이터
+    Session* session; // ?붿껌 蹂대궦 ?대씪?댁뼵??
+    Packet packet;    // ?붿껌 ?곗씠??
 };

@@ -1,16 +1,16 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <sstream>
 #include "Packet.h"
 
 // =============================
-// Packet → 문자열 변환
+// Packet ??臾몄옄??蹂??
 // =============================
 inline std::string SerializePacket(const Packet& pkt)
 {
-    // 현재는 간단한 텍스트 프로토콜 유지
-    // 예: LOGIN|user1
+    // ?꾩옱??媛꾨떒???띿뒪???꾨줈?좎퐳 ?좎?
+    // ?? LOGIN|user1
 
     std::ostringstream oss;
 
@@ -43,7 +43,7 @@ inline std::string SerializePacket(const Packet& pkt)
 }
 
 // =============================
-// 문자열 → Packet 변환
+// 臾몄옄????Packet 蹂??
 // =============================
 inline Packet ParsePacket(int clientFd, const std::string& line)
 {

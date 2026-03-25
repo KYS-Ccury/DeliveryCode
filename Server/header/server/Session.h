@@ -1,28 +1,28 @@
-// Server/header/server/Session.h
+﻿// Server/header/server/Session.h
 
 #pragma once
 
 #include <string>
 #include <mutex>
 
-// 클라이언트 연결 상태 객체
+// ?대씪?댁뼵???곌껐 ?곹깭 媛앹껜
 class Session {
 public:
-    // 기본 생성자 (SessionManager 호환용)
+    // 湲곕낯 ?앹꽦??(SessionManager ?명솚??
     Session()
         : fd(-1), isLogin(false), userId(0) {}
 
-    // fd 초기화 생성자
+    // fd 珥덇린???앹꽦??
     Session(int fd_)
         : fd(fd_), isLogin(false), userId(0) {}
 
 public:
-    int fd;                 // 소켓 FD
+    int fd;                 // ?뚯폆 FD
 
-    bool isLogin;           // 로그인 여부
-    int userId;             // 유저 ID
+    bool isLogin;           // 濡쒓렇???щ?
+    int userId;             // ?좎? ID
 
-    std::string readBuffer; // 수신 버퍼
+    std::string readBuffer; // ?섏떊 踰꾪띁
 
-    std::mutex mtx;         // 동기화용
+    std::mutex mtx;         // ?숆린?붿슜
 };
