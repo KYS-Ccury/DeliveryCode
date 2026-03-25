@@ -60,7 +60,9 @@ void CustomerHandler::handleStoreList(Session* session, const std::string& body)
             "       r.base_delivery_fee AS delivery_fee, "
             "       r.min_order_amt, r.rating_avg AS rating, "
             "       r.address, r.phone, r.notice AS description, "
-            "       r.latitude, r.longitude "             // ★ 추가
+            "       r.latitude, r.longitude, "
+            "       r.business_hours AS open_time, "      // ★ 영업시간
+            "       r.holiday "                            // ★ 휴무일
             "FROM restaurants r "
             "JOIN food_categories fc ON fc.category_id = r.category_id "
             "WHERE r.is_open = TRUE ";
@@ -80,6 +82,8 @@ void CustomerHandler::handleStoreList(Session* session, const std::string& body)
             s["address"]     = r.count("address")      ? r.at("address")     : "";
             s["phone"]       = r.count("phone")        ? r.at("phone")       : "";
             s["description"] = r.count("description")  ? r.at("description") : "";
+            s["open_time"]   = r.count("open_time")    ? r.at("open_time")   : "";  // ★ 영업시간
+            s["holiday"]     = r.count("holiday")      ? r.at("holiday")     : "";  // ★ 휴무일
 
             // ★ 배달비: 숫자(int)와 문자열(string) 둘 다 전송
             int feeInt = (r.count("delivery_fee") && !r.at("delivery_fee").empty())
