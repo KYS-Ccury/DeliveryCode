@@ -232,7 +232,7 @@ void MainHomeDlg::UpdateStoreListUI(CString cat)
 }
 LRESULT MainHomeDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM)
 {
-    int n = (UINT)wParam - 2000;
+    int n = (UINT)wParam - SCROLL_MENU_BTN_ID;
     if (n >= 0 && n < (int)m_vecCategories.size())
         SendStoreListRequest(m_vecCategories[n]);
     return 0;
