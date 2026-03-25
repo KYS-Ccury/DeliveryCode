@@ -8,6 +8,9 @@
 #include "OrderHistoryDlg.h"
 #include "PaymentDlg.h"
 #include "OrderListDlg.h"
+#include "MyMenuPopup.h"
+#include "PointDlg.h"
+#include "EditInfoDlg.h"
 #include "AuthManager.h"
 #include "NetworkManager.h"
 #include "common/header/Types.h"
@@ -89,6 +92,7 @@ BEGIN_MESSAGE_MAP(MainHomeDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_MY_PAYMENT,       &MainHomeDlg::OnBnClickedBtnPayment)
     ON_BN_CLICKED(IDC_BTN_MY_DELIVERY,      &MainHomeDlg::OnBnClickedBtnDelivery)
     ON_BN_CLICKED(IDC_BTN_MY_ORDERHISTORY,  &MainHomeDlg::OnBnClickedBtnOrderHistory)
+    ON_MESSAGE(WM_MYMENU_SELECTED, &MainHomeDlg::OnMyMenuSelected)
 END_MESSAGE_MAP()
 
 BOOL MainHomeDlg::OnInitDialog()
@@ -257,16 +261,33 @@ void MainHomeDlg::OnBnClickedButton1()
 // ── 하단 4버튼 핸들러 ─────────────────────────────────────────
 void MainHomeDlg::OnBnClickedBtnMypage()
 {
-    // 로그인 유저 정보 팝업 (간단 알림 + 로그아웃)
-    CString strUserID = CA2T(AuthManager::GetInstance().GetCurrentUserID().c_str(), CP_UTF8);
-    CString msg;
-    msg.Format(_T("로그인 계정: %s\n\n로그아웃 하시겠습니까?"), (LPCTSTR)strUserID);
-    if (AfxMessageBox(msg, MB_YESNO | MB_ICONQUESTION) == IDYES) {
-        KillTimer(TIMER_CONN_CHECK);
-        AuthManager::GetInstance().Logout();
-        CDialogEx::OnCancel();
-    }
+    //// 로그인 유저 정보 팝업 (간단 알림 + 로그아웃)
+    //CString strUserID = CA2T(AuthManager::GetInstance().GetCurrentUserID().c_str(), CP_UTF8);
+    //CString msg;
+    //msg.Format(_T("로그인 계정: %s\n\n로그아웃 하시겠습니까?"), (LPCTSTR)strUserID);
+    //if (AfxMessageBox(msg, MB_YESNO | MB_ICONQUESTION) == IDYES) {
+    //    KillTimer(TIMER_CONN_CHECK);
+    //    AuthManager::GetInstance().Logout();
+    //    CDialogEx::OnCancel();
+    //}
+
+    // My 버튼 위치 기준으로 팝업 표시
+    CWnd* pBtn = GetDlgItem(IDC_BTN_MY_MYPAGE);
+    if (!pBtn) return;
+
+    CRect rcBtn;
+    pBtn->GetWindowRect(&rcBtn);
+
+    // 팝업은 버튼 위쪽에 표시 (하단 버튼이므로)
+    CPoint ptPopup(rcBtn.left, rcBtn.top);
+
+    if (m_pMyMenuPopup && ::IsWindow(m_pMyMenuPopup->GetSafeHwnd()))
+        return;  // 이미 열려있으면 무시
+
+    m_pMyMenuPopup = new MyMenuPopup(this);
+    m_pMyMenuPopup->ShowAt(ptPopup);
 }
+
 void MainHomeDlg::OnBnClickedBtnPayment()
 {
     PaymentDlg dlg(this); dlg.DoModal();
@@ -296,4 +317,41 @@ BOOL MainHomeDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
         if (r.PtInRect(pt)) return m_wndScrollMenu.OnMouseWheel(nFlags,zDelta,pt);
     }
     return CDialogEx::OnMouseWheel(nFlags,zDelta,pt);
+}
+
+LRESULT MainHomeDlg::OnMyMenuSelected(WPARAM wParam, LPARAM)
+{
+    m_pMyMenuPopup = nullptr;  // 팝업은 이미 DestroyWindow 됨
+
+    int id = (int)wParam;
+    switch (id)
+    {
+    case MYMENU_EDIT_INFO:
+    {
+        EditInfoDlg dlg(this);
+        dlg.DoModal();
+        break;
+    }
+    case MYMENU_POINT:
+    {
+        PointDlg dlg(this);
+        dlg.DoModal();
+        break;
+    }
+    case MYMENU_LOGOUT:
+    {
+        CString strUserID = CA2T(
+            AuthManager::GetInstance().GetCurrentUserID().c_str(), CP_UTF8);
+        CString msg;
+        msg.Format(_T("로그인 계정: %s\n\n로그아웃 하시겠습니까?"),
+            (LPCTSTR)strUserID);
+        if (AfxMessageBox(msg, MB_YESNO | MB_ICONQUESTION) == IDYES) {
+            KillTimer(TIMER_CONN_CHECK);
+            AuthManager::GetInstance().Logout();
+            CDialogEx::OnCancel();
+        }
+        break;
+    }
+    }
+    return 0;
 }

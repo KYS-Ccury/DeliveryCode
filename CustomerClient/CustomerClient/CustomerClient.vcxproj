@@ -202,9 +202,12 @@
     <ClInclude Include="header\ChatManager.h" />
     <ClInclude Include="header\CustomerClient.h" />
     <ClInclude Include="header\DeliveryOkDlg.h" />
+    <ClInclude Include="header\EditInfoDlg.h" />
     <ClInclude Include="header\json.hpp" />
     <ClInclude Include="header\LoginDlg.h" />
+    <ClInclude Include="header\MyMenuPopup.h" />
     <ClInclude Include="header\OrderListDlg.h" />
+    <ClInclude Include="header\PointDlg.h" />
     <ClInclude Include="header\SignupDlg.h" />
     <ClInclude Include="header\MainHomeDlg.h" />
     <ClInclude Include="header\MenuDetailDlg.h" />
@@ -236,8 +239,11 @@
     <ClCompile Include="src\ChatManager.cpp" />
     <ClCompile Include="src\CustomerClient.cpp" />
     <ClCompile Include="src\DeliveryOkDlg.cpp" />
+    <ClCompile Include="src\EditInfoDlg.cpp" />
     <ClCompile Include="src\LoginDlg.cpp" />
+    <ClCompile Include="src\MyMenuPopup.cpp" />
     <ClCompile Include="src\OrderListDlg.cpp" />
+    <ClCompile Include="src\PointDlg.cpp" />
     <ClCompile Include="src\SignupDlg.cpp" />
     <ClCompile Include="src\MainHomeDlg.cpp" />
     <ClCompile Include="src\MenuDetailDlg.cpp" />
