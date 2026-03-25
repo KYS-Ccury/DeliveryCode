@@ -199,7 +199,7 @@ void StoreListDlg::UpdateMenuListUI(CString subCat)
 }
 LRESULT StoreListDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM)
 {
-    int n=(UINT)wParam-2000;
+    int n=(UINT)wParam- SCROLL_MENU_BTN_ID;
     if(n<0||n>=(int)m_vecSubCategories.size()) return 0;
     CString sel=m_vecSubCategories[n];
     if(m_vecMenuCache.empty()) SendMenuListRequest(sel);
