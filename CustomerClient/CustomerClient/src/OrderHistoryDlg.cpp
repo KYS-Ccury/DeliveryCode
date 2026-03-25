@@ -116,7 +116,7 @@ void OrderHistoryDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(OrderHistoryDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_BACK,             &OrderHistoryDlg::OnBnClickedBtnBack)
     ON_BN_CLICKED(IDC_BTN_CHAT,             &OrderHistoryDlg::OnBnClickedBtnChat)
-    ON_BN_CLICKED(IDC_BTN_WRITE_REVIEW,     &OrderHistoryDlg::OnBnClickedBtnWriteReview)
+    //ON_BN_CLICKED(IDC_BTN_WRITE_REVIEW,     &OrderHistoryDlg::OnBnClickedBtnWriteReview)
     ON_MESSAGE(WM_ORDER_HISTORY_RESPONSE,   &OrderHistoryDlg::OnOrderHistoryResponse)
     ON_MESSAGE(WM_ORDER_STATUS_PUSH,        &OrderHistoryDlg::OnOrderStatusPush)
 END_MESSAGE_MAP()
@@ -134,11 +134,11 @@ BOOL OrderHistoryDlg::OnInitDialog()
     }
 
     // 리뷰 버튼 초기 상태: 비활성화 (배달완료 후 활성화)
-    CWnd* pReviewBtn = GetDlgItem(IDC_BTN_WRITE_REVIEW);
-    if (pReviewBtn) {
-        pReviewBtn->EnableWindow(FALSE);
-        pReviewBtn->ShowWindow(SW_SHOW);
-    }
+    //CWnd* pReviewBtn = GetDlgItem(IDC_BTN_WRITE_REVIEW);
+    //if (pReviewBtn) {
+    //    pReviewBtn->EnableWindow(FALSE);
+    //    pReviewBtn->ShowWindow(SW_SHOW);
+    //}
 
     // ── 외부에서 주입된 데이터가 있으면 먼저 표시 ───────────
     if (!m_strOrderNum.IsEmpty()) {
@@ -233,12 +233,12 @@ void OrderHistoryDlg::PopulateOrderInfo(const OrderInfo& info)
     UpdateStatusBar(info.deliveryStatus);
 
     // 배달 완료 상태일 때만 리뷰 작성 버튼 활성화
-    CWnd* pReviewBtn = GetDlgItem(IDC_BTN_WRITE_REVIEW);
-    if (pReviewBtn) {
-        bool canReview = (info.deliveryStatus == STATUS_COMPLETE);
-        pReviewBtn->EnableWindow(canReview ? TRUE : FALSE);
-        pReviewBtn->ShowWindow(SW_SHOW);
-    }
+    //CWnd* pReviewBtn = GetDlgItem(IDC_BTN_WRITE_REVIEW);
+    //if (pReviewBtn) {
+    //    bool canReview = (info.deliveryStatus == STATUS_COMPLETE);
+    //    pReviewBtn->EnableWindow(canReview ? TRUE : FALSE);
+    //    pReviewBtn->ShowWindow(SW_SHOW);
+    //}
 
     // 주문 아이템은 별도 REQ_ORDER_DETAIL(204)로 조회하거나
     // orders 배열 내 items 필드를 파싱해 listbox에 추가
@@ -303,25 +303,25 @@ void OrderHistoryDlg::OnBnClickedBtnBack()
 }
 
 // ── 리뷰 작성 버튼 ───────────────────────────────────────────
-void OrderHistoryDlg::OnBnClickedBtnWriteReview()
-{
-    // 현재 표시 중인 주문이 없으면 무시
-    if (m_vecOrders.empty() && m_strOrderNum.IsEmpty()) {
-        AfxMessageBox(_T("리뷰를 작성할 주문을 선택해주세요."), MB_ICONWARNING);
-        return;
-    }
-
-    // 배달 완료 상태 재확인
-    if (!m_vecOrders.empty() && m_vecOrders.front().deliveryStatus != STATUS_COMPLETE) {
-        AfxMessageBox(_T("배달 완료된 주문만 리뷰를 작성할 수 있습니다."), MB_ICONWARNING);
-        return;
-    }
-
-    ReviewWriteDlg dlg(this);
-    if (dlg.DoModal() == IDOK) {
-        AfxMessageBox(_T("리뷰가 등록되었습니다. 감사합니다!"), MB_ICONINFORMATION);
-        // 리뷰 작성 후 버튼 비활성화 (중복 작성 방지)
-        CWnd* pBtn = GetDlgItem(IDC_BTN_WRITE_REVIEW);
-        if (pBtn) pBtn->EnableWindow(FALSE);
-    }
-}
+//void OrderHistoryDlg::OnBnClickedBtnWriteReview()
+//{
+//    // 현재 표시 중인 주문이 없으면 무시
+//    if (m_vecOrders.empty() && m_strOrderNum.IsEmpty()) {
+//        AfxMessageBox(_T("리뷰를 작성할 주문을 선택해주세요."), MB_ICONWARNING);
+//        return;
+//    }
+//
+//    // 배달 완료 상태 재확인
+//    if (!m_vecOrders.empty() && m_vecOrders.front().deliveryStatus != STATUS_COMPLETE) {
+//        AfxMessageBox(_T("배달 완료된 주문만 리뷰를 작성할 수 있습니다."), MB_ICONWARNING);
+//        return;
+//    }
+//
+//    ReviewWriteDlg dlg(this);
+//    if (dlg.DoModal() == IDOK) {
+//        AfxMessageBox(_T("리뷰가 등록되었습니다. 감사합니다!"), MB_ICONINFORMATION);
+//        // 리뷰 작성 후 버튼 비활성화 (중복 작성 방지)
+//        CWnd* pBtn = GetDlgItem(IDC_BTN_WRITE_REVIEW);
+//        if (pBtn) pBtn->EnableWindow(FALSE);
+//    }
+//}

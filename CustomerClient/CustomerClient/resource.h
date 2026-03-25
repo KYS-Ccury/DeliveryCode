@@ -22,10 +22,12 @@
 #define IDD_DIALOG_OPTION_CHANGE        153
 #define IDD_ORDERLIST_DLG               155
 #define IDD_POINT_DLG                   159
+#define IDD_MYINFO_DLG                  161
 #define ORDERLISTDLG                    200
 #define IDD_DIALOG3                     201
 #define IDD_DIALOG4                     203
 #define IDD_EDITINFO_DLG                203
+#define IDD_DIALOG5                     205
 #define IDC_BUTTON1                     1000
 #define IDC_BUTTON2                     1002
 #define IDC_LIST_STOR                   1004
@@ -161,14 +163,19 @@
 #define IDC_STATIC_EDITINFO_ERR         2203
 #define IDC_STATIC_MY_POINT_TOTAL       2204
 #define IDC_LIST_POINT_HISTORY          2205
+#define IDC_EDIT_MI_ID                  2300
+#define IDC_EDIT_MI_NAME                2301
+#define IDC_EDIT_MI_PHONE               2302
+#define IDC_EDIT_MI_ADDR                2303
+#define IDC_EDIT_MI_GRADE               2304
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        205
+#define _APS_NEXT_RESOURCE_VALUE        207
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         2300
+#define _APS_NEXT_CONTROL_VALUE         2400
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

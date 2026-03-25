@@ -2,6 +2,8 @@
 #include "afxdialogex.h"
 #include "MenuInfo.h"
 #include "CartItem.h"
+//#include "MyInfoDlg.h"
+
 
 // ================================================================
 //  MenuDetailDlg.h  ─  메뉴 상세 / 옵션 선택 / 장바구니 담기

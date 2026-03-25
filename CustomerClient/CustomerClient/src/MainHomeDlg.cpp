@@ -11,6 +11,8 @@
 #include "MyMenuPopup.h"
 #include "PointDlg.h"
 #include "EditInfoDlg.h"
+#include "MyInfoDlg.h"
+#include "ChatDlg.h"
 #include "AuthManager.h"
 #include "NetworkManager.h"
 #include "common/header/Types.h"
@@ -326,6 +328,12 @@ LRESULT MainHomeDlg::OnMyMenuSelected(WPARAM wParam, LPARAM)
     int id = (int)wParam;
     switch (id)
     {
+    case MYMENU_MY_INFO:                    // ★ 개인정보 확인
+    {
+        MyInfoDlg dlg(this);
+        dlg.DoModal();
+        break;
+    }
     case MYMENU_EDIT_INFO:
     {
         EditInfoDlg dlg(this);
@@ -335,6 +343,15 @@ LRESULT MainHomeDlg::OnMyMenuSelected(WPARAM wParam, LPARAM)
     case MYMENU_POINT:
     {
         PointDlg dlg(this);
+        dlg.DoModal();
+        break;
+    }
+    case MYMENU_ADMIN_CHAT:                 // ★ 관리자 채팅
+    {
+        ChatDlg dlg(this);
+        dlg.m_strTargetName = _T("관리자 문의");
+        dlg.m_strTargetID = _T("admin");
+        dlg.m_strTargetType = _T("admin");
         dlg.DoModal();
         break;
     }

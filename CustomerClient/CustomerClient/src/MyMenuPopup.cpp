@@ -6,11 +6,7 @@
 
 IMPLEMENT_DYNAMIC(MyMenuPopup, CWnd)
 
-MyMenuPopup::MyMenuPopup(CWnd* pParent)
-    : m_pParent(pParent)
-{
-}
-
+MyMenuPopup::MyMenuPopup(CWnd* pParent) : m_pParent(pParent) {}
 MyMenuPopup::~MyMenuPopup() {}
 
 BEGIN_MESSAGE_MAP(MyMenuPopup, CWnd)
@@ -22,22 +18,19 @@ END_MESSAGE_MAP()
 
 void MyMenuPopup::ShowAt(CPoint ptScreen)
 {
-    // 팝업 윈도우 등록 및 생성
     WNDCLASS wc = {};
     wc.lpfnWndProc = ::DefWindowProc;
     wc.hInstance = AfxGetInstanceHandle();
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszClassName = _T("MyMenuPopupClass");
     wc.style = CS_SAVEBITS;
-    ::RegisterClass(&wc);   // 이미 등록되어 있으면 무시됨
+    ::RegisterClass(&wc);
 
-    int totalH = ITEM_H * ITEM_COUNT + 2; // 테두리 포함
+    int totalH = ITEM_H * ITEM_COUNT + 2;
 
-    // 항상 전달된 Y 좌표(버튼 top) 기준 위쪽으로 팝업 표시
+    // 항상 버튼 위쪽으로 표시
     int cx = ::GetSystemMetrics(SM_CXSCREEN);
-    ptScreen.y -= totalH;   // 버튼 바로 위에 붙임
-
-    // 화면 왼쪽 경계 보정
+    ptScreen.y -= totalH;
     if (ptScreen.x + ITEM_W > cx) ptScreen.x = cx - ITEM_W;
     if (ptScreen.x < 0) ptScreen.x = 0;
     if (ptScreen.y < 0) ptScreen.y = 0;
@@ -50,27 +43,25 @@ void MyMenuPopup::ShowAt(CPoint ptScreen)
         nullptr);
 
     ShowWindow(SW_SHOW);
-    SetFocus();      // KillFocus로 자동 닫힘 처리
+    SetFocus();
 }
 
 void MyMenuPopup::OnPaint()
 {
     CPaintDC dc(this);
-    CRect rcClient;
-    GetClientRect(&rcClient);
 
     for (int i = 0; i < ITEM_COUNT; ++i) {
         CRect rcItem(0, i * ITEM_H, ITEM_W, (i + 1) * ITEM_H);
 
-        // 호버 강조
-        if (i == m_nHoverItem) {
-            dc.FillSolidRect(rcItem, RGB(230, 244, 255));
-        }
-        else {
-            dc.FillSolidRect(rcItem, RGB(255, 255, 255));
-        }
+        // 호버 강조 / 로그아웃은 연한 빨강
+        if (m_items[i].id == MYMENU_LOGOUT)
+            dc.FillSolidRect(rcItem, i == m_nHoverItem
+                ? RGB(255, 220, 220) : RGB(255, 245, 245));
+        else
+            dc.FillSolidRect(rcItem, i == m_nHoverItem
+                ? RGB(230, 244, 255) : RGB(255, 255, 255));
 
-        // 구분선 (마지막 제외)
+        // 구분선
         if (i < ITEM_COUNT - 1) {
             CPen pen(PS_SOLID, 1, RGB(220, 220, 220));
             CPen* pOld = dc.SelectObject(&pen);
@@ -81,17 +72,18 @@ void MyMenuPopup::OnPaint()
 
         // 텍스트
         dc.SetBkMode(TRANSPARENT);
-        dc.SetTextColor(RGB(40, 40, 40));
+        dc.SetTextColor(m_items[i].id == MYMENU_LOGOUT
+            ? RGB(180, 0, 0) : RGB(40, 40, 40));
+
         CFont font;
         font.CreateFont(14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
             HANGUL_CHARSET, 0, 0, 0, 0, _T("맑은 고딕"));
-        CFont* pOldFont = dc.SelectObject(&font);
-
+        CFont* pOld = dc.SelectObject(&font);
         CRect rcText = rcItem;
         rcText.DeflateRect(12, 0);
         dc.DrawText(m_items[i].label, rcText,
             DT_SINGLELINE | DT_VCENTER | DT_LEFT);
-        dc.SelectObject(pOldFont);
+        dc.SelectObject(pOld);
     }
 }
 
@@ -117,7 +109,6 @@ void MyMenuPopup::OnLButtonDown(UINT, CPoint point)
     if (idx >= 0 && m_pParent) {
         int id = m_items[idx].id;
         DestroyWindow();
-        // 부모에게 선택 알림
         ::PostMessage(m_pParent->GetSafeHwnd(),
             WM_MYMENU_SELECTED, (WPARAM)id, 0);
     }
@@ -128,6 +119,5 @@ void MyMenuPopup::OnLButtonDown(UINT, CPoint point)
 
 void MyMenuPopup::OnKillFocus(CWnd*)
 {
-    // 포커스 잃으면 자동으로 닫힘
     DestroyWindow();
 }

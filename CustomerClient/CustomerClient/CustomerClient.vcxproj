@@ -205,6 +205,7 @@
     <ClInclude Include="header\EditInfoDlg.h" />
     <ClInclude Include="header\json.hpp" />
     <ClInclude Include="header\LoginDlg.h" />
+    <ClInclude Include="header\MyInfoDlg.h" />
     <ClInclude Include="header\MyMenuPopup.h" />
     <ClInclude Include="header\OrderListDlg.h" />
     <ClInclude Include="header\PointDlg.h" />
@@ -241,6 +242,7 @@
     <ClCompile Include="src\DeliveryOkDlg.cpp" />
     <ClCompile Include="src\EditInfoDlg.cpp" />
     <ClCompile Include="src\LoginDlg.cpp" />
+    <ClCompile Include="src\MyInfoDlg.cpp" />
     <ClCompile Include="src\MyMenuPopup.cpp" />
     <ClCompile Include="src\OrderListDlg.cpp" />
     <ClCompile Include="src\PointDlg.cpp" />

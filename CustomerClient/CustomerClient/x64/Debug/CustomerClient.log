@@ -1,26 +1,2 @@
-﻿  CartDlg.cpp
-  ChatDlg.cpp
-  ChatManager.cpp
-  CustomerClient.cpp
-  DeliveryOkDlg.cpp
-  EditInfoDlg.cpp
-  LoginDlg.cpp
-  MainHomeDlg.cpp
-  MenuDetailDlg.cpp
-  MyMenuPopup.cpp
-  NetworkManager.cpp
-  OptionChangeDlg.cpp
-  OrderHistoryDlg.cpp
-  OrderListDlg.cpp
-  OrderManager.cpp
-  PaymentDlg.cpp
-  PointDlg.cpp
-  ReviewListDlg.cpp
-  ReviewWriteDlg.cpp
-  SignupDlg.cpp
-  코드를 생성하고 있습니다...
-  컴파일하고 있습니다...
-  StoreDetailDlg.cpp
-  StoreListDlg.cpp
-  코드를 생성하고 있습니다...
+﻿  MainHomeDlg.cpp
   CustomerClient.vcxproj -> C:\Users\LMS\Desktop\Project\DeliveryCode\CustomerClient\x64\Debug\CustomerClient.exe
