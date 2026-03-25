@@ -254,7 +254,6 @@
     <ClCompile Include="src\StoreDetailDlg.cpp" />
     <ClCompile Include="src\StoreInfo.cpp" />
     <ClCompile Include="src\StoreListDlg.cpp" />
-    <ClCompile Include="src\StoreListDlg_patch.cpp" />
     <ClCompile Include="src\UserInfo.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
