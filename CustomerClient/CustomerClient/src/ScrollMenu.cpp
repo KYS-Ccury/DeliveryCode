@@ -99,7 +99,18 @@ END_MESSAGE_MAP()
 void CScrollMenu::SetMenuItems(const std::vector<CString>& items)
 
 {
-
+    // --- 추가된 기존 버튼 제거 로직 ---
+    for (auto pBtn : m_vButtons)
+    {
+        if (pBtn && ::IsWindow(pBtn->GetSafeHwnd()))
+        {
+            pBtn->DestroyWindow();
+            delete pBtn;
+        }
+    }
+    m_vButtons.clear();
+    // -------------------------------
+    // 
     // 부모(Static) 컨트롤에 더블 버퍼링 스타일 부여
 
     ModifyStyleEx(0, WS_EX_COMPOSITED);
