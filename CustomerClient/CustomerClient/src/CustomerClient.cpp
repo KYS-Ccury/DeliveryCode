@@ -2,7 +2,6 @@
 #include "pch.h"
 #include "framework.h"
 #include "CustomerClient.h"
-#include "CustomerClientDlg.h"
 #include "LoginDlg.h"
 #include "MainHomeDlg.h"
 #include "AuthManager.h"
