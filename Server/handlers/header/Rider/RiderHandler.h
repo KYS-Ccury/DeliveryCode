@@ -21,7 +21,7 @@ protected:
     void onSignup(Session* session, const nlohmann::json& reqBody) override;
     void onLoginSuccess(Session* session, int userId, const nlohmann::json& reqBody) override;
     void onLogout(Session* session, int userId) override;
-
+    void onGetProfile(Session* session, int userId, const nlohmann::json& reqBody) override;
 private:
     // Rider_status.cpp, Rider_Dispatch.cpp 등에 구현된 함수들
     void handleDispatchList(Session* session, const std::string& jsonBody);

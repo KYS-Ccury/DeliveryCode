@@ -6,6 +6,12 @@ using json = nlohmann::json;
 
 void CustomerHandler::handleStoreList(Session* session, const std::string& body) {
     try {
+        int uid = getUserIdByFd(session->getFd());
+        if (uid <= 0) {
+            sendError(session, CmdCustomer::REQ_STORE_LIST, Status::UNAUTHORIZED, "로그인 필요");
+            return;
+        }
+
         auto& db = MariaDBManager::getInstance();
         json  req = json::parse(body);
         std::string category = req.value("category", "전체");
@@ -49,6 +55,13 @@ void CustomerHandler::handleStoreList(Session* session, const std::string& body)
 
 void CustomerHandler::handleMenuList(Session* session, const std::string& body) {
     try {
+
+        int uid = getUserIdByFd(session->getFd());
+        if (uid <= 0) {
+            sendError(session, CmdCustomer::REQ_MENU_LIST, Status::UNAUTHORIZED, "로그인 필요");
+            return;
+        }
+        
         auto& db = MariaDBManager::getInstance();
         json  req = json::parse(body);
 

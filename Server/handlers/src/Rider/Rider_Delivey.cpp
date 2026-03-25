@@ -15,19 +15,16 @@
 
 using json = nlohmann::json;
 
-static void sendError(Session* session, uint16_t protocol, uint16_t statusCode, const std::string& message) {
-    json res; res["status"] = statusCode; res["message"] = message;
-    session->sendPacket(static_cast<uint8_t>(ClientType::RIDER), protocol, res.dump());
-}
-
-static std::string escapeStr(const std::string& s) {
-    std::string out; out.reserve(s.size() * 2);
-    for (char c : s) { if (c == '\'' || c == '\\' || c == '"') out += '\\'; out += c; }
-    return out;
-}
 
 void RiderHandler::handleDispatchList(Session* session, const std::string& jsonBody) {
     try {
+        // ★ 1. 로그인 유저 검증 추가 (보안)
+        int riderId = getUserIdByFd(session->getFd());
+        if (riderId <= 0) {
+            sendError(session, CmdRider::REQ_DISPATCH_LIST, Status::UNAUTHORIZED, "로그인 필요");
+            return;
+        }
+
         auto& db = MariaDBManager::getInstance();
         std::string q =
             "SELECT o.order_id, r.restaurant_name AS store_name, r.address AS pickup_addr, o.delivery_address AS dest_addr, "
@@ -72,7 +69,8 @@ void RiderHandler::handleAcceptDispatch(Session* session, const std::string& jso
             return;
         }
 
-        bool ok = db.executeUpdate("UPDATE orders SET rider_id = " + std::to_string(riderId) + ", status = 'DELIVERING' WHERE order_id = " + std::to_string(orderId));
+        // ★ 2-1. 상태를 DELIVERING이 아닌 'RIDER_ASSIGNED' (또는 상황에 맞는 중간 상태)로 변경
+        bool ok = db.executeUpdate("UPDATE orders SET rider_id = " + std::to_string(riderId) + ", status = 'RIDER_ASSIGNED' WHERE order_id = " + std::to_string(orderId));
         if (!ok) {
             db.executeUpdate("ROLLBACK");
             sendError(session, CmdRider::REQ_ACCEPT_DISPATCH, Status::SERVER_ERROR, "DB 업데이트 실패");
@@ -80,7 +78,7 @@ void RiderHandler::handleAcceptDispatch(Session* session, const std::string& jso
         }
 
         db.executeUpdate("INSERT INTO dispatch_logs (order_id, rider_id, result) VALUES (" + std::to_string(orderId) + ", " + std::to_string(riderId) + ", 'ACCEPT')");
-        db.executeUpdate("INSERT INTO order_status_logs (order_id, from_status, to_status, changed_by) VALUES (" + std::to_string(orderId) + ", 'WAITING_PICKUP', 'DELIVERING', " + std::to_string(riderId) + ")");
+        db.executeUpdate("INSERT INTO order_status_logs (order_id, from_status, to_status, changed_by) VALUES (" + std::to_string(orderId) + ", 'WAITING_PICKUP', 'RIDER_ASSIGNED', " + std::to_string(riderId) + ")");
         db.executeUpdate("COMMIT");
 
         std::string detailQ = "SELECT o.order_id, r.restaurant_name AS store_name, r.address AS pickup_addr, o.delivery_address AS dest_addr, r.phone AS store_phone, r.base_delivery_fee AS delivery_fee, o.total_price FROM orders o JOIN restaurants r ON r.restaurant_id = o.restaurant_id WHERE o.order_id = " + std::to_string(orderId);
@@ -129,8 +127,10 @@ void RiderHandler::handlePickupDone(Session* session, const std::string& jsonBod
         if (orderId <= 0 || riderId <= 0) { sendError(session, CmdRider::REQ_PICKUP_DONE, Status::BAD_REQUEST, "파라미터 오류"); return; }
 
         auto& db = MariaDBManager::getInstance();
-        db.executeUpdate("UPDATE orders SET status = 'DELIVERING' WHERE order_id = " + std::to_string(orderId) + " AND rider_id = " + std::to_string(riderId) + " AND status IN ('DELIVERING')");
-        db.executeUpdate("INSERT INTO order_status_logs (order_id, from_status, to_status, changed_by) VALUES (" + std::to_string(orderId) + ", 'DELIVERING', 'DELIVERING', " + std::to_string(riderId) + ")");
+        
+        // ★ 3-1. RIDER_ASSIGNED 상태인 주문을 찾아 DELIVERING으로 변경
+        db.executeUpdate("UPDATE orders SET status = 'DELIVERING' WHERE order_id = " + std::to_string(orderId) + " AND rider_id = " + std::to_string(riderId) + " AND status = 'RIDER_ASSIGNED'");
+        db.executeUpdate("INSERT INTO order_status_logs (order_id, from_status, to_status, changed_by) VALUES (" + std::to_string(orderId) + ", 'RIDER_ASSIGNED', 'DELIVERING', " + std::to_string(riderId) + ")");
 
         json res; res["status"] = Status::SUCCESS; res["message"] = "픽업 완료, 배달을 시작합니다.";
         session->sendPacket(static_cast<uint8_t>(ClientType::RIDER), CmdRider::REQ_PICKUP_DONE, res.dump());

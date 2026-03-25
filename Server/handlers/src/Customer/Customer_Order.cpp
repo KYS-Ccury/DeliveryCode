@@ -3,7 +3,6 @@
 #include "Protocol.h"
 
 using json = nlohmann::json;
-
 void CustomerHandler::handleCreateOrder(Session* session, const std::string& body) {
     try {
         auto& db  = MariaDBManager::getInstance();
@@ -15,7 +14,8 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
         int   usePoint= req.value("use_point",  0);
         std::string delAddr = req.value("delivery_address", "");
 
-        if (!uid || !storeID) {
+        // ★ 1. 로그인 유저 검증 및 파라미터 유효성 검사 강화
+        if (uid <= 0 || storeID <= 0) {
             sendError(session, CmdCustomer::REQ_CREATE_ORDER, Status::BAD_REQUEST, "필수 파라미터 누락 또는 비로그인");
             return;
         }
@@ -39,9 +39,10 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
 
         std::string method = isDel ? "DELIVERY" : "PICKUP";
 
+        // ★ 2. 초기 주문 상태를 'WAITING_PAYMENT' (결제 대기) 로 변경
         bool ok = db.executeUpdate(
             "INSERT INTO orders (customer_id, restaurant_id, status, total_price, delivery_method, delivery_address) VALUES ("
-            + std::to_string(uid) + "," + std::to_string(storeID) + ",'PENDING'," + std::to_string(totalPrice) + ",'"
+            + std::to_string(uid) + "," + std::to_string(storeID) + ",'WAITING_PAYMENT'," + std::to_string(totalPrice) + ",'"
             + method + "','" + escapeStr(delAddr) + "')");
         if (!ok) { sendError(session, CmdCustomer::REQ_CREATE_ORDER, Status::SERVER_ERROR, "주문 생성 실패"); return; }
         
@@ -73,8 +74,9 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
                 + std::to_string(uid) + ",-" + std::to_string(usePoint) + ",'ORDER_USE'," + std::to_string(orderID) + ")");
         }
 
+        // ★ 3. 로그에도 초기 상태를 'WAITING_PAYMENT' 로 반영
         db.executeUpdate("INSERT INTO order_status_logs (order_id, from_status, to_status, changed_by) VALUES ("
-            + std::to_string(orderID) + ",'','PENDING'," + std::to_string(uid) + ")");
+            + std::to_string(orderID) + ",'','WAITING_PAYMENT'," + std::to_string(uid) + ")");
 
         json res; res["status"] = Status::SUCCESS; res["order_id"] = (int)orderID;
         session->sendPacket(static_cast<uint8_t>(m_clientType), CmdCustomer::REQ_CREATE_ORDER, res.dump());
@@ -87,8 +89,8 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
 void CustomerHandler::handleOrderHistory(Session* session, const std::string&) {
     try {
         auto& db  = MariaDBManager::getInstance();
-        int   uid = getUserIdByFd(session->getFd());
-        if (!uid) { sendError(session, CmdCustomer::REQ_ORDER_HISTORY, Status::UNAUTHORIZED, "로그인 필요"); return; }
+            int uid = getUserIdByFd(session->getFd());
+            if (uid <= 0) { sendError(session, CmdCustomer::REQ_ORDER_HISTORY, Status::UNAUTHORIZED, "로그인 필요"); return; }
 
         auto rows = db.executeQuery(
             "SELECT o.order_id, r.restaurant_name AS store_name, o.total_price, o.status, o.created_at AS order_time "
@@ -125,17 +127,31 @@ void CustomerHandler::handleOrderHistory(Session* session, const std::string&) {
 
 void CustomerHandler::handleOrderDetail(Session* session, const std::string& body) {
     try {
-        auto& db    = MariaDBManager::getInstance();
+        auto& db = MariaDBManager::getInstance();
+        
+        // 1. 세션에서 유저 ID 가져오기 및 검증 (방금 추가하신 핵심 보안 로직!)
+        int uid = getUserIdByFd(session->getFd());
+        if (uid <= 0) { 
+            sendError(session, CmdCustomer::REQ_ORDER_DETAIL, Status::UNAUTHORIZED, "로그인 필요"); 
+            return; 
+        } 
+
+        // 2. 요청 바디에서 order_id 파싱 (빠졌던 부분 복구)
         json  req   = json::parse(body);
         int   orderID = req.value("order_id", 0);
 
+        // 3. 본인(uid)의 주문(orderID)이 맞는지 쿼리에서 안전하게 조회
         auto rows = db.executeQuery(
             "SELECT o.order_id, r.restaurant_name AS store_name, r.phone AS store_phone, "
             "o.total_price, o.status, o.created_at AS order_time, o.delivery_method, o.delivery_address "
             "FROM orders o JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
-            "WHERE o.order_id=" + std::to_string(orderID));
+            "WHERE o.order_id=" + std::to_string(orderID) + " AND o.customer_id=" + std::to_string(uid));
 
-        if (rows.empty()) { sendError(session, CmdCustomer::REQ_ORDER_DETAIL, Status::NOT_FOUND, "주문 없음"); return; }
+        if (rows.empty()) { 
+            // 내 주문이 아니거나 없는 주문이면 에러 처리
+            sendError(session, CmdCustomer::REQ_ORDER_DETAIL, Status::NOT_FOUND, "주문 없음 또는 권한 없음"); 
+            return; 
+        }
 
         auto& r = rows[0];
         json res;
@@ -172,11 +188,27 @@ void CustomerHandler::handleOrderDetail(Session* session, const std::string& bod
 void CustomerHandler::handlePayment(Session* session, const std::string& body) {
     try {
         auto& db  = MariaDBManager::getInstance();
+        
+        // ★ 1. 로그인 유저 검증
+        int uid = getUserIdByFd(session->getFd());
+        if (uid <= 0) { 
+            sendError(session, CmdCustomer::REQ_PAYMENT, Status::UNAUTHORIZED, "로그인 필요"); 
+            return; 
+        }
+
         json  req = json::parse(body);
         int orderID  = req.value("order_id", 0);
         int pmID     = req.value("payment_method_id", 0);
         int amount   = req.value("amount", 0);
 
+        // ★ 2. 내 주문이 맞는지 확인 (타인 주문 결제 방지)
+        auto rows = db.executeQuery("SELECT status FROM orders WHERE order_id=" + std::to_string(orderID) + " AND customer_id=" + std::to_string(uid));
+        if (rows.empty()) { 
+            sendError(session, CmdCustomer::REQ_PAYMENT, Status::NOT_FOUND, "주문 없음 또는 권한 없음"); 
+            return; 
+        }
+
+        // 3. 결제 로직 진행
         bool ok = db.executeUpdate("INSERT INTO payments (order_id, payment_method_id, amount, paid_at) VALUES ("
             + std::to_string(orderID) + "," + std::to_string(pmID) + "," + std::to_string(amount) + ",NOW())");
 
@@ -193,10 +225,18 @@ void CustomerHandler::handlePayment(Session* session, const std::string& body) {
 void CustomerHandler::handleCancelOrder(Session* session, const std::string& body) {
     try {
         auto& db  = MariaDBManager::getInstance();
+        
+        // ★ 1. 로그인 유저 검증 추가
+        int uid = getUserIdByFd(session->getFd());
+        if (uid <= 0) { 
+            sendError(session, CmdCustomer::REQ_CANCEL_ORDER, Status::UNAUTHORIZED, "로그인 필요"); 
+            return; 
+        }
+
         json  req = json::parse(body);
-        int   uid    = getUserIdByFd(session->getFd());
         int   orderID= req.value("order_id", 0);
 
+        // 2. 이 부분은 이미 AND customer_id=uid 로 완벽하게 짜셨습니다!
         auto rows = db.executeQuery("SELECT status FROM orders WHERE order_id=" + std::to_string(orderID) + " AND customer_id=" + std::to_string(uid));
         if (rows.empty()) { sendError(session, CmdCustomer::REQ_CANCEL_ORDER, Status::NOT_FOUND, "주문 없음"); return; }
 

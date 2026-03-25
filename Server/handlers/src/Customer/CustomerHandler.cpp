@@ -1,21 +1,27 @@
 #include "CustomerHandler.h"
 #include "Session.h"
 #include "Protocol.h"
+#include "ChatUtil.h"
 #include <iostream>
 
 void CustomerHandler::process(Session* session, uint16_t protocol, const std::string& body) {
-    // 100번대 공통 프로토콜은 부모(BaseHandler)에게 위임
-    if (protocol >= 100 && protocol <= 104) {
-        if (protocol == CmdCommon::REQ_SIGNUP) handleSignup(session, body);
-        else if (protocol == CmdCommon::REQ_LOGIN) handleLogin(session, body);
-        else if (protocol == CmdCommon::REQ_LOGOUT) handleLogout(session, body);
-        else if (protocol == CmdCommon::REQ_GET_PROFILE) handleGetProfile(session, body);
-        return;
+    // 1. 100번대 공통 프로토콜 처리 (switch문으로 통일)
+    if (protocol >= 100 && protocol <= 199) {
+        switch (protocol) {
+            case CmdCommon::REQ_SIGNUP:      handleSignup(session, body); break;
+            case CmdCommon::REQ_LOGIN:       handleLogin(session, body); break;
+            case CmdCommon::REQ_LOGOUT:      handleLogout(session, body); break;
+            case CmdCommon::REQ_GET_PROFILE: handleGetProfile(session, body); break;
+            case CmdCommon::REQ_WITHDRAW:    handleWithdraw(session, body); break; // 105번 탈퇴
+            default:
+                // 필요시 공통 프로토콜 에러 처리
+                break;
+        }
+        return; // 공통 프로토콜 처리 후 종료
     }
 
-    // 200번대 고객 전용 프로토콜
+    // 2. 200번대 고객 전용 프로토콜
     switch (protocol) {
-        case CmdCommon::REQ_WITHDRAW:       handleWithdraw    (session, body); break;
         case CmdCustomer::REQ_STORE_LIST:   handleStoreList   (session, body); break;
         case CmdCustomer::REQ_MENU_LIST:    handleMenuList    (session, body); break;
         case CmdCustomer::REQ_CREATE_ORDER: handleCreateOrder (session, body); break;
@@ -25,11 +31,17 @@ void CustomerHandler::process(Session* session, uint16_t protocol, const std::st
         case CmdCustomer::REQ_WRITE_REVIEW: handleWriteReview (session, body); break;
         case CmdCustomer::REQ_REVIEW_LIST:  handleReviewList  (session, body); break;
         case CmdCustomer::REQ_CANCEL_ORDER: handleCancelOrder (session, body); break;
+        // case CmdChat::REQ_CREATE_ROOM:
+        // case CmdChat::REQ_SEND_MSG:
+        // case CmdChat::REQ_GET_MSGS:
+        //     ChatDispatcher::getInstance().process(session, protocol, body, m_clientType); 
+        //     break;
         default:
             std::cerr << "[CustomerHandler] 알 수 없는 프로토콜: " << protocol << "\n";
             sendError(session, protocol, Status::BAD_REQUEST, "Unknown protocol");
+            break;
     }
-}
+} // ★ 누락되었던 닫는 중괄호 추가
 
 // ─────────────────────────────────────────────────
 // NTF_ORDER_STATUS (210): 서버 → 고객 Push

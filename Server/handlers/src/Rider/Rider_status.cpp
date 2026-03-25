@@ -13,10 +13,7 @@
 
 using json = nlohmann::json;
 
-static void sendError(Session* session, uint16_t protocol, uint16_t statusCode, const std::string& message) {
-    json res; res["status"] = statusCode; res["message"] = message;
-    session->sendPacket(static_cast<uint8_t>(ClientType::RIDER), protocol, res.dump());
-}
+// ★ 수정: static sendError 함수 삭제 완료 (BaseHandler의 멤버 함수 사용)
 
 void RiderHandler::handleWorkStatus(Session* session, const std::string& jsonBody) {
     try {
@@ -27,13 +24,12 @@ void RiderHandler::handleWorkStatus(Session* session, const std::string& jsonBod
         int riderId = getUserIdByFd(session->getFd());
 
         if (riderId <= 0 || action.empty()) { 
-            // 부모의 m_clientType 멤버 변수를 사용하면 좋습니다.
-            sendError(session, CmdRider::REQ_WORK_STATUS, Status::BAD_REQUEST, "파라미터 오류"); 
+            sendError(session, CmdRider::REQ_WORK_STATUS, Status::BAD_REQUEST, "파라미터 오류 또는 비로그인"); 
             return; 
         }
 
-        auto& db = MariaDBManager::getInstance(); // DB 매니저 인스턴스 확보
-        std::string updateQ; // 변수 선언 추가
+        auto& db = MariaDBManager::getInstance(); 
+        std::string updateQ; 
 
         if (action == "ONLINE") {
             updateQ = "UPDATE rider_profiles SET is_working = TRUE, is_accepting = TRUE WHERE user_id = " + std::to_string(riderId);
@@ -72,13 +68,18 @@ void RiderHandler::handleUpdateGps(Session* session, const std::string& jsonBody
         double lng = req.value("longitude", 0.0);
         int riderId = getUserIdByFd(session->getFd());
 
-        if (riderId <= 0 || (lat == 0.0 && lng == 0.0)) return;
+        if (riderId <= 0 || (lat == 0.0 && lng == 0.0)) return; // 오류 시 조용히 무시 (GPS 특성)
+        
         auto& db = MariaDBManager::getInstance();
 
+        // ★ 수정: 두 개의 쿼리를 하나로 합쳐서 DB 부하 절반으로 감소 (JOIN UPDATE)
         std::ostringstream q;
-        q << "UPDATE users SET latitude = " << lat << ", longitude = " << lng << " WHERE user_id = " << riderId;
+        q << "UPDATE users u JOIN rider_profiles rp ON u.user_id = rp.user_id "
+          << "SET u.latitude = " << lat << ", u.longitude = " << lng << ", rp.last_location_at = NOW() "
+          << "WHERE u.user_id = " << riderId;
+          
         db.executeUpdate(q.str());
-        db.executeUpdate("UPDATE rider_profiles SET last_location_at = NOW() WHERE user_id = " + std::to_string(riderId));
+
     } catch (const std::exception& e) {
         std::cerr << "[handleUpdateGps] 예외: " << e.what() << std::endl;
     }
