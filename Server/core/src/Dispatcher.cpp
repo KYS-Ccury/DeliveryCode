@@ -11,39 +11,44 @@
 void Dispatcher::dispatch(Session* session, const PacketHeader& header, const std::string& jsonBody) {
     if (!session) return;
 
-    // header에서 clientType과 protocol 추출
-    ClientType cType   = static_cast<ClientType>(header.clientType);
+    ClientType cType    = static_cast<ClientType>(header.clientType);
     uint16_t   protocol = header.protocol;
 
-    // 로그 (디버깅용)
-    // std::cout << "[Dispatcher] Type: " << static_cast<int>(cType) << ", Protocol: " << protocol << std::endl;
+    // 디버그 로그 (연결 문제 추적용)
+    std::cout << "[Dispatcher] fd=" << session->getFd()
+              << " type=" << static_cast<int>(cType)
+              << " protocol=" << protocol
+              << " bodyLen=" << jsonBody.size() << std::endl;
 
     try {
         switch (cType) {
             case ClientType::CUSTOMER:
-                // ★ 수정: responseJson = 삭제 (내부에서 알아서 send 함)
-                CustomerHandler::getInstance().process(session, protocol, jsonBody); 
+                CustomerHandler::getInstance().process(session, protocol, jsonBody);
                 break;
-                
+
             case ClientType::OWNER:
                 // OwnerHandler::getInstance().process(session, protocol, jsonBody);
+                std::cerr << "[Dispatcher] OWNER 미구현 protocol=" << protocol << std::endl;
                 break;
 
             case ClientType::RIDER:
-                // ★ 수정: responseJson = 삭제
                 RiderHandler::getInstance().process(session, protocol, jsonBody);
                 break;
-            
+
             case ClientType::ADMIN:
                 // AdminHandler::getInstance().process(session, protocol, jsonBody);
+                std::cerr << "[Dispatcher] ADMIN 미구현 protocol=" << protocol << std::endl;
                 break;
 
             default:
-                std::cerr << "[Dispatcher] 정의되지 않은 ClientType: " 
-                          << static_cast<int>(cType) << " (Protocol: " << protocol << ")" << std::endl;
+                std::cerr << "[Dispatcher] 알 수 없는 ClientType: "
+                          << static_cast<int>(cType)
+                          << " protocol=" << protocol << std::endl;
                 break;
-        } // switch 닫기
-    } catch (const std::exception& e) { // ★ 수정: 빼먹으셨던 catch 구문 추가
-        std::cerr << "[Dispatcher] 예외 발생: " << e.what() << std::endl;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[Dispatcher] 예외: " << e.what()
+                  << " type=" << static_cast<int>(cType)
+                  << " protocol=" << protocol << std::endl;
     }
 }

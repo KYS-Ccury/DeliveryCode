@@ -1,10 +1,10 @@
 #include "EpollServer.h"
+#include "CustomerHandler.h"
 #include "RiderHandler.h"
 #include "AdminHandler.h"
 #include <iostream>
 #include "Session.h"
 #include "ThreadPool.h"
-#include <iostream>
 #include <unistd.h>
 #include <fcntl.h>
 #include <cstring>
@@ -126,15 +126,14 @@ void EpollServer::rearmSocket(int client_fd) {
 }
 
 void EpollServer::closeConnection(int client_fd) {
-    // 공통 세션 장부에서 제거 (싱글톤 호출)
+    // 모든 핸들러에서 세션 해제 (어떤 역할이든 안전하게 정리)
+    CustomerHandler::getInstance().unregisterSession(client_fd);
     RiderHandler::getInstance().unregisterSession(client_fd);
-    // 다른 핸들러들도 같은 방식으로 추가 가능
-    // CustomerHandler::getInstance().unregisterSession(client_fd);
 
     std::lock_guard<std::mutex> lock(session_mutex);
     epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);
     sessions.erase(client_fd);
-    std::cout << "[Server] 클라이언트 연결 종료 및 자원 정리 완료 (FD: " << client_fd << ")" << std::endl;
+    std::cout << "[Server] 연결 종료 fd=" << client_fd << std::endl;
 }
 
 void EpollServer::start() {
