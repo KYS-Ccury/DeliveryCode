@@ -3,6 +3,8 @@
 #include <vector>
 #include <atomic>
 
+#define WM_SETDEFAULT_RESPONSE (WM_USER + 143)
+
 // ================================================================
 //  PaymentDlg.h  ─  결제 수단 관리 화면 (완성판)
 //
@@ -49,6 +51,7 @@ protected:
     afx_msg LRESULT OnProfileResponse(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnAddCardResponse(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnDelCardResponse(WPARAM wParam, LPARAM lParam); // ← 삭제 응답
+    afx_msg LRESULT OnSetDefaultResponse(WPARAM, LPARAM lParam);
 
     DECLARE_MESSAGE_MAP()
 
