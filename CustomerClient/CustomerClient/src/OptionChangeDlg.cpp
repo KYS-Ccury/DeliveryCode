@@ -113,3 +113,18 @@ void OptionChangeDlg::OnLvnItemchangedListOptions(NMHDR* pNMHDR, LRESULT* pResul
     if (pNMLV->uChanged & LVIF_STATE) UpdateTotal();
     *pResult = 0;
 }
+
+void OptionChangeDlg::OnOK()
+{
+    // ★ 창이 닫히기 전에 체크 상태를 m_vecResultOptionIDs에 저장
+    m_vecResultOptionIDs.clear();
+    int row = 0;
+    for (const auto& og : m_vecOptionGroups) {
+        for (const auto& oi : og.items) {
+            if (m_listOptions.GetCheck(row))
+                m_vecResultOptionIDs.push_back(oi.optionID);
+            row++;
+        }
+    }
+    CDialogEx::OnOK();  // 여기서 윈도우 Destroy
+}
