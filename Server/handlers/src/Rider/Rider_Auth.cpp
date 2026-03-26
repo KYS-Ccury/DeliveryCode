@@ -1,6 +1,5 @@
 #include "RiderHandler.h"
 #include "RiderDB.h"
-#include "MariaDBManager.h"
 #include "CommonDB.h"
 #include "Protocol.h"
 #include "Session.h"
@@ -9,30 +8,15 @@
 using json = nlohmann::json;
 
 // ================================================================
-//  onSignup  (BaseHandler::handleSignup 에서 users INSERT 완료 후 호출)
-//  → RiderDB::insertRiderProfile 으로 rider_profiles 생성
+//  onSignup
+//  CommonDB(BaseHandler)가 users 테이블에 INSERT 한 뒤 호출된다.
+//  userId 는 이미 확정된 값이므로 여기서는 RiderDB 위임만 수행한다.
 // ================================================================
-void RiderHandler::onSignup(Session* session, const json& reqBody) {
+void RiderHandler::onSignup(Session* session, int userId, const json& reqBody) {
     try {
-        std::string loginId     = reqBody.value("id", "");
         std::string vehicleType = reqBody.value("vehicle_type", "BIKE");
 
-        // users 테이블에서 방금 삽입된 user_id 조회
-        CommonDB::UserBasic ub;
-        auto rows = MariaDBManager::getInstance().executeQuery(
-            "SELECT user_id FROM users WHERE login_id='" +
-            MariaDBManager::escape(loginId) + "' LIMIT 1");
-
-        if (rows.empty()) {
-            sendError(session, CmdCommon::REQ_SIGNUP,
-                      Status::SERVER_ERROR, "라이더 user_id 조회 실패");
-            return;
-        }
-
-        int uid = std::stoi(rows[0].at("user_id"));
-
-        // ── RiderDB 로 위임 ──────────────────────────────────
-        RiderDB::getInstance().insertRiderProfile(uid, vehicleType);
+        RiderDB::getInstance().insertRiderProfile(userId, vehicleType);
 
         json res;
         res["status"] = Status::SUCCESS;
@@ -47,16 +31,14 @@ void RiderHandler::onSignup(Session* session, const json& reqBody) {
 
 // ================================================================
 //  onLoginSuccess
-//  → RiderDB::queryRiderProfile + RiderDB::setOnline
+//  → 프로필 조회 + 온라인 상태 전환
 // ================================================================
 void RiderHandler::onLoginSuccess(Session* session, int userId, const json&) {
     try {
         auto& rdb = RiderDB::getInstance();
 
-        // 프로필 없으면 자동 생성
         rdb.insertRiderProfileIfMissing(userId);
 
-        // 프로필 조회
         auto profile = rdb.queryRiderProfile(userId);
         if (!profile.found) {
             sendError(session, CmdCommon::REQ_LOGIN,
@@ -64,7 +46,6 @@ void RiderHandler::onLoginSuccess(Session* session, int userId, const json&) {
             return;
         }
 
-        // 온라인 상태 전환
         rdb.setOnline(userId, true);
 
         json res;
@@ -89,10 +70,7 @@ void RiderHandler::onLoginSuccess(Session* session, int userId, const json&) {
 // ================================================================
 void RiderHandler::onLogout(Session* session, int userId) {
     try {
-        // 오프라인 + 비업무 상태로
         RiderDB::getInstance().setOnline(userId, false);
-
-        // is_working 도 FALSE (OFFLINE 액션과 동일)
         RiderDB::getInstance().setWorkStatus(userId, "OFFLINE");
 
         json res;
@@ -123,14 +101,11 @@ void RiderHandler::onGetProfile(Session* session, int userId, const json& req) {
                           Status::BAD_REQUEST, "현재/새 비밀번호를 입력하세요.");
                 return;
             }
-
             if (!CommonDB::getInstance().queryCheckPassword(userId, curPw)) {
                 sendError(session, CmdCommon::REQ_GET_PROFILE,
                           Status::UNAUTHORIZED, "현재 비밀번호가 올바르지 않습니다.");
                 return;
             }
-
-            // 비밀번호 변경 — CommonDB 위임
             CommonDB::getInstance().queryChangePassword(userId, newPw);
 
             json res;
@@ -151,7 +126,6 @@ void RiderHandler::onGetProfile(Session* session, int userId, const json& req) {
                           Status::BAD_REQUEST, "계좌 정보를 모두 입력하세요.");
                 return;
             }
-
             RiderDB::getInstance().changeAccountInfo(userId, bank, holder, account);
 
             json res;
@@ -173,7 +147,7 @@ void RiderHandler::onGetProfile(Session* session, int userId, const json& req) {
             return;
         }
 
-        // ── 회원가입 직후 차량 업데이트 (action 없이 vehicle_type만) ──
+        // ── 회원가입 직후 차량 업데이트 ──────────────────────
         if (req.contains("vehicle_type") && action.empty()) {
             RiderDB::getInstance().changeVehicleType(
                 userId, req.value("vehicle_type", "BIKE"));

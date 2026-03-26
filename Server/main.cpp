@@ -5,6 +5,7 @@
 #include "MariaDBManager.h"
 #include "ThreadPool.h"
 #include "EpollServer.h"
+#include "ChatRoomManager.h"
 
 int main() {
     std::cout << "==========================================" << std::endl;
@@ -41,11 +42,19 @@ int main() {
         std::cout << "[3] Epoll 서버를 포트 " << serverPort << " 에서 초기화합니다." << std::endl;
         EpollServer server(serverPort, &threadPool);
         EpollServer::s_instance = &server; // pushDispatch용 싱글턴
-        
-        std::cout << "[4] 서버 이벤트 루프 가동 시작. 클라이언트 접속 대기 중..." << std::endl;
-        
+
+        // 4. 채팅 서브 스레드 시작
+        //    채팅방(roomId)별 참가자 맵을 감시하며 실시간 브로드캐스트
+        std::cout << "[4] 채팅 서브 스레드(ChatRoomManager) 시작" << std::endl;
+        ChatRoomManager::getInstance().start();
+
+        std::cout << "[5] 서버 이벤트 루프 가동 시작. 클라이언트 접속 대기 중..." << std::endl;
+
         // 블로킹 호출 (이 안에서 epoll_wait 무한 루프가 돕니다)
-        server.start(); 
+        server.start();
+
+        // 서버 종료 시 채팅 서브 스레드 안전 종료
+        ChatRoomManager::getInstance().stop();
 
     } catch (const std::exception& e) {
         // 예기치 못한 치명적 에러 발생 시 잡아내기

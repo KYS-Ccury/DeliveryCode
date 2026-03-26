@@ -37,7 +37,4 @@ public:
     // 예외 발생 시 자동 ROLLBACK
     bool executeTransaction(const std::function<bool()>& work);
 
-    // ── 공통 SQL 이스케이프 ───────────────────────────────
-    // CommonDB / RiderDB / BaseHandler 모두 이 함수 하나만 사용
-    static std::string escape(const std::string& s);
 };

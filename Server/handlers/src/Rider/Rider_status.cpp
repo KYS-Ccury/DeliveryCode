@@ -6,10 +6,6 @@
 
 using json = nlohmann::json;
 
-// ================================================================
-//  handleWorkStatus  (REQ_WORK_STATUS = 406)
-//  → RiderDB::setWorkStatus
-// ================================================================
 void RiderHandler::handleWorkStatus(Session* session, const std::string& jsonBody) {
     try {
         json req = json::parse(jsonBody);
@@ -23,7 +19,6 @@ void RiderHandler::handleWorkStatus(Session* session, const std::string& jsonBod
             return;
         }
 
-        // ── DB 위임 ──────────────────────────────────────────
         bool ok = RiderDB::getInstance().setWorkStatus(riderId, action, vehicleType);
 
         if (!ok) {
@@ -45,10 +40,6 @@ void RiderHandler::handleWorkStatus(Session* session, const std::string& jsonBod
     }
 }
 
-// ================================================================
-//  handleUpdateGps  (REQ_SEND_GPS = 407)
-//  → RiderDB::updateGps
-// ================================================================
 void RiderHandler::handleUpdateGps(Session* session, const std::string& jsonBody) {
     try {
         json req = json::parse(jsonBody);
@@ -58,7 +49,6 @@ void RiderHandler::handleUpdateGps(Session* session, const std::string& jsonBody
 
         if (riderId <= 0 || (lat == 0.0 && lng == 0.0)) return;
 
-        // ── DB 위임 ──────────────────────────────────────────
         RiderDB::getInstance().updateGps(riderId, lat, lng);
 
     } catch (const std::exception& e) {

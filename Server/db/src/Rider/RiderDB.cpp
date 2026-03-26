@@ -20,7 +20,7 @@ bool RiderDB::insertRiderProfile(int userId, const std::string& vehicleType) {
         "INSERT INTO rider_profiles "
         "(user_id, vehicle_type, is_working, is_accepting, is_online) "
         "VALUES (" + std::to_string(userId) +
-        ",'" + MariaDBManager::escape(vehicleType) + "',FALSE,FALSE,FALSE)");
+        ",'" + CommonDB::escape(vehicleType) + "',FALSE,FALSE,FALSE)");
 }
 
 bool RiderDB::insertRiderProfileIfMissing(int userId) {
@@ -67,7 +67,7 @@ bool RiderDB::setOnline(int userId, bool online) {
 bool RiderDB::changeVehicleType(int userId, const std::string& vehicleType) {
     auto& db = MariaDBManager::getInstance();
     return db.executeUpdate(
-        "UPDATE rider_profiles SET vehicle_type='" + MariaDBManager::escape(vehicleType) +
+        "UPDATE rider_profiles SET vehicle_type='" + CommonDB::escape(vehicleType) +
         "' WHERE user_id=" + std::to_string(userId));
 }
 
@@ -78,9 +78,9 @@ bool RiderDB::changeAccountInfo(int userId,
     auto& db = MariaDBManager::getInstance();
     return db.executeUpdate(
         "UPDATE rider_profiles SET "
-        "bank_name='"      + MariaDBManager::escape(bankName)       + "', "
-        "account_holder='" + MariaDBManager::escape(accountHolder)  + "', "
-        "account_number='" + MariaDBManager::escape(accountNumber)  + "' "
+        "bank_name='"      + CommonDB::escape(bankName)       + "', "
+        "account_holder='" + CommonDB::escape(accountHolder)  + "', "
+        "account_number='" + CommonDB::escape(accountNumber)  + "' "
         "WHERE user_id="   + std::to_string(userId));
 }
 
@@ -190,7 +190,7 @@ bool RiderDB::rejectDispatch(int orderId, int riderId, const std::string& reason
         "INSERT INTO dispatch_logs (order_id, rider_id, result) VALUES ("
         + std::to_string(orderId) + ","
         + std::to_string(riderId) + ",'"
-        + MariaDBManager::escape(reason) + "')");
+        + CommonDB::escape(reason) + "')");
 }
 
 bool RiderDB::pickupDone(int orderId, int riderId) {
@@ -328,7 +328,7 @@ bool RiderDB::setWorkStatus(int riderId,
 
     } else if (action == "VEHICLE") {
         q = "UPDATE rider_profiles "
-            "SET vehicle_type='" + MariaDBManager::escape(vehicleType) +
+            "SET vehicle_type='" + CommonDB::escape(vehicleType) +
             "' WHERE user_id=" + std::to_string(riderId);
 
     } else {
@@ -349,4 +349,37 @@ bool RiderDB::updateGps(int riderId, double lat, double lng) {
       << ", rp.last_location_at=NOW() "
       << "WHERE u.user_id=" << riderId;
     return db.executeUpdate(q.str());
+}
+
+// ============================================================
+//  [MiddleHandler 및 CommonHandler 연동용 구현부] (추가 필수!)
+// ============================================================
+
+nlohmann::json RiderDB::process(uint16_t dbProtocol, const nlohmann::json& reqJson) {
+    nlohmann::json res;
+    // 향후 1400번대(라이더) 프로토콜 번호에 따른 세부 분기 로직을 작성합니다.
+    return res;
+}
+
+void RiderDB::createProfile(int userId) {
+    // 이미 만들어두신 위쪽의 insertRiderProfileIfMissing 함수를 재사용합니다.
+    getInstance().insertRiderProfileIfMissing(userId);
+}
+
+nlohmann::json RiderDB::loginHook(int userId) {
+    nlohmann::json res;
+    
+    // 1. 온라인 상태로 변경
+    getInstance().setOnline(userId, true);
+    
+    // 2. 프로필 정보 가져오기
+    RiderProfile profile = getInstance().queryRiderProfile(userId);
+    
+    // 3. 응답 JSON 구성
+    res["status"] = 200; 
+    res["vehicle_type"] = profile.vehicleType;
+    res["is_working"] = profile.isWorking;
+    res["is_accepting"] = profile.isAccepting;
+    
+    return res;
 }

@@ -3,6 +3,7 @@
 #include "Protocol.h"
 #include "CommonDB.h"
 #include "RiderDB.h"
+#include "ChatDB.h"
 // #include "CustomerDBHandler.h"
 // #include "OwnerDBHandler.h"
 // #include "AdminDBHandler.h"
@@ -33,6 +34,10 @@ json MiddleHandler::processDBRequest(uint16_t dbProtocol, const json& reqJson) {
         // [1500번대] 관리자 DB 처리
         // return AdminDBHandler::process(dbProtocol, reqJson);
     // }
+    else if (dbProtocol >= 1600 && dbProtocol < 1700) {
+        // [1600번대] 채팅 DB 처리
+        return ChatDB::process(dbProtocol, reqJson);
+    }
 
     // 매칭되는 프로토콜이 없을 경우
     std::cerr << "[MiddleHandler] Unknown DB Protocol: " << dbProtocol << std::endl;

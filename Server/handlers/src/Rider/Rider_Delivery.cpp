@@ -6,10 +6,6 @@
 
 using json = nlohmann::json;
 
-// ================================================================
-//  handleDispatchList  (REQ_DISPATCH_LIST = 400)
-//  → RiderDB::queryDispatchList
-// ================================================================
 void RiderHandler::handleDispatchList(Session* session, const std::string&) {
     try {
         int riderId = getUserIdByFd(session->getFd());
@@ -19,7 +15,6 @@ void RiderHandler::handleDispatchList(Session* session, const std::string&) {
             return;
         }
 
-        // ── DB 위임 ──────────────────────────────────────────
         auto orders = RiderDB::getInstance().queryDispatchList();
 
         json res;
@@ -46,10 +41,6 @@ void RiderHandler::handleDispatchList(Session* session, const std::string&) {
     }
 }
 
-// ================================================================
-//  handleAcceptDispatch  (REQ_ACCEPT_DISPATCH = 401)
-//  → RiderDB::acceptDispatch (트랜잭션 포함)
-// ================================================================
 void RiderHandler::handleAcceptDispatch(Session* session, const std::string& jsonBody) {
     try {
         json req    = json::parse(jsonBody);
@@ -67,7 +58,6 @@ void RiderHandler::handleAcceptDispatch(Session* session, const std::string& jso
             return;
         }
 
-        // ── DB 위임 ──────────────────────────────────────────
         auto result = RiderDB::getInstance().acceptDispatch(orderId, riderId);
 
         if (!result.ok) {
@@ -81,13 +71,13 @@ void RiderHandler::handleAcceptDispatch(Session* session, const std::string& jso
         res["order_id"] = orderId;
         if (result.detail.found) {
             const auto& d = result.detail;
-            res["order_code"]  = "ORD" + std::to_string(orderId);
-            res["store_name"]  = d.storeName;
-            res["pickup_addr"] = d.pickupAddr;
-            res["store_phone"] = d.storePhone;
-            res["dest_addr"]   = d.destAddr;
-            res["delivery_fee"]= d.deliveryFee;
-            res["total_price"] = d.totalPrice;
+            res["order_code"]   = "ORD" + std::to_string(orderId);
+            res["store_name"]   = d.storeName;
+            res["pickup_addr"]  = d.pickupAddr;
+            res["store_phone"]  = d.storePhone;
+            res["dest_addr"]    = d.destAddr;
+            res["delivery_fee"] = d.deliveryFee;
+            res["total_price"]  = d.totalPrice;
         }
         session->sendPacket(static_cast<uint8_t>(ClientType::RIDER),
                             CmdRider::REQ_ACCEPT_DISPATCH, res.dump());
@@ -102,10 +92,6 @@ void RiderHandler::handleAcceptDispatch(Session* session, const std::string& jso
     }
 }
 
-// ================================================================
-//  handleRejectDispatch  (REQ_REJECT_DISPATCH = 402)
-//  → RiderDB::rejectDispatch
-// ================================================================
 void RiderHandler::handleRejectDispatch(Session* session, const std::string& jsonBody) {
     try {
         json req    = json::parse(jsonBody);
@@ -119,7 +105,6 @@ void RiderHandler::handleRejectDispatch(Session* session, const std::string& jso
             return;
         }
 
-        // ── DB 위임 ──────────────────────────────────────────
         RiderDB::getInstance().rejectDispatch(orderId, riderId, reason);
 
         json res;
@@ -134,10 +119,6 @@ void RiderHandler::handleRejectDispatch(Session* session, const std::string& jso
     }
 }
 
-// ================================================================
-//  handlePickupDone  (REQ_PICKUP_DONE = 403)
-//  → RiderDB::pickupDone
-// ================================================================
 void RiderHandler::handlePickupDone(Session* session, const std::string& jsonBody) {
     try {
         json req    = json::parse(jsonBody);
@@ -150,7 +131,6 @@ void RiderHandler::handlePickupDone(Session* session, const std::string& jsonBod
             return;
         }
 
-        // ── DB 위임 ──────────────────────────────────────────
         RiderDB::getInstance().pickupDone(orderId, riderId);
 
         json res;
@@ -166,10 +146,6 @@ void RiderHandler::handlePickupDone(Session* session, const std::string& jsonBod
     }
 }
 
-// ================================================================
-//  handleDeliveryDone  (REQ_DELIVERY_DONE = 404)
-//  → RiderDB::deliveryDone (트랜잭션 포함) + 고객 Push
-// ================================================================
 void RiderHandler::handleDeliveryDone(Session* session, const std::string& jsonBody) {
     try {
         json req    = json::parse(jsonBody);
@@ -182,7 +158,6 @@ void RiderHandler::handleDeliveryDone(Session* session, const std::string& jsonB
             return;
         }
 
-        // ── DB 위임 ──────────────────────────────────────────
         auto result = RiderDB::getInstance().deliveryDone(orderId, riderId);
 
         if (!result.ok) {
@@ -191,9 +166,8 @@ void RiderHandler::handleDeliveryDone(Session* session, const std::string& jsonB
             return;
         }
 
-        // 고객에게 배달 완료 Push
         if (EpollServer::s_instance && result.customerId > 0) {
-            auto* custSession =
+            auto custSession =
                 EpollServer::s_instance->getSessionByUserID(result.customerId);
             if (custSession) {
                 json ntf;
@@ -223,10 +197,6 @@ void RiderHandler::handleDeliveryDone(Session* session, const std::string& jsonB
     }
 }
 
-// ================================================================
-//  handleMyDispatches  (REQ_MY_DISPATCHES = 405)
-//  → RiderDB::queryTodaySummary / queryMyDispatches
-// ================================================================
 void RiderHandler::handleMyDispatches(Session* session, const std::string& jsonBody) {
     try {
         int riderId = getUserIdByFd(session->getFd());
@@ -244,9 +214,7 @@ void RiderHandler::handleMyDispatches(Session* session, const std::string& jsonB
         auto& rdb = RiderDB::getInstance();
 
         if (summaryOnly) {
-            // ── DB 위임 (요약) ────────────────────────────────
             auto summary = rdb.queryTodaySummary(riderId);
-
             json res;
             res["status"]      = Status::SUCCESS;
             res["today_count"] = summary.todayCount;
@@ -256,20 +224,18 @@ void RiderHandler::handleMyDispatches(Session* session, const std::string& jsonB
             return;
         }
 
-        // ── DB 위임 (목록) ────────────────────────────────────
         auto records = rdb.queryMyDispatches(riderId);
-
         json res;
         res["status"]  = Status::SUCCESS;
         res["records"] = json::array();
         for (const auto& rec : records) {
             json item;
-            item["order_id"]    = rec.orderId;
-            item["order_code"]  = rec.orderCode;
-            item["store_name"]  = rec.storeName;
-            item["delivery_fee"]= rec.deliveryFee;
-            item["status"]      = rec.status;
-            item["created_at"]  = rec.createdAt;
+            item["order_id"]     = rec.orderId;
+            item["order_code"]   = rec.orderCode;
+            item["store_name"]   = rec.storeName;
+            item["delivery_fee"] = rec.deliveryFee;
+            item["status"]       = rec.status;
+            item["created_at"]   = rec.createdAt;
             res["records"].push_back(item);
         }
         session->sendPacket(static_cast<uint8_t>(ClientType::RIDER),
@@ -282,9 +248,6 @@ void RiderHandler::handleMyDispatches(Session* session, const std::string& jsonB
     }
 }
 
-// ================================================================
-//  pushDispatch  (Admin에서 외부 호출)
-// ================================================================
 bool RiderHandler::pushDispatch(int riderFd, int orderId,
                                 const std::string& storeName,
                                 const std::string& pickupAddr,
