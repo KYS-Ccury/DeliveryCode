@@ -178,3 +178,11 @@ namespace CmdDBAdmin {
     constexpr uint16_t REQ_DB_FORCE_CANCEL    = 1513; // 배차 강제 취소 DB Update
     constexpr uint16_t REQ_DB_MANAGE_REVIEW   = 1520; // 악성 리뷰 블라인드/삭제 DB Update/Delete
 }
+
+// [1600번대] 채팅 DB 처리 (Chat) — ChatDB 클래스가 담당
+namespace CmdDBChat {
+    constexpr uint16_t REQ_DB_FIND_OR_CREATE_ROOM = 1600; // 채팅방 조회 또는 생성 DB Select/Insert
+    constexpr uint16_t REQ_DB_QUERY_ROOM          = 1601; // 채팅방 유효성 확인 DB Select
+    constexpr uint16_t REQ_DB_INSERT_MESSAGE      = 1602; // 메시지 저장 DB Insert
+    constexpr uint16_t REQ_DB_QUERY_MESSAGES      = 1603; // 메시지 목록 조회 DB Select
+}

@@ -16,9 +16,9 @@ void RiderHandler::process(Session* session, uint16_t protocol, const std::strin
         return; 
     }
 
-    // 2. 400번대 라이더 전용 및 채팅 프로토콜 처리
+    // 2. 400번대 라이더 전용 프로토콜 처리
     switch (protocol) {
-        // 라이더 기능
+        // 라이더 기능 (400번대)
         case CmdRider::REQ_DISPATCH_LIST:   handleDispatchList(session, jsonBody); break;
         case CmdRider::REQ_ACCEPT_DISPATCH: handleAcceptDispatch(session, jsonBody); break;
         case CmdRider::REQ_REJECT_DISPATCH: handleRejectDispatch(session, jsonBody); break;
@@ -27,13 +27,11 @@ void RiderHandler::process(Session* session, uint16_t protocol, const std::strin
         case CmdRider::REQ_MY_DISPATCHES:   handleMyDispatches(session, jsonBody); break;
         case CmdRider::REQ_WORK_STATUS:     handleWorkStatus(session, jsonBody); break;
         case CmdRider::REQ_SEND_GPS:        handleUpdateGps(session, jsonBody); break;
-        
-        // 채팅 기능
-        // case CmdChat::REQ_CREATE_ROOM:
-        // case CmdChat::REQ_SEND_MSG:
-        // case CmdChat::REQ_GET_MSGS:
-        //     ChatHandler::process(session, protocol, jsonBody, m_clientType); 
-        //     break;
+
+        // 채팅 기능 (600번대) — DB 쿼리는 ChatDB 에 위임
+        case CmdChat::REQ_CREATE_ROOM:      handleChatCreateRoom(session, jsonBody); break;
+        case CmdChat::REQ_SEND_MSG:         handleChatSendMsg(session, jsonBody); break;
+        case CmdChat::REQ_GET_MSGS:         handleChatGetMsgs(session, jsonBody); break;
 
         default:
             std::cerr << "[RiderHandler] Unknown protocol: " << protocol << std::endl;

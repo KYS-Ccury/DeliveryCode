@@ -2,6 +2,7 @@
 #include "CustomerHandler.h"
 #include "RiderHandler.h"
 #include "AdminHandler.h"
+#include "ChatRoomManager.h"
 #include <iostream>
 #include "Session.h"
 #include "ThreadPool.h"
@@ -129,6 +130,9 @@ void EpollServer::closeConnection(int client_fd) {
     // 모든 핸들러에서 세션 해제 (어떤 역할이든 안전하게 정리)
     CustomerHandler::getInstance().unregisterSession(client_fd);
     RiderHandler::getInstance().unregisterSession(client_fd);
+
+    // 채팅 방 참가자 맵에서도 제거 (연결이 끊어진 fd 일괄 정리)
+    ChatRoomManager::getInstance().removeClient(client_fd);
 
     std::lock_guard<std::mutex> lock(session_mutex);
     epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);

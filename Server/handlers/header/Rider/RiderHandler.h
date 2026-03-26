@@ -23,7 +23,7 @@ protected:
     void onLogout(Session* session, int userId) override;
     void onGetProfile(Session* session, int userId, const nlohmann::json& reqBody) override;
 private:
-    // Rider_status.cpp, Rider_Dispatch.cpp 등에 구현된 함수들
+    // Rider_status.cpp, Rider_Delivery.cpp 에 구현된 배달/상태 핸들러
     void handleDispatchList(Session* session, const std::string& jsonBody);
     void handleAcceptDispatch(Session* session, const std::string& jsonBody);
     void handleRejectDispatch(Session* session, const std::string& jsonBody);
@@ -32,4 +32,10 @@ private:
     void handleMyDispatches(Session* session, const std::string& jsonBody);
     void handleWorkStatus(Session* session, const std::string& jsonBody);
     void handleUpdateGps(Session* session, const std::string& jsonBody);
+
+    // RiderChatHandler.cpp 에 구현된 채팅 핸들러 (600번대)
+    // DB 쿼리는 ChatDB 클래스에 완전히 위임한다.
+    void handleChatCreateRoom(Session* session, const std::string& jsonBody);
+    void handleChatSendMsg   (Session* session, const std::string& jsonBody);
+    void handleChatGetMsgs   (Session* session, const std::string& jsonBody);
 };
