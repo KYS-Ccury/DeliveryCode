@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "afxdialogex.h"
 #include "MenuInfo.h"
 #include "CartItem.h"
@@ -42,11 +42,15 @@ protected:
     // ── 옵션 체크 변경 → 합계 갱신 ──────────────────────────
     afx_msg void OnLvnItemchangedOptions(NMHDR* pNMHDR, LRESULT* pResult);
 
+    afx_msg void OnPaint();      // 음식 이미지 그리기
+
     DECLARE_MESSAGE_MAP()
 
 private:
     CListCtrl m_listOptions;
     int       m_nQuantity;       // 주문 수량 (기본 1)
+    HBITMAP   m_hMenuImg = nullptr; // 음식 이미지 비트맵
 
     void UpdateTotal();          // 옵션 + 수량 기반 합계 갱신
+    void LoadMenuImage();        // 서버에서 이미지 로드
 };

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "afxdialogex.h"
 #include "ScrollMenu.h"
 #include "StoreInfo.h"
@@ -64,4 +64,12 @@ private:
     static const UINT TIMER_CONN_CHECK = 1;
 
     MyMenuPopup* m_pMyMenuPopup = nullptr;
+
+    // 가게 목록 썸네일 ImageList
+    CImageList  m_imgListStore;
+
+    // UNC 경로로 이미지 로드 (서버 공유 폴더)
+    // 예: \\10.10.10.122\images\음식사진\치킨\bbq.jpg
+    HBITMAP LoadImageFromServer(const CString& relPath);
+    void    ResizeBitmapTo(HBITMAP& hBmp, int w, int h);
 };

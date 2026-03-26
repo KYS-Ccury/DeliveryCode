@@ -19,6 +19,13 @@
 
 #define WM_STORE_LIST_RESPONSE (WM_USER + 110)
 
+// 가게 목록 썸네일 크기
+static const int STORE_THUMB_W = 60;
+static const int STORE_THUMB_H = 60;
+
+// 서버 이미지 공유 경로 루트 (UNC)
+static const TCHAR* SERVER_IMAGE_ROOT = _T("\\\\10.10.10.122\\images\\");
+
 // ── 간이 JSON 파싱 ────────────────────────────────────────────
 static std::string MHJStr(const std::string& j, const std::string& k)
 {
@@ -53,20 +60,19 @@ static std::vector<StoreInfo> ParseStoreArray(const std::string& json)
         }
         std::string o = json.substr(s, e - s + 1);
         StoreInfo si;
-        si.storeID           = MHJInt(o,"id");          // 서버가 "id" 로 전송
-        si.storeName         = MHJStr(o,"name");
-        si.category          = MHJStr(o,"category");
-        si.deliveryTime      = MHJStr(o,"delivery_time");
-        // ★ delivery_fee는 서버가 int로 전송 → delivery_fee_str(문자열)로 읽기
-        si.deliveryPriceRange= MHJStr(o,"delivery_fee_str");
-        si.address           = MHJStr(o,"address");
-        si.openTime          = MHJStr(o,"open_time");
-        si.phoneNumber       = MHJStr(o,"phone");
-        si.holiday           = MHJStr(o,"holiday");
-        // ★ 가게 소개글 → storeImageUrl 필드 재활용 (StoreInfo에 별도 필드 없으면)
-        si.storeImageUrl     = MHJStr(o,"description");
-        si.minOrderAmount    = MHJInt(o,"min_order");
-        si.distance          = MHJDouble(o,"distance");
+        si.storeID            = MHJInt(o,"id");
+        si.storeName          = MHJStr(o,"name");
+        si.category           = MHJStr(o,"category");
+        si.deliveryTime       = MHJStr(o,"delivery_time");
+        si.deliveryPriceRange = MHJStr(o,"delivery_fee_str");
+        si.address            = MHJStr(o,"address");
+        si.openTime           = MHJStr(o,"open_time");
+        si.phoneNumber        = MHJStr(o,"phone");
+        si.holiday            = MHJStr(o,"holiday");
+        si.description        = MHJStr(o,"description");  // ★ 가게 소개
+        si.storeImageUrl      = MHJStr(o,"image_url");    // ★ 가게 이미지 경로
+        si.minOrderAmount     = MHJInt(o,"min_order");
+        si.distance           = MHJDouble(o,"distance");
         if (si.storeID > 0) stores.push_back(si);
         i = e + 1;
     }
@@ -77,7 +83,10 @@ IMPLEMENT_DYNAMIC(MainHomeDlg, CDialogEx)
 
 MainHomeDlg::MainHomeDlg(CWnd* pParent)
     : CDialogEx(IDD_MAINHOME_DLG, pParent) {}
-MainHomeDlg::~MainHomeDlg() {}
+MainHomeDlg::~MainHomeDlg() {
+    if (m_imgListStore.GetSafeHandle())
+        m_imgListStore.DeleteImageList();
+}
 
 void MainHomeDlg::DoDataExchange(CDataExchange* pDX)
 {
@@ -109,13 +118,21 @@ BOOL MainHomeDlg::OnInitDialog()
     m_brushBack.CreateSolidBrush(RGB(230, 245, 245));
     m_brushWhite.CreateSolidBrush(RGB(255, 255, 255));
 
+    // ── ImageList 초기화 (썸네일 60×60) ───────────────────────
+    m_imgListStore.Create(STORE_THUMB_W, STORE_THUMB_H, ILC_COLOR32 | ILC_MASK, 16, 8);
+    m_listStore.SetImageList(&m_imgListStore, LVSIL_SMALL);
+
     m_listStore.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-    m_listStore.InsertColumn(0, _T("매장명"),     LVCFMT_LEFT,   150);
-    m_listStore.InsertColumn(1, _T("배달시간"),   LVCFMT_CENTER,  75);
-    m_listStore.InsertColumn(2, _T("배달비"),     LVCFMT_CENTER,  70);
-    m_listStore.InsertColumn(3, _T("최소주문"),   LVCFMT_RIGHT,   90);
-    m_listStore.InsertColumn(4, _T("거리"),       LVCFMT_CENTER,  55);
-    m_listStore.InsertColumn(5, _T("가게소개"),   LVCFMT_LEFT,   200);
+    m_listStore.InsertColumn(0, _T(""),         LVCFMT_LEFT,   68);  // ★ 이미지 컬럼
+    m_listStore.InsertColumn(1, _T("매장명"),   LVCFMT_LEFT,  140);
+    m_listStore.InsertColumn(2, _T("배달시간"), LVCFMT_CENTER,  70);
+    m_listStore.InsertColumn(3, _T("배달비"),   LVCFMT_CENTER,  70);
+    m_listStore.InsertColumn(4, _T("최소주문"), LVCFMT_RIGHT,   85);
+    m_listStore.InsertColumn(5, _T("가게소개"), LVCFMT_LEFT,   190);
+
+    // 행 높이를 이미지 크기에 맞게 설정
+    LVITEM lvi = {};
+    m_listStore.SetItemHeight(0, STORE_THUMB_H + 4); // 아이템 없을 때 미리 설정
 
     CWnd* pPH = GetDlgItem(IDC_STATIC_MENU_BAR);
     if (pPH) {
@@ -138,16 +155,62 @@ BOOL MainHomeDlg::OnInitDialog()
     return TRUE;
 }
 
+// ── 서버 UNC 경로로 이미지 로드 ──────────────────────────────
+HBITMAP MainHomeDlg::LoadImageFromServer(const CString& relPath)
+{
+    if (relPath.IsEmpty()) return nullptr;
+
+    // 경로 구분자 정규화 (/ → \)
+    CString path = relPath;
+    path.Replace(_T('/'), _T('\\'));
+
+    CString fullPath = CString(SERVER_IMAGE_ROOT) + path;
+
+    // GDI+ 또는 LoadImage로 로드
+    HBITMAP hBmp = (HBITMAP)::LoadImage(
+        nullptr, fullPath, IMAGE_BITMAP, 0, 0,
+        LR_LOADFROMFILE | LR_CREATEDIBSECTION);
+
+    if (!hBmp) {
+        // JPEG/PNG는 LoadImage가 안 되므로 GDI+로 시도
+        // GDI+ 사용을 위한 간단한 래퍼 (Gdiplus 헤더 필요)
+        // 지원 안 되면 nullptr 반환 (기본 아이콘 사용)
+    }
+    return hBmp;
+}
+
+void MainHomeDlg::ResizeBitmapTo(HBITMAP& hBmp, int w, int h)
+{
+    if (!hBmp) return;
+    BITMAP bm = {};
+    ::GetObject(hBmp, sizeof(bm), &bm);
+    if (bm.bmWidth == w && bm.bmHeight == h) return;
+
+    HDC hdcSrc = ::CreateCompatibleDC(nullptr);
+    HDC hdcDst = ::CreateCompatibleDC(nullptr);
+    HBITMAP hNew = ::CreateCompatibleBitmap(hdcSrc, w, h);
+
+    HGDIOBJ hOldSrc = ::SelectObject(hdcSrc, hBmp);
+    HGDIOBJ hOldDst = ::SelectObject(hdcDst, hNew);
+
+    ::SetStretchBltMode(hdcDst, HALFTONE);
+    ::StretchBlt(hdcDst, 0, 0, w, h, hdcSrc, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
+
+    ::SelectObject(hdcSrc, hOldSrc);
+    ::SelectObject(hdcDst, hOldDst);
+    ::DeleteDC(hdcSrc);
+    ::DeleteDC(hdcDst);
+    ::DeleteObject(hBmp);
+    hBmp = hNew;
+}
+
 // ── 연결 상태 UI ─────────────────────────────────────────────
 void MainHomeDlg::UpdateConnStatusUI()
 {
     CWnd* pLabel = this->GetDlgItem(IDC_STATIC_CONN_STATUS);
     if (!pLabel) return;
     bool bConn = NetworkManager::GetInstance().IsConnected();
-    if (bConn)
-        pLabel->SetWindowText(_T("● 서버 연결됨"));
-    else
-        pLabel->SetWindowText(_T("● 서버 연결 안됨"));
+    pLabel->SetWindowText(bConn ? _T("● 서버 연결됨") : _T("● 서버 연결 안됨"));
     if (bConn != m_bLastConnState) {
         m_bLastConnState = bConn;
         pLabel->Invalidate();
@@ -223,24 +286,60 @@ LRESULT MainHomeDlg::OnStoreListResponse(WPARAM, LPARAM lParam)
 void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
 {
     m_listStore.DeleteAllItems();
+
+    // ImageList 초기화 (기존 이미지 모두 제거 후 재구성)
+    if (m_imgListStore.GetSafeHandle())
+        m_imgListStore.DeleteImageList();
+    m_imgListStore.Create(STORE_THUMB_W, STORE_THUMB_H, ILC_COLOR32 | ILC_MASK, (int)stores.size() + 1, 4);
+    m_listStore.SetImageList(&m_imgListStore, LVSIL_SMALL);
+
+    // 기본 이미지 (이미지 없을 때 사용할 회색 사각형)
+    HBITMAP hDefault = ::CreateBitmap(STORE_THUMB_W, STORE_THUMB_H, 1, 32, nullptr);
+    {
+        HDC hdc = ::CreateCompatibleDC(nullptr);
+        HGDIOBJ hOld = ::SelectObject(hdc, hDefault);
+        RECT rc = {0, 0, STORE_THUMB_W, STORE_THUMB_H};
+        HBRUSH hBr = ::CreateSolidBrush(RGB(200, 200, 200));
+        ::FillRect(hdc, &rc, hBr);
+        ::DeleteObject(hBr);
+        ::SelectObject(hdc, hOld);
+        ::DeleteDC(hdc);
+    }
+    int defImgIdx = m_imgListStore.Add(CBitmap::FromHandle(hDefault), RGB(0,0,0));
+    ::DeleteObject(hDefault);
+
     for (int i = 0; i < (int)stores.size(); ++i) {
-        // 컬럼 0: 매장명
+        // ── 이미지 로드 ───────────────────────────────────────
+        int imgIdx = defImgIdx; // 기본: 회색 박스
+        CString imgUrl = CA2T(stores[i].storeImageUrl.c_str(), CP_UTF8);
+        if (!imgUrl.IsEmpty()) {
+            HBITMAP hBmp = LoadImageFromServer(imgUrl);
+            if (hBmp) {
+                ResizeBitmapTo(hBmp, STORE_THUMB_W, STORE_THUMB_H);
+                imgIdx = m_imgListStore.Add(CBitmap::FromHandle(hBmp), RGB(0,0,0));
+                ::DeleteObject(hBmp);
+            }
+        }
+
+        // 컬럼 0: 이미지 (아이콘으로 표시)
         CString n = CA2T(stores[i].storeName.c_str(), CP_UTF8);
-        int r = m_listStore.InsertItem(i, n);
-        // 컬럼 1: 배달시간
+        int r = m_listStore.InsertItem(
+            LVIF_TEXT | LVIF_IMAGE,
+            i, _T(""), 0, 0, imgIdx, nullptr);
+
+        // 컬럼 1: 매장명
+        m_listStore.SetItemText(r, 1, n);
+        // 컬럼 2: 배달시간
         CString t = CA2T(stores[i].deliveryTime.c_str(), CP_UTF8);
-        m_listStore.SetItemText(r, 1, t.IsEmpty() ? _T("--") : t);
-        // 컬럼 2: 배달비 ("무료" or "X,XXX원")
+        m_listStore.SetItemText(r, 2, t.IsEmpty() ? _T("--") : t);
+        // 컬럼 3: 배달비
         CString f = CA2T(stores[i].deliveryPriceRange.c_str(), CP_UTF8);
-        m_listStore.SetItemText(r, 2, f.IsEmpty() ? _T("--") : f);
-        // 컬럼 3: 최소주문
+        m_listStore.SetItemText(r, 3, f.IsEmpty() ? _T("--") : f);
+        // 컬럼 4: 최소주문
         CString a; a.Format(_T("%d원"), stores[i].minOrderAmount);
-        m_listStore.SetItemText(r, 3, a);
-        // 컬럼 4: 거리
-        CString d; d.Format(_T("%.1fkm"), stores[i].distance);
-        m_listStore.SetItemText(r, 4, d);
-        // 컬럼 5: 가게 소개 (storeImageUrl 재활용)
-        CString desc = CA2T(stores[i].storeImageUrl.c_str(), CP_UTF8);
+        m_listStore.SetItemText(r, 4, a);
+        // 컬럼 5: 가게소개 ★ description 필드 사용
+        CString desc = CA2T(stores[i].description.c_str(), CP_UTF8);
         m_listStore.SetItemText(r, 5, desc);
     }
     if (stores.empty()) m_listStore.InsertItem(0,_T("해당 카테고리의 가게가 없습니다."));
@@ -280,49 +379,17 @@ void MainHomeDlg::OnBnClickedButton1()
 // ── 하단 4버튼 핸들러 ─────────────────────────────────────────
 void MainHomeDlg::OnBnClickedBtnMypage()
 {
-    //// 로그인 유저 정보 팝업 (간단 알림 + 로그아웃)
-    //CString strUserID = CA2T(AuthManager::GetInstance().GetCurrentUserID().c_str(), CP_UTF8);
-    //CString msg;
-    //msg.Format(_T("로그인 계정: %s\n\n로그아웃 하시겠습니까?"), (LPCTSTR)strUserID);
-    //if (AfxMessageBox(msg, MB_YESNO | MB_ICONQUESTION) == IDYES) {
-    //    KillTimer(TIMER_CONN_CHECK);
-    //    AuthManager::GetInstance().Logout();
-    //    CDialogEx::OnCancel();
-    //}
-
-    // My 버튼 위치 기준으로 팝업 표시
     CWnd* pBtn = GetDlgItem(IDC_BTN_MY_MYPAGE);
     if (!pBtn) return;
-
-    CRect rcBtn;
-    pBtn->GetWindowRect(&rcBtn);
-
-    // 팝업은 버튼 위쪽에 표시 (하단 버튼이므로)
+    CRect rcBtn; pBtn->GetWindowRect(&rcBtn);
     CPoint ptPopup(rcBtn.left, rcBtn.top);
-
-    if (m_pMyMenuPopup && ::IsWindow(m_pMyMenuPopup->GetSafeHwnd()))
-        return;  // 이미 열려있으면 무시
-
+    if (m_pMyMenuPopup && ::IsWindow(m_pMyMenuPopup->GetSafeHwnd())) return;
     m_pMyMenuPopup = new MyMenuPopup(this);
     m_pMyMenuPopup->ShowAt(ptPopup);
 }
-
-void MainHomeDlg::OnBnClickedBtnPayment()
-{
-    PaymentDlg dlg(this); dlg.DoModal();
-}
-void MainHomeDlg::OnBnClickedBtnDelivery()
-{
-    // 진행 중인 최근 주문 현황
-    OrderHistoryDlg dlg(this);
-    dlg.DoModal();
-}
-void MainHomeDlg::OnBnClickedBtnOrderHistory()
-{
-    // 전체 주문 내역
-    OrderListDlg dlg(this);
-    dlg.DoModal();
-}
+void MainHomeDlg::OnBnClickedBtnPayment()  { PaymentDlg dlg(this); dlg.DoModal(); }
+void MainHomeDlg::OnBnClickedBtnDelivery() { OrderHistoryDlg dlg(this); dlg.DoModal(); }
+void MainHomeDlg::OnBnClickedBtnOrderHistory() { OrderListDlg dlg(this); dlg.DoModal(); }
 
 void MainHomeDlg::OnCancel()
 {
@@ -340,45 +407,22 @@ BOOL MainHomeDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 
 LRESULT MainHomeDlg::OnMyMenuSelected(WPARAM wParam, LPARAM)
 {
-    m_pMyMenuPopup = nullptr;  // 팝업은 이미 DestroyWindow 됨
-
+    m_pMyMenuPopup = nullptr;
     int id = (int)wParam;
-    switch (id)
-    {
-    case MYMENU_MY_INFO:                    // ★ 개인정보 확인
-    {
-        MyInfoDlg dlg(this);
-        dlg.DoModal();
-        break;
-    }
-    case MYMENU_EDIT_INFO:
-    {
-        EditInfoDlg dlg(this);
-        dlg.DoModal();
-        break;
-    }
-    case MYMENU_POINT:
-    {
-        PointDlg dlg(this);
-        dlg.DoModal();
-        break;
-    }
-    case MYMENU_ADMIN_CHAT:                 // ★ 관리자 채팅
-    {
+    switch (id) {
+    case MYMENU_MY_INFO:   { MyInfoDlg dlg(this); dlg.DoModal(); break; }
+    case MYMENU_EDIT_INFO: { EditInfoDlg dlg(this); dlg.DoModal(); break; }
+    case MYMENU_POINT:     { PointDlg dlg(this); dlg.DoModal(); break; }
+    case MYMENU_ADMIN_CHAT: {
         ChatDlg dlg(this);
         dlg.m_strTargetName = _T("관리자 문의");
-        dlg.m_strTargetID = _T("admin");
+        dlg.m_strTargetID   = _T("admin");
         dlg.m_strTargetType = _T("admin");
-        dlg.DoModal();
-        break;
+        dlg.DoModal(); break;
     }
-    case MYMENU_LOGOUT:
-    {
-        CString strUserID = CA2T(
-            AuthManager::GetInstance().GetCurrentUserID().c_str(), CP_UTF8);
-        CString msg;
-        msg.Format(_T("로그인 계정: %s\n\n로그아웃 하시겠습니까?"),
-            (LPCTSTR)strUserID);
+    case MYMENU_LOGOUT: {
+        CString strUserID = CA2T(AuthManager::GetInstance().GetCurrentUserID().c_str(), CP_UTF8);
+        CString msg; msg.Format(_T("로그인 계정: %s\n\n로그아웃 하시겠습니까?"), (LPCTSTR)strUserID);
         if (AfxMessageBox(msg, MB_YESNO | MB_ICONQUESTION) == IDYES) {
             KillTimer(TIMER_CONN_CHECK);
             AuthManager::GetInstance().Logout();

@@ -41,4 +41,10 @@ private:
     CScrollMenu           m_wndScrollMenu;
     std::vector<CString>  m_vecSubCategories;
     std::vector<MenuInfo> m_vecMenuCache;
+
+    // 메뉴 썸네일 ImageList
+    CImageList m_imgListMenu;
+
+    HBITMAP LoadMenuImage(const CString& relPath);
+    void    ResizeBitmapTo(HBITMAP& hBmp, int w, int h);
 };

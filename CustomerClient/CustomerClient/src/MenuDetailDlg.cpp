@@ -1,4 +1,4 @@
-// ================================================================
+﻿// ================================================================
 //  MenuDetailDlg.cpp  ─  메뉴 상세 / 옵션 선택 / 장바구니 담기
 //
 //  [변경사항]
@@ -39,6 +39,12 @@ MenuDetailDlg::MenuDetailDlg(CWnd* pParent)
 {}
 MenuDetailDlg::~MenuDetailDlg() {}
 
+void MenuDetailDlg::OnDestroy()
+{
+    if (m_hMenuImg) { ::DeleteObject(m_hMenuImg); m_hMenuImg = nullptr; }
+    CDialogEx::OnDestroy();
+}
+
 void MenuDetailDlg::DoDataExchange(CDataExchange* pDX)
 {
     CDialogEx::DoDataExchange(pDX);
@@ -52,6 +58,8 @@ BEGIN_MESSAGE_MAP(MenuDetailDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_COUNT_MINUS_D,    &MenuDetailDlg::OnBnClickedCountMinus)
     ON_BN_CLICKED(IDC_BTN_COUNT_PLUS_D,     &MenuDetailDlg::OnBnClickedCountPlus)
     ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST_OPTIONS_D, &MenuDetailDlg::OnLvnItemchangedOptions)
+    ON_WM_PAINT()
+    ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
 BOOL MenuDetailDlg::OnInitDialog()
@@ -81,7 +89,56 @@ BOOL MenuDetailDlg::OnInitDialog()
     // 합계 초기 표시
     UpdateTotal();
 
+    // 음식 이미지 로드
+    LoadMenuImage();
+
     return TRUE;
+}
+
+// ── 서버 이미지 로드 ──────────────────────────────────────────
+void MenuDetailDlg::LoadMenuImage()
+{
+    if (m_menuInfo.menuImageUrl.empty()) return;
+
+    CString path = CA2T(m_menuInfo.menuImageUrl.c_str(), CP_UTF8);
+    path.Replace(_T('/'), _T('\\'));
+    CString fullPath = CString(_T("\\\\10.10.10.122\\images\\")) + path;
+
+    m_hMenuImg = (HBITMAP)::LoadImage(
+        nullptr, fullPath, IMAGE_BITMAP, 0, 0,
+        LR_LOADFROMFILE | LR_CREATEDIBSECTION);
+
+    if (m_hMenuImg) Invalidate();
+}
+
+// ── 음식 이미지 그리기 (다이얼로그 상단 고정 위치) ───────────
+void MenuDetailDlg::OnPaint()
+{
+    CPaintDC dc(this);
+    if (!m_hMenuImg) {
+        CDialogEx::OnPaint();
+        return;
+    }
+
+    // 이미지를 다이얼로그 상단 오른쪽에 120×120으로 표시
+    BITMAP bm = {};
+    ::GetObject(m_hMenuImg, sizeof(bm), &bm);
+
+    CRect rcClient; GetClientRect(&rcClient);
+    int imgW = 120, imgH = 120;
+    int x = rcClient.right - imgW - 8;
+    int y = 8;
+
+    HDC hdcMem = ::CreateCompatibleDC(dc.m_hDC);
+    HGDIOBJ hOld = ::SelectObject(hdcMem, m_hMenuImg);
+    ::SetStretchBltMode(dc.m_hDC, HALFTONE);
+    ::StretchBlt(dc.m_hDC, x, y, imgW, imgH,
+                 hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
+    ::SelectObject(hdcMem, hOld);
+    ::DeleteDC(hdcMem);
+
+    // 나머지 컨트롤 다시 그리기
+    CDialogEx::OnPaint();
 }
 
 // ── 옵션 리스트 채우기 ────────────────────────────────────────

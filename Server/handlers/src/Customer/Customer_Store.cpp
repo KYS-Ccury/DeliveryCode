@@ -1,4 +1,4 @@
-#include "CustomerHandler.h"
+﻿#include "CustomerHandler.h"
 #include "MariaDBManager.h"
 #include "Protocol.h"
 #include <cmath>
@@ -75,6 +75,18 @@ void CustomerHandler::handleStoreList(Session* session, const std::string& body)
             double km = (sLat!=0.0 && sLng!=0.0) ? std::round(calcDistanceKm(userLat,userLng,sLat,sLng)*10)/10.0 : 0.0;
             s["distance"]      = km;
             s["delivery_time"] = (km > 0.0) ? estimateDeliveryTime(km) : "20~30분";
+
+            // 가게 대표 이미지: 해당 가게의 첫 번째 메뉴 이미지 사용
+            int rid = s["id"].get<int>();
+            auto imgRows = db.executeQuery(
+                "SELECT m.image_url FROM menus m "
+                "JOIN menu_categories mc ON mc.menu_category_id = m.menu_category_id "
+                "WHERE mc.restaurant_id=" + std::to_string(rid) +
+                "  AND m.image_url IS NOT NULL AND m.image_url != '' "
+                "ORDER BY m.menu_id LIMIT 1");
+            s["image_url"] = (!imgRows.empty() && imgRows[0].count("image_url"))
+                             ? imgRows[0].at("image_url") : "";
+
             stores.push_back(s);
         }
         json res; res["status"] = Status::SUCCESS; res["stores"] = stores;
