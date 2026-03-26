@@ -57,6 +57,7 @@ BOOL OptionChangeDlg::OnInitDialog()
     if (!m_vecPreCheckedOptionIDs.empty()) {
         int row2 = 0;
         for (const auto& og : m_vecOptionGroups) {
+
             for (const auto& oi : og.items) {
                 bool bChecked = std::find(
                     m_vecPreCheckedOptionIDs.begin(),
