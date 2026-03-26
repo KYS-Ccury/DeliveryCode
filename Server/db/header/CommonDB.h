@@ -110,6 +110,11 @@ public:
     // 계정 status 변경 ('ACTIVE' / 'SLEEP' / 'DELETED')
     bool querySetUserStatus(int userId, const std::string& status);
 
+    // ── 공통 SQL 이스케이프 ──────────────────────────────
+    // RiderDB / BaseHandler 등 모든 DB 레이어에서 사용
+    // 사용: CommonDB::escape(str)
+    static std::string escape(const std::string& s);
+
 private:
     CommonDB() = default;
 };

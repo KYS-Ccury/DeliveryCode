@@ -105,18 +105,3 @@ bool MariaDBManager::executeTransaction(const std::function<bool()>& work) {
         return false;
     }
 }
-
-// ================================================================
-//  escape  (공통 SQL 이스케이프)
-//  CommonDB / RiderDB / BaseHandler 의 중복 구현을 여기로 통합
-//  사용: MariaDBManager::escape(str)
-// ================================================================
-std::string MariaDBManager::escape(const std::string& s) {
-    std::string out;
-    out.reserve(s.size() * 2);
-    for (char c : s) {
-        if (c == '\'' || c == '\\' || c == '"') out += '\\';
-        out += c;
-    }
-    return out;
-}

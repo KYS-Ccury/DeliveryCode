@@ -1,6 +1,20 @@
 #include "CommonDB.h"
 #include <iostream>
 
+// ================================================================
+//  escape  (공통 SQL 이스케이프 유틸)
+//  CommonDB::escape(str) 으로 어디서든 호출
+// ================================================================
+std::string CommonDB::escape(const std::string& s) {
+    std::string out;
+    out.reserve(s.size() * 2);
+    for (char c : s) {
+        if (c == '\'' || c == '\\' || c == '"') out += '\\';
+        out += c;
+    }
+    return out;
+}
+
 // ── 내부 유틸 ──────────────────────────────────────────────
 // ============================================================
 //  [로그인]
@@ -11,9 +25,9 @@ int CommonDB::queryLogin(const std::string& loginId,
     auto& db = MariaDBManager::getInstance();
     auto rows = db.executeQuery(
         "SELECT user_id FROM users "
-        "WHERE login_id='"  + MariaDBManager::escape(loginId)  + "' "
-        "  AND password='"  + MariaDBManager::escape(password) + "' "
-        "  AND role='"      + MariaDBManager::escape(role)      + "' "
+        "WHERE login_id='"  + CommonDB::escape(loginId)  + "' "
+        "  AND password='"  + CommonDB::escape(password) + "' "
+        "  AND role='"      + CommonDB::escape(role)      + "' "
         "  AND status='ACTIVE' LIMIT 1");
 
     if (rows.empty()) return -1;
@@ -28,7 +42,7 @@ bool CommonDB::queryCheckDuplicateId(const std::string& loginId) {
     auto& db = MariaDBManager::getInstance();
     auto rows = db.executeQuery(
         "SELECT user_id FROM users "
-        "WHERE login_id='" + MariaDBManager::escape(loginId) + "' LIMIT 1");
+        "WHERE login_id='" + CommonDB::escape(loginId) + "' LIMIT 1");
     return rows.empty();   // true = 사용 가능 (중복 없음)
 }
 
@@ -42,12 +56,12 @@ int CommonDB::queryInsertUser(const std::string& loginId,
     bool ok = db.executeUpdate(
         "INSERT INTO users (login_id, password, role, name, phone, address, status) "
         "VALUES ('"
-        + MariaDBManager::escape(loginId)  + "','"
-        + MariaDBManager::escape(password) + "','"
-        + MariaDBManager::escape(role)     + "','"
-        + MariaDBManager::escape(name)     + "','"
-        + MariaDBManager::escape(phone)    + "','"
-        + MariaDBManager::escape(address)  + "',"
+        + CommonDB::escape(loginId)  + "','"
+        + CommonDB::escape(password) + "','"
+        + CommonDB::escape(role)     + "','"
+        + CommonDB::escape(name)     + "','"
+        + CommonDB::escape(phone)    + "','"
+        + CommonDB::escape(address)  + "',"
         "'ACTIVE')");
 
     if (!ok) return -1;
@@ -81,14 +95,14 @@ bool CommonDB::queryCheckPassword(int userId, const std::string& password) {
     auto rows = db.executeQuery(
         "SELECT user_id FROM users "
         "WHERE user_id=" + std::to_string(userId) +
-        "  AND password='" + MariaDBManager::escape(password) + "' LIMIT 1");
+        "  AND password='" + CommonDB::escape(password) + "' LIMIT 1");
     return !rows.empty();
 }
 
 bool CommonDB::queryChangePassword(int userId, const std::string& newPassword) {
     auto& db = MariaDBManager::getInstance();
     return db.executeUpdate(
-        "UPDATE users SET password='" + MariaDBManager::escape(newPassword) +
+        "UPDATE users SET password='" + CommonDB::escape(newPassword) +
         "' WHERE user_id=" + std::to_string(userId));
 }
 
@@ -127,9 +141,9 @@ bool CommonDB::queryAddCard(int userId,
         "INSERT INTO payment_methods "
         "(user_id, method_type, card_alias, card_num_masked, is_default) "
         "VALUES (" + std::to_string(userId) + ",'"
-        + MariaDBManager::escape(methodType) + "','"
-        + MariaDBManager::escape(alias)      + "','"
-        + MariaDBManager::escape(maskedNum)  + "',0)");
+        + CommonDB::escape(methodType) + "','"
+        + CommonDB::escape(alias)      + "','"
+        + CommonDB::escape(maskedNum)  + "',0)");
 }
 
 bool CommonDB::queryDeleteCard(int userId, int paymentMethodId) {
@@ -159,6 +173,6 @@ bool CommonDB::querySetDefaultCard(int userId, int paymentMethodId) {
 bool CommonDB::querySetUserStatus(int userId, const std::string& status) {
     auto& db = MariaDBManager::getInstance();
     return db.executeUpdate(
-        "UPDATE users SET status='" + MariaDBManager::escape(status) +
+        "UPDATE users SET status='" + CommonDB::escape(status) +
         "' WHERE user_id=" + std::to_string(userId));
 }

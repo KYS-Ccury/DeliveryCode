@@ -1,6 +1,5 @@
 #include "RiderHandler.h"
 #include "RiderDB.h"
-#include "MariaDBManager.h"
 #include "CommonDB.h"
 #include "Protocol.h"
 #include "Session.h"
@@ -21,7 +20,7 @@ void RiderHandler::onSignup(Session* session, const json& reqBody) {
         CommonDB::UserBasic ub;
         auto rows = MariaDBManager::getInstance().executeQuery(
             "SELECT user_id FROM users WHERE login_id='" +
-            MariaDBManager::escape(loginId) + "' LIMIT 1");
+            CommonDB::escape(loginId) + "' LIMIT 1");
 
         if (rows.empty()) {
             sendError(session, CmdCommon::REQ_SIGNUP,
