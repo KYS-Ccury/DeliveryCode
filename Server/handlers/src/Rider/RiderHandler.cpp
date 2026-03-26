@@ -35,7 +35,6 @@ void RiderHandler::process(Session* session, uint16_t protocol, const std::strin
         //     ChatHandler::process(session, protocol, jsonBody, m_clientType); 
         //     break;
 
-        // 예외 처리 (알 수 없는 프로토콜)
         default:
             std::cerr << "[RiderHandler] Unknown protocol: " << protocol << std::endl;
             sendError(session, protocol, 400, "Unknown Rider Protocol");

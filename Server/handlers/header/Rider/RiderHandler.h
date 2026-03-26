@@ -18,7 +18,7 @@ public:
                       const std::string& pickupAddr, const std::string& destAddr, int deliveryFee);
 
 protected:
-    void onSignup(Session* session, const nlohmann::json& reqBody) override;
+    void onSignup(Session* session, int userId, const nlohmann::json& reqBody) override;
     void onLoginSuccess(Session* session, int userId, const nlohmann::json& reqBody) override;
     void onLogout(Session* session, int userId) override;
     void onGetProfile(Session* session, int userId, const nlohmann::json& reqBody) override;

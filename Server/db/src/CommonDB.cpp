@@ -1,5 +1,6 @@
 #include "CommonDB.h"
 #include <iostream>
+#include "Protocol.h"
 
 // ================================================================
 //  escape  (공통 SQL 이스케이프 유틸)
@@ -16,9 +17,8 @@ std::string CommonDB::escape(const std::string& s) {
 }
 
 // ── 내부 유틸 ──────────────────────────────────────────────
-// ============================================================
 //  [로그인]
-// ============================================================
+
 int CommonDB::queryLogin(const std::string& loginId,
                          const std::string& password,
                          const std::string& role) {
@@ -35,9 +35,7 @@ int CommonDB::queryLogin(const std::string& loginId,
     catch (...) { return -1; }
 }
 
-// ============================================================
 //  [회원가입]
-// ============================================================
 bool CommonDB::queryCheckDuplicateId(const std::string& loginId) {
     auto& db = MariaDBManager::getInstance();
     auto rows = db.executeQuery(
@@ -69,9 +67,7 @@ int CommonDB::queryInsertUser(const std::string& loginId,
     catch (...) { return -1; }
 }
 
-// ============================================================
 //  [기본 정보 조회]
-// ============================================================
 CommonDB::UserBasic CommonDB::queryUserBasic(int userId) {
     UserBasic result;
     auto& db = MariaDBManager::getInstance();
@@ -87,9 +83,7 @@ CommonDB::UserBasic CommonDB::queryUserBasic(int userId) {
     return result;
 }
 
-// ============================================================
 //  [비밀번호]
-// ============================================================
 bool CommonDB::queryCheckPassword(int userId, const std::string& password) {
     auto& db = MariaDBManager::getInstance();
     auto rows = db.executeQuery(
@@ -106,9 +100,7 @@ bool CommonDB::queryChangePassword(int userId, const std::string& newPassword) {
         "' WHERE user_id=" + std::to_string(userId));
 }
 
-// ============================================================
 //  [결제수단]
-// ============================================================
 std::vector<CommonDB::PaymentMethod> CommonDB::queryPaymentMethods(int userId) {
     auto& db = MariaDBManager::getInstance();
     auto rows = db.executeQuery(
@@ -167,12 +159,80 @@ bool CommonDB::querySetDefaultCard(int userId, int paymentMethodId) {
         "  AND user_id=" + std::to_string(userId));
 }
 
-// ============================================================
 //  [계정 상태]
-// ============================================================
+
 bool CommonDB::querySetUserStatus(int userId, const std::string& status) {
     auto& db = MariaDBManager::getInstance();
     return db.executeUpdate(
         "UPDATE users SET status='" + CommonDB::escape(status) +
         "' WHERE user_id=" + std::to_string(userId));
+}
+
+// ============================================================
+//  [MiddleHandler 라우팅 구현부]
+// ============================================================
+nlohmann::json CommonDB::process(uint16_t dbProtocol, const nlohmann::json& reqJson) {
+    if (dbProtocol == CmdDBCommon::REQ_DB_SIGNUP)      return signup(reqJson);
+    if (dbProtocol == CmdDBCommon::REQ_DB_LOGIN)       return login(reqJson);
+    // 프로필 정보 조회/카드 처리 등의 로직을 getProfile 함수로 만들어 연결하시면 됩니다.
+    // if (dbProtocol == CmdDBCommon::REQ_DB_GET_PROFILE) return getProfile(reqJson);
+
+    return {{"status", Status::SERVER_ERROR}, {"message", "Unknown CommonDB Protocol"}};
+}
+
+nlohmann::json CommonDB::signup(const nlohmann::json& reqBody) {
+    nlohmann::json res;
+    std::string action = reqBody.value("action", "");
+    std::string loginId = reqBody.value("id", "");
+
+    // 1. 중복 아이디 체크
+    if (action == "CHECK_ID") {
+        res["status"] = Status::SUCCESS;
+        res["available"] = getInstance().queryCheckDuplicateId(loginId);
+        return res;
+    }
+
+    // 2. 실제 회원가입 로직
+    if (!getInstance().queryCheckDuplicateId(loginId)) {
+        res["status"] = Status::BAD_REQUEST;
+        res["message"] = "이미 사용 중인 아이디입니다.";
+        return res;
+    }
+
+    std::string pw      = reqBody.value("pw", "");
+    std::string name    = reqBody.value("name", "");
+    std::string phone   = reqBody.value("phone", "");
+    std::string address = reqBody.value("address", "");
+    std::string role    = reqBody.value("role", "CUSTOMER");
+
+    int newUserId = getInstance().queryInsertUser(loginId, pw, role, name, phone, address);
+    if (newUserId != -1) {
+        res["status"] = Status::SUCCESS;
+        res["user_id"] = newUserId;
+    } else {
+        res["status"] = Status::SERVER_ERROR;
+        res["message"] = "회원가입 DB 처리 실패";
+    }
+    return res;
+}
+
+nlohmann::json CommonDB::login(const nlohmann::json& reqBody) {
+    nlohmann::json res;
+    std::string loginId = reqBody.value("id", "");
+    std::string pw      = reqBody.value("pw", "");
+    std::string role    = reqBody.value("role", "CUSTOMER");
+    
+    // 클라이언트가 보낸 타입 백업 (1:고객, 2:사장, 3:라이더 등)
+    int clientType = reqBody.value("client_type", 1); 
+
+    int userId = getInstance().queryLogin(loginId, pw, role);
+    if (userId != -1) {
+        res["status"] = Status::SUCCESS;
+        res["user_id"] = userId;
+        res["client_type"] = clientType; // <--- 이 줄 추가! (CommonHandler가 필요로 함)
+    } else {
+        res["status"] = Status::UNAUTHORIZED;
+        res["message"] = "아이디 또는 비밀번호가 올바르지 않습니다.";
+    }
+    return res;
 }

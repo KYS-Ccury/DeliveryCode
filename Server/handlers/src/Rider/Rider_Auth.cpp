@@ -6,32 +6,13 @@
 #include <iostream>
 
 using json = nlohmann::json;
-
-// ================================================================
-//  onSignup  (BaseHandler::handleSignup 에서 users INSERT 완료 후 호출)
-//  → RiderDB::insertRiderProfile 으로 rider_profiles 생성
-// ================================================================
-void RiderHandler::onSignup(Session* session, const json& reqBody) {
+// 현재 여기서 쿼리가 없는 버전
+void RiderHandler::onSignup(Session* session, int userId, const json& reqBody) {
     try {
-        std::string loginId     = reqBody.value("id", "");
         std::string vehicleType = reqBody.value("vehicle_type", "BIKE");
 
-        // users 테이블에서 방금 삽입된 user_id 조회
-        CommonDB::UserBasic ub;
-        auto rows = MariaDBManager::getInstance().executeQuery(
-            "SELECT user_id FROM users WHERE login_id='" +
-            CommonDB::escape(loginId) + "' LIMIT 1");
-
-        if (rows.empty()) {
-            sendError(session, CmdCommon::REQ_SIGNUP,
-                      Status::SERVER_ERROR, "라이더 user_id 조회 실패");
-            return;
-        }
-
-        int uid = std::stoi(rows[0].at("user_id"));
-
-        // ── RiderDB 로 위임 ──────────────────────────────────
-        RiderDB::getInstance().insertRiderProfile(uid, vehicleType);
+        // 쌩(Raw) 쿼리 완전 제거! 부모가 준 userId로 바로 RiderDB 호출!
+        RiderDB::getInstance().insertRiderProfile(userId, vehicleType);
 
         json res;
         res["status"] = Status::SUCCESS;
@@ -39,10 +20,42 @@ void RiderHandler::onSignup(Session* session, const json& reqBody) {
 
     } catch (const std::exception& e) {
         std::cerr << "[Rider] onSignup 에러: " << e.what() << std::endl;
-        sendError(session, CmdCommon::REQ_SIGNUP,
-                  Status::SERVER_ERROR, "라이더 프로필 생성 중 오류 발생");
+        sendError(session, CmdCommon::REQ_SIGNUP, Status::SERVER_ERROR, "라이더 프로필 생성 중 오류 발생");
     }
 }
+// 여기서 쿼리를 실행 날리고 있음... 
+// void RiderHandler::onSignup(Session* session, const json& reqBody) {
+//     try {
+//         std::string loginId     = reqBody.value("id", "");
+//         std::string vehicleType = reqBody.value("vehicle_type", "BIKE");
+
+//         // users 테이블에서 방금 삽입된 user_id 조회
+//         CommonDB::UserBasic ub;
+//         auto rows = MariaDBManager::getInstance().executeQuery(
+//             "SELECT user_id FROM users WHERE login_id='" +
+//             MariaDBManager::escape(loginId) + "' LIMIT 1");
+
+//         if (rows.empty()) {
+//             sendError(session, CmdCommon::REQ_SIGNUP,
+//                       Status::SERVER_ERROR, "라이더 user_id 조회 실패");
+//             return;
+//         }
+
+//         int uid = std::stoi(rows[0].at("user_id"));
+
+//         // ── RiderDB 로 위임 ──────────────────────────────────
+//         RiderDB::getInstance().insertRiderProfile(uid, vehicleType);
+
+//         json res;
+//         res["status"] = Status::SUCCESS;
+//         sendResponse(session, CmdCommon::REQ_SIGNUP, res);
+
+//     } catch (const std::exception& e) {
+//         std::cerr << "[Rider] onSignup 에러: " << e.what() << std::endl;
+//         sendError(session, CmdCommon::REQ_SIGNUP,
+//                   Status::SERVER_ERROR, "라이더 프로필 생성 중 오류 발생");
+//     }
+// }
 
 // ================================================================
 //  onLoginSuccess

@@ -350,3 +350,36 @@ bool RiderDB::updateGps(int riderId, double lat, double lng) {
       << "WHERE u.user_id=" << riderId;
     return db.executeUpdate(q.str());
 }
+
+// ============================================================
+//  [MiddleHandler 및 CommonHandler 연동용 구현부] (추가 필수!)
+// ============================================================
+
+nlohmann::json RiderDB::process(uint16_t dbProtocol, const nlohmann::json& reqJson) {
+    nlohmann::json res;
+    // 향후 1400번대(라이더) 프로토콜 번호에 따른 세부 분기 로직을 작성합니다.
+    return res;
+}
+
+void RiderDB::createProfile(int userId) {
+    // 이미 만들어두신 위쪽의 insertRiderProfileIfMissing 함수를 재사용합니다.
+    getInstance().insertRiderProfileIfMissing(userId);
+}
+
+nlohmann::json RiderDB::loginHook(int userId) {
+    nlohmann::json res;
+    
+    // 1. 온라인 상태로 변경
+    getInstance().setOnline(userId, true);
+    
+    // 2. 프로필 정보 가져오기
+    RiderProfile profile = getInstance().queryRiderProfile(userId);
+    
+    // 3. 응답 JSON 구성
+    res["status"] = 200; 
+    res["vehicle_type"] = profile.vehicleType;
+    res["is_working"] = profile.isWorking;
+    res["is_accepting"] = profile.isAccepting;
+    
+    return res;
+}
