@@ -1,36 +1,32 @@
-﻿/**
- * admintool.h
- * ============================================================
- * ★ 수정사항: CClientSocket m_socket 멤버 추가
- *   → LoginDlg / 모든 Page에서 GetSocket()으로 접근
- * ============================================================
- */
+﻿#pragma once
 
-#pragma once
+#include "Basehandler.h"
 
-#ifndef __AFXWIN_H__
-#error "pch.h를 먼저 포함해야 합니다."
-#endif
-
-#include "resource.h"
-#include "ClientSocket.h"   // ★ 추가
-
-class CAdminToolApp : public CWinAppEx
-{
+class AdminHandler : public BaseHandler {
 public:
-    CAdminToolApp();
-    virtual BOOL InitInstance();
+    static AdminHandler& getInstance();
 
-    // ★ 추가: 소켓 객체 접근자 (어디서든 사용 가능)
-    CClientSocket& GetSocket() { return m_socket; }
+    // ── BaseHandler 순수 가상함수 override (4개) ──
+    void onSignup(Session* session, const nlohmann::json& reqBody) override;
+    void onLoginSuccess(Session* session, int userId, const nlohmann::json& reqBody) override;
+    void onLogout(Session* session, int userId) override;
+    void onGetProfile(Session* session, int userId, const nlohmann::json& reqBody) override;
 
-    DECLARE_MESSAGE_MAP()
+    // ── Dispatcher 진입점 ──
+    void process(Session* session, uint16_t protocol, const std::string& jsonBody) override;
 
 private:
-    CClientSocket m_socket;   // ★ 추가: TCP 소켓 (프로그램 전체 공유)
-};
+    AdminHandler();
 
-// 기존 빈 클래스 (사용되지 않으나 호환성 유지)
-class admintool
-{
+    // ── 500번대: 관리자 기능 ──
+    void handleOrderMonitor(Session* session, const std::string& jsonBody);
+    void handleRiderStatus(Session* session, const std::string& jsonBody);
+    void handleForceDispatch(Session* session, const std::string& jsonBody);
+    void handleForceCancel(Session* session, const std::string& jsonBody);
+    void handleManageReview(Session* session, const std::string& jsonBody);
+
+    // ── 600번대: 채팅 ──
+    void handleSendMsg(Session* session, const std::string& jsonBody);
+    void handleGetMsgs(Session* session, const std::string& jsonBody);
+    void handleRoomList(Session* session, const std::string& jsonBody);
 };

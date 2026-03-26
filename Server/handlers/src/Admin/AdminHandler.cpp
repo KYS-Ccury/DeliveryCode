@@ -1,6 +1,6 @@
 #include "AdminHandler.h"
 #include "MariaDBManager.h"
-#include "EpollServer.h"
+#include "Protocol.h"
 #include <iostream>
 
 using json = nlohmann::json;
@@ -20,9 +20,55 @@ AdminHandler& AdminHandler::getInstance()
 }
 
 // ============================================================
-// 로그인 성공 훅 (BaseHandler::handleLogin에서 호출)
+// process() — Dispatcher에서 호출하는 메인 진입점
+// 100번대 공통(로그인 등)은 BaseHandler가 처리하고,
+// 500/600번대는 Admin 전용 함수로 분기한다.
 // ============================================================
-void AdminHandler::onLoginSuccess(Session* session, int userId, const json& req)
+void AdminHandler::process(Session* session, uint16_t protocol, const std::string& jsonBody)
+{
+    // ── 100번대: 공통 프로토콜 → BaseHandler ──
+    switch (protocol)
+    {
+    case CmdCommon::REQ_LOGIN:       handleLogin(session, jsonBody);      return;
+    case CmdCommon::REQ_LOGOUT:      handleLogout(session, jsonBody);     return;
+    case CmdCommon::REQ_SIGNUP:      handleSignup(session, jsonBody);     return;
+    case CmdCommon::REQ_GET_PROFILE: handleGetProfile(session, jsonBody); return;
+    }
+
+    // ── 500번대: 관리자 전용 ──
+    switch (protocol)
+    {
+    case CmdAdmin::REQ_MONITOR_ORDERS: handleOrderMonitor (session, jsonBody); return;
+    case CmdAdmin::REQ_RIDER_STATUS:   handleRiderStatus  (session, jsonBody); return;
+    case CmdAdmin::REQ_FORCE_DISPATCH: handleForceDispatch(session, jsonBody); return;
+    case CmdAdmin::REQ_FORCE_CANCEL:   handleForceCancel  (session, jsonBody); return;
+    case CmdAdmin::REQ_MANAGE_REVIEW:  handleManageReview (session, jsonBody); return;
+    }
+
+    // ── 600번대: 채팅 ──
+    switch (protocol)
+    {
+    case CmdChat::REQ_SEND_MSG:   handleSendMsg (session, jsonBody); return;
+    case CmdChat::REQ_GET_MSGS:   handleGetMsgs (session, jsonBody); return;
+    case CmdChat::REQ_ROOM_LIST:  handleRoomList(session, jsonBody); return;
+    }
+
+    std::cout << "[Admin] 미처리 프로토콜: " << protocol << std::endl;
+    sendError(session, protocol, Status::BAD_REQUEST, "알 수 없는 요청");
+}
+
+// ============================================================
+// BaseHandler 훅: 회원가입 (관리자는 미지원)
+// ============================================================
+void AdminHandler::onSignup(Session* session, const nlohmann::json& reqBody)
+{
+    sendError(session, CmdCommon::REQ_SIGNUP, Status::FORBIDDEN, "관리자 회원가입은 지원하지 않습니다.");
+}
+
+// ============================================================
+// BaseHandler 훅: 로그인 성공
+// ============================================================
+void AdminHandler::onLoginSuccess(Session* session, int userId, const nlohmann::json& reqBody)
 {
     std::cout << "[Admin] 로그인 성공 — userId=" << userId
               << ", fd=" << session->getFd() << std::endl;
@@ -38,7 +84,7 @@ void AdminHandler::onLoginSuccess(Session* session, int userId, const json& req)
 }
 
 // ============================================================
-// 로그아웃 훅
+// BaseHandler 훅: 로그아웃
 // ============================================================
 void AdminHandler::onLogout(Session* session, int userId)
 {
@@ -51,28 +97,30 @@ void AdminHandler::onLogout(Session* session, int userId)
 }
 
 // ============================================================
-// 패킷 분기 (Dispatcher에서 호출)
+// BaseHandler 훅: 프로필 조회
 // ============================================================
-void AdminHandler::handlePacket(Session* session, uint16_t protocol, const std::string& jsonBody)
+void AdminHandler::onGetProfile(Session* session, int userId, const nlohmann::json& reqBody)
 {
-    switch (protocol)
-    {
-    // ── 500번대 ──
-    case CmdAdmin::REQ_MONITOR_ORDERS: handleOrderMonitor (session, jsonBody); break;
-    case CmdAdmin::REQ_RIDER_STATUS:   handleRiderStatus  (session, jsonBody); break;
-    case CmdAdmin::REQ_FORCE_DISPATCH: handleForceDispatch(session, jsonBody); break;
-    case CmdAdmin::REQ_FORCE_CANCEL:   handleForceCancel  (session, jsonBody); break;
-    case CmdAdmin::REQ_MANAGE_REVIEW:  handleManageReview (session, jsonBody); break;
+    try {
+        auto& db = MariaDBManager::getInstance();
+        std::string q = "SELECT user_id, login_id, role, status FROM users WHERE user_id = "
+                        + std::to_string(userId) + " LIMIT 1";
+        DBResult rows = db.executeQuery(q);
 
-    // ── 600번대 채팅 ──
-    case CmdChat::REQ_SEND_MSG:   handleSendMsg (session, jsonBody); break;
-    case CmdChat::REQ_GET_MSGS:   handleGetMsgs (session, jsonBody); break;
-    case CmdChat::REQ_ROOM_LIST:  handleRoomList(session, jsonBody); break;
+        if (rows.empty()) {
+            sendError(session, CmdCommon::REQ_GET_PROFILE, Status::NOT_FOUND, "사용자 없음");
+            return;
+        }
 
-    default:
-        std::cout << "[Admin] 미처리 프로토콜: " << protocol << std::endl;
-        sendError(session, protocol, Status::BAD_REQUEST, "알 수 없는 요청");
-        break;
+        json res;
+        res["status"]   = Status::SUCCESS;
+        res["user_id"]  = rows[0].count("user_id")  ? rows[0].at("user_id")  : "";
+        res["login_id"] = rows[0].count("login_id") ? rows[0].at("login_id") : "";
+        res["role"]     = rows[0].count("role")      ? rows[0].at("role")      : "";
+        sendResponse(session, CmdCommon::REQ_GET_PROFILE, res);
+
+    } catch (const std::exception& e) {
+        sendError(session, CmdCommon::REQ_GET_PROFILE, Status::SERVER_ERROR, "서버 오류");
     }
 }
 
@@ -242,7 +290,6 @@ void AdminHandler::handleManageReview(Session* session, const std::string& jsonB
 
         auto& db = MariaDBManager::getInstance();
 
-        // ── list ──
         if (action == "list")
         {
             std::string q =
@@ -274,7 +321,6 @@ void AdminHandler::handleManageReview(Session* session, const std::string& jsonB
 
             sendResponse(session, CmdAdmin::REQ_MANAGE_REVIEW, res);
         }
-        // ── delete ──
         else if (action == "delete")
         {
             int reviewId = req.value("review_id", 0);
@@ -294,7 +340,6 @@ void AdminHandler::handleManageReview(Session* session, const std::string& jsonB
             res["message"] = "리뷰 삭제 완료";
             sendResponse(session, CmdAdmin::REQ_MANAGE_REVIEW, res);
         }
-        // ── toggle_visibility ──
         else if (action == "toggle_visibility")
         {
             int  reviewId = req.value("review_id", 0);

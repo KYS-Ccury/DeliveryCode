@@ -1,7 +1,7 @@
 #include "Dispatcher.h"
 #include "CustomerHandler.h"
 #include "RiderHandler.h"
-// #include "AdminHandler.h"
+#include "AdminHandler.h"
 // #include "OwnerHandler.h"
 #include "Session.h"
 #include "Struct.h"   // Packet.h에서 이름 변경됨
@@ -36,8 +36,7 @@ void Dispatcher::dispatch(Session* session, const PacketHeader& header, const st
                 break;
 
             case ClientType::ADMIN:
-                // AdminHandler::getInstance().process(session, protocol, jsonBody);
-                std::cerr << "[Dispatcher] ADMIN 미구현 protocol=" << protocol << std::endl;
+                AdminHandler::getInstance().process(session, protocol, jsonBody);
                 break;
 
             default:
