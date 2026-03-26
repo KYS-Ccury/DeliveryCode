@@ -23,6 +23,7 @@ void RiderHandler::onSignup(Session* session, int userId, const json& reqBody) {
         sendError(session, CmdCommon::REQ_SIGNUP, Status::SERVER_ERROR, "라이더 프로필 생성 중 오류 발생");
     }
 }
+
 // 여기서 쿼리를 실행 날리고 있음... 
 // void RiderHandler::onSignup(Session* session, const json& reqBody) {
 //     try {
