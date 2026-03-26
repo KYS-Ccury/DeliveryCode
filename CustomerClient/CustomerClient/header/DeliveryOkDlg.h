@@ -29,6 +29,17 @@ public:
     int     m_nDeliveryFee  = 0; // 배달비
     CString m_strPayMethod;      // 결제 수단명
 
+    // 기존 m_strOrderList(단순 문자열) 대신 구조체 벡터로 교체
+    struct OrderLineItem {
+        CString strMenuName;
+        CString strOptions;   // "옵션A +500, 옵션B +300" 형태
+        int     nQuantity;
+        int     nPrice;       // 해당 항목 소계
+    };
+    std::vector<OrderLineItem> m_vecOrderLines;  // 신규 추가
+
+    bool m_bDelivery = true;  // false면 포장(픽업)
+
 protected:
     virtual void DoDataExchange(CDataExchange* pDX);
     virtual BOOL OnInitDialog();

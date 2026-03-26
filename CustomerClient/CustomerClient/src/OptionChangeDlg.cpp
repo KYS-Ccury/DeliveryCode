@@ -53,6 +53,22 @@ BOOL OptionChangeDlg::OnInitDialog()
     }
     if (row == 0) m_listOptions.InsertItem(0, _T(""));
 
+    // ★ 기존 선택 옵션 체크 상태 복원
+    if (!m_vecPreCheckedOptionIDs.empty()) {
+        int row2 = 0;
+        for (const auto& og : m_vecOptionGroups) {
+
+            for (const auto& oi : og.items) {
+                bool bChecked = std::find(
+                    m_vecPreCheckedOptionIDs.begin(),
+                    m_vecPreCheckedOptionIDs.end(),
+                    oi.optionID) != m_vecPreCheckedOptionIDs.end();
+                m_listOptions.SetCheck(row2, bChecked ? TRUE : FALSE);
+                row2++;
+            }
+        }
+    }
+
     SetDlgItemText(IDC_STATIC_SELECTED_MENU, m_strMenuName);
     SetDlgItemInt(IDC_EDIT_COUNT, m_nQuantity);
     UpdateTotal();
