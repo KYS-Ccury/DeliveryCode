@@ -4,13 +4,16 @@
 #include <vector>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <mutex>
+#include <fstream>  // ★ 끝판왕 무기: 파일 스트림
 
 #include "Struct.h"
 #include "ThreadPool.h"
 
 class Session {
 private:
-    enum class State { READING_HEADER, READING_BODY };
+    // ★ READING_FILE 상태 추가!
+    enum class State { READING_HEADER, READING_BODY, READING_FILE };
 
     int      client_fd;
     State    state;
@@ -24,8 +27,13 @@ private:
     size_t       bodyBytesRead;
     PacketHeader currentHeader;
 
+    std::mutex   sendMtx;
+
+    // ★ 파일 스트리밍 전용 변수
+    std::ofstream m_fileStream;
+    std::string   m_currentFileName;
+
     void resetBuffer();
-    void dispatchPacket(ThreadPool* pool);
 
 public:
     Session(int fd);
@@ -36,9 +44,8 @@ public:
     uint8_t getUserType()const { return m_userType;}
 
     void setUserID  (int id)      { m_userID   = id;   }
-    void setUserType(uint8_t type){ m_userType  = type; }
+    void setUserType(uint8_t type){ m_userType = type; }
 
     bool readFromSocket(ThreadPool* pool);
-    bool sendPacket(uint8_t clientType, uint16_t protocol,
-                    const std::string& jsonBody);
+    bool sendPacket(uint8_t clientType, uint16_t protocol, const std::string& jsonBody);
 };

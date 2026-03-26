@@ -1,21 +1,21 @@
-#pragma once
-#include "Basehandler.h"
+// #pragma once
+// #include "Basehandler.h"
 
-class RiderHandler : public BaseHandler {
-private:
-    RiderHandler() : BaseHandler(ClientType::RIDER, "RIDER") {}
+// class RiderHandler : public BaseHandler {
+// private:
+//     RiderHandler() : BaseHandler(ClientType::RIDER, "RIDER") {}
 
-public:
-    static RiderHandler& getInstance() {
-        static RiderHandler instance;
-        return instance;
-    }
+// public:
+//     static RiderHandler& getInstance() {
+//         static RiderHandler instance;
+//         return instance;
+//     }
 
-    void process(Session* session, uint16_t protocol, const std::string& jsonBody) override;
+//     void process(Session* session, uint16_t protocol, const std::string& jsonBody) override;
     
-    // 외부 호출용 (Admin에서 사용)
-    bool pushDispatch(int riderFd, int orderId, const std::string& storeName, 
-                      const std::string& pickupAddr, const std::string& destAddr, int deliveryFee);
+//     // 외부 호출용 (Admin에서 사용)
+//     bool pushDispatch(int riderFd, int orderId, const std::string& storeName, 
+//                       const std::string& pickupAddr, const std::string& destAddr, int deliveryFee);
 
 protected:
     void onSignup(Session* session, int userId, const nlohmann::json& reqBody) override;
