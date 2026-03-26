@@ -36,6 +36,7 @@ public:
 
     int storeID;                    // 장바구니 정합성 체크용 (어느 가게 메뉴인지)
 
+    std::vector<OptionGroup> optionGroups;   // ★ 추가: 전체 옵션 그룹 원본 보관
 
 
     CartItem();

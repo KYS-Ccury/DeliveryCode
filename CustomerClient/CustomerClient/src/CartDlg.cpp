@@ -292,6 +292,20 @@ void CartDlg::OnBnClickedOk()
         return;
     }
 
+    if (m_vecCardIDs.empty()) {
+        AfxMessageBox(_T("등록된 결제수단이 없습니다.\n마이페이지에서 카드를 먼저 등록해 주세요."),
+            MB_ICONWARNING);
+        return;
+    }
+
+    // ── 결제수단 선택 여부 확인 ★ 신규 ───────────────
+    CComboBox* pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_PAYMENT);
+    if (!pCombo || pCombo->GetCurSel() == CB_ERR) {
+        AfxMessageBox(_T("결제수단을 선택해 주세요.\n결제수단은 홈 > 결제수단 관리에서 등록할 수 있습니다."),
+            MB_ICONWARNING);
+        return;
+    }
+
     // ── 배달 주소 읽기 ────────────────────────────────────────
     CString strAddr;
     if (m_bDelivery) {
@@ -378,6 +392,31 @@ void CartDlg::OnBnClickedOk()
         dlg.m_nUsedPoint        = usePoint;
         dlg.m_nDeliveryFee      = delivFee;
         dlg.m_strPayMethod      = strPayLabel;
+
+        // ★ 신규: 옵션 포함 주문 항목 구성
+        for (const auto& item : m_vecCart)
+        {
+            DeliveryOkDlg::OrderLineItem line;
+            //line.strMenuName = CString(item.menuName.c_str());
+            line.strMenuName = CA2T(item.menuName.c_str(), CP_UTF8);
+            line.nQuantity = item.quantity;
+            line.nPrice = item.totalPrice;
+
+            // selectedOptions 순회하여 옵션 문자열 조립
+            CString strOpts;
+            for (const auto& opt : item.selectedOptions)
+            {
+                if (!strOpts.IsEmpty()) strOpts += _T(", ");
+                CString s;
+                CString strOptName = CA2T(opt.optionName.c_str(), CP_UTF8);
+                s.Format(_T("%s +%d"), (LPCTSTR)strOptName, opt.optionPrice);
+                //s.Format(_T("%s +%d"), CA2T(opt.optionName.c_str(), CP_UTF8), opt.optionPrice);
+                strOpts += s;
+            }
+            line.strOptions = strOpts;
+            dlg.m_vecOrderLines.push_back(line);
+        }
+
         ShowWindow(SW_HIDE);
         if (dlg.DoModal() == IDOK) CDialogEx::OnOK();
         else ShowWindow(SW_SHOW);
@@ -447,19 +486,29 @@ LRESULT CartDlg::OnOrderResponse(WPARAM, LPARAM lParam)
         if (strStoreName.IsEmpty()) strStoreName = _T("주문 가게");
 
         // 주문 메뉴 목록 문자열 구성
+        //CString strOrderList;
+        //for (const auto& item : m_vecCart) {
+        //    CString name = CA2T(item.menuName.c_str(), CP_UTF8);
+        //    CString line;
+        //    line.Format(_T("%s x%d  %d원\n"),
+        //        (LPCTSTR)name,
+        //        item.quantity,
+        //        item.totalPrice);
+        //    strOrderList += line;
+        //    totalAmt += item.totalPrice;
+        //}
+
         CString strOrderList;
         int totalAmt = 0;
         for (const auto& item : m_vecCart) {
             CString name = CA2T(item.menuName.c_str(), CP_UTF8);
             CString line;
-            line.Format(_T("%s x%d  %d원\n"),
-                (LPCTSTR)name,
-                item.quantity,
-                item.totalPrice);
+            line.Format(_T("%s x%d  %d원\n"), (LPCTSTR)name, item.quantity, item.totalPrice);
             strOrderList += line;
             totalAmt += item.totalPrice;
         }
         if (m_bDelivery) totalAmt += 3000; // 배달비
+
 
         OrderManager::GetInstance().ClearCart();
 
@@ -478,13 +527,35 @@ LRESULT CartDlg::OnOrderResponse(WPARAM, LPARAM lParam)
         dlg.m_strOrderID        = CA2T(oid.c_str(), CP_UTF8);
         dlg.m_nEstimatedMinutes = (est > 0) ? est : 30;
         dlg.m_strStoreName      = strStoreName;
-        dlg.m_strOrderList      = strOrderList;
+        dlg.m_strOrderList      = strOrderList;   // 구버전 호환용 (빈 m_vecOrderLines 대비)
         dlg.m_nTotalAmount      = totalAmt;
         dlg.m_strDeliveryAddr   = m_bDelivery ? CA2T(m_strLastAddr.c_str(), CP_UTF8) : _T("포장(픽업)");
         dlg.m_strOrderDateTime  = strNow;
         dlg.m_nUsedPoint        = m_nLastUsePoint;
         dlg.m_nDeliveryFee      = delivFee2;
         dlg.m_strPayMethod      = strPayLabel;
+        dlg.m_bDelivery = m_bDelivery;    // ★ 포장/배달 플래그
+
+        // ★ 옵션 포함 주문 항목 구성 (온라인 분기)
+        for (const auto& item : m_vecCart)
+        {
+            DeliveryOkDlg::OrderLineItem line;
+            line.strMenuName = CA2T(item.menuName.c_str(), CP_UTF8);
+            line.nQuantity = item.quantity;
+            line.nPrice = item.totalPrice;
+
+            CString strOpts;
+            for (const auto& opt : item.selectedOptions) {
+                if (!strOpts.IsEmpty()) strOpts += _T(", ");
+                CString s;
+                CString strOptName = CA2T(opt.optionName.c_str(), CP_UTF8);
+                s.Format(_T("%s +%d"), (LPCTSTR)strOptName, opt.optionPrice);
+                //s.Format(_T("%s +%d"), CA2T(opt.optionName.c_str(), CP_UTF8), opt.optionPrice);
+                strOpts += s;
+            }
+            line.strOptions = strOpts;
+            dlg.m_vecOrderLines.push_back(line);
+        }
 
         ShowWindow(SW_HIDE);
         if (dlg.DoModal() == IDOK) CDialogEx::OnOK();
@@ -512,16 +583,26 @@ void CartDlg::OnBnClickedBtnEditOption()
     dlg.m_strMenuName      = CA2T(item.menuName.c_str(), CP_UTF8);
     dlg.m_nQuantity        = item.quantity;
     dlg.m_nBasePrice       = item.basePrice;
+
+
     // 해당 메뉴의 옵션 그룹 전달
     // (OrderManager에서 캐시된 MenuInfo에서 찾기)
-    auto menus = OrderManager::GetInstance().GetMenuData(
-        OrderManager::GetInstance().GetCurrentStoreID());
-    for (const auto& mi : menus) {
-        if (mi.menuID == item.menuID) {
-            dlg.m_vecOptionGroups = mi.optionGroups;
-            break;
-        }
-    }
+    //auto menus = OrderManager::GetInstance().GetMenuData(
+    //    OrderManager::GetInstance().GetCurrentStoreID());
+    //for (const auto& mi : menus) {
+    //    if (mi.menuID == item.menuID) {
+    //        dlg.m_vecOptionGroups = mi.optionGroups;
+    //        break;
+    //    }
+    //}
+
+    // ★ CartItem에 저장된 optionGroups 직접 사용 (캐시 조회 불필요)
+    dlg.m_vecOptionGroups = item.optionGroups;
+
+    // ★ 기존 선택 옵션 ID 목록 → 체크 상태 복원용
+    dlg.m_vecPreCheckedOptionIDs.clear();
+    for (const auto& sel : item.selectedOptions)
+        dlg.m_vecPreCheckedOptionIDs.push_back(sel.optionID);
 
     if (dlg.DoModal() == IDOK) {
         if (dlg.m_nQuantity <= 0) {
@@ -653,8 +734,9 @@ void CartDlg::LoadPaymentCards()
     net.UnregisterCallback(CmdCommon::REQ_GET_PROFILE);
 
     if (cards.empty()) {
-        pCombo->AddString(_T("등록된 카드가 없습니다."));
-        m_vecCardIDs.push_back(0);
+        // ★ 수정: 더미 ID 넣지 않고 안내 문구만 표시, SetCurSel 안 함
+        pCombo->AddString(_T("등록된 카드가 없습니다. (마이페이지에서 등록)"));
+        // m_vecCardIDs는 비워둔 채로 유지 → OnBnClickedOk에서 차단됨
     } else {
         for (const auto& c : cards) {
             pCombo->AddString(c.second);

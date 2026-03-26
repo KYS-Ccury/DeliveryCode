@@ -172,9 +172,10 @@ void MenuDetailDlg::OnBnClickedBtnCart()
     CartItem newItem;
     newItem.menuID    = m_menuInfo.menuID;
     newItem.menuName  = CT2A(m_strMenuName, CP_UTF8);
-    newItem.basePrice = m_menuInfo.price;
+    newItem.basePrice = m_menuInfo.price;   // ★ 기본가만 저장, 옵션가 더하지 않음
     newItem.quantity  = m_nQuantity;
     newItem.storeID   = OrderManager::GetInstance().GetCurrentStoreID();
+    newItem.optionGroups = m_menuInfo.optionGroups;  // ★ 전체 옵션 그룹 보관
 
     // 체크된 옵션 수집 (그룹 구분 행 건너뜀)
     int row = 0;
@@ -183,7 +184,7 @@ void MenuDetailDlg::OnBnClickedBtnCart()
         for (const auto& oi : og.items) {
             if (m_listOptions.GetCheck(row)) {
                 newItem.selectedOptions.push_back(oi);
-                newItem.basePrice += oi.optionPrice;
+                //newItem.basePrice += oi.optionPrice;  // ★ basePrice에 더하지 않음
             }
             row++;
         }

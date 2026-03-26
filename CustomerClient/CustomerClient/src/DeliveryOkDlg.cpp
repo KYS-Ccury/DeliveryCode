@@ -63,8 +63,41 @@ BOOL DeliveryOkDlg::OnInitDialog()
     return TRUE;
 }
 
+//void DeliveryOkDlg::RebuildInfoText()
+//{
+//    CString strPrice;
+//    if (m_nUsedPoint > 0)
+//        strPrice.Format(_T("%d원  (포인트 %d원 사용)"), m_nTotalAmount, m_nUsedPoint);
+//    else
+//        strPrice.Format(_T("%d원"), m_nTotalAmount);
+//    SetDlgItemText(IDC_STATIC_PRICE, strPrice);
+//}
+
 void DeliveryOkDlg::RebuildInfoText()
 {
+    // ── 주문 항목 (옵션 포함) ─────────────────────────────
+    CString strItems;
+    if (!m_vecOrderLines.empty())
+    {
+        for (const auto& line : m_vecOrderLines)
+        {
+            CString strLine;
+            strLine.Format(_T("  · %s x%d  %d원"),
+                (LPCTSTR)line.strMenuName, line.nQuantity, line.nPrice);
+            strItems += strLine + _T("\n");
+
+            if (!line.strOptions.IsEmpty())
+                strItems += _T("    [") + line.strOptions + _T("]\n");
+        }
+    }
+    else
+    {
+        // 구버전 호환: 단순 문자열 그대로 사용
+        strItems = m_strOrderList;
+    }
+    SetDlgItemText(IDC_STATIC_ORDER_LIST, strItems);
+
+    // ── 금액 ─────────────────────────────────────────────
     CString strPrice;
     if (m_nUsedPoint > 0)
         strPrice.Format(_T("%d원  (포인트 %d원 사용)"), m_nTotalAmount, m_nUsedPoint);
@@ -75,36 +108,76 @@ void DeliveryOkDlg::RebuildInfoText()
 
 void DeliveryOkDlg::UpdateStatusUI(int status)
 {
-    const TCHAR* labels[] = { _T("주문접수"), _T("조리중"), _T("배달중"), _T("배달완료") };
+    //const TCHAR* labels[] = { _T("주문접수"), _T("조리중"), _T("배달중"), _T("배달완료") };
+    // ── 상태 레이블: 포장이면 4단계 중 "배달중" → "준비완료"로 교체
+    const TCHAR* labels[4];
+    if (m_bDelivery)
+        labels[0] = _T("주문접수"), labels[1] = _T("조리중"),
+        labels[2] = _T("배달중"), labels[3] = _T("배달완료");
+    else
+        labels[0] = _T("주문접수"), labels[1] = _T("조리중"),
+        labels[2] = _T("준비완료"), labels[3] = _T("픽업완료");   // ★ 포장
 
     CString strInfo;
 
-    if (!m_strDeliveryAddr.IsEmpty())
-        strInfo += _T("배달주소: ") + m_strDeliveryAddr + _T("\n");
+    //if (!m_strDeliveryAddr.IsEmpty())
+    //    strInfo += _T("배달주소: ") + m_strDeliveryAddr + _T("\n");
+    //if (!m_strOrderDateTime.IsEmpty())
+    //    strInfo += _T("주문시각: ") + m_strOrderDateTime + _T("\n");
+    //if (!m_strPayMethod.IsEmpty())
+    //    strInfo += _T("결제수단: ") + m_strPayMethod + _T("\n");
+    //if (m_nDeliveryFee > 0) {
+    //    CString strFee; strFee.Format(_T("배달비: %d원\n"), m_nDeliveryFee);
+    //    strInfo += strFee;
+    //}
+    
+    if (m_bDelivery) {
+        // 배달: 주소/배달비 표시
+        if (!m_strDeliveryAddr.IsEmpty())
+            strInfo += _T("배달주소: ") + m_strDeliveryAddr + _T("\n");
+        if (m_nDeliveryFee > 0) {
+            CString strFee;
+            strFee.Format(_T("배달비: %d원\n"), m_nDeliveryFee);
+            strInfo += strFee;
+        }
+    }
+    else {
+        // 포장: 픽업 안내 표시
+        strInfo += _T("수령방법: 포장(직접 픽업)\n");            // ★ 포장
+    }
+
     if (!m_strOrderDateTime.IsEmpty())
         strInfo += _T("주문시각: ") + m_strOrderDateTime + _T("\n");
     if (!m_strPayMethod.IsEmpty())
         strInfo += _T("결제수단: ") + m_strPayMethod + _T("\n");
-    if (m_nDeliveryFee > 0) {
-        CString strFee; strFee.Format(_T("배달비: %d원\n"), m_nDeliveryFee);
-        strInfo += strFee;
-    }
 
+    // ── 상태별 안내 문구 ──────────────────────────────────────
     CString strStatus;
     switch (status) {
     case STATUS_WAITING:
     case STATUS_PREPARING:
-        strStatus.Format(_T("예상 배달시간: 약 %d분"), m_nEstimatedMinutes); break;
+        if (m_bDelivery)
+            strStatus.Format(_T("예상 배달시간: 약 %d분"), m_nEstimatedMinutes);
+        else
+            strStatus.Format(_T("예상 준비시간: 약 %d분"), m_nEstimatedMinutes); // ★ 포장
+        break;
     case STATUS_DELIVERING:
-        strStatus = _T("라이더가 배달 중입니다."); break;
+        strStatus = m_bDelivery
+            ? _T("라이더가 배달 중입니다.")
+            : _T("준비가 완료되었습니다. 매장에서 픽업해 주세요.");             // ★ 포장
+        break;
     case STATUS_COMPLETE:
-        strStatus = _T("배달 완료! 맛있게 드세요."); break;
+        strStatus = m_bDelivery
+            ? _T("배달 완료! 맛있게 드세요.")
+            : _T("픽업 완료! 맛있게 드세요.");                                 // ★ 포장
+        break;
     }
     strInfo += strStatus + _T("\n\n");
 
+    // ── 진행 상태 바 ──────────────────────────────────────────
     CString bar;
     for (int i = 0; i < 4; ++i) {
-        if      (i < status)  bar += CString(_T("[V] ")) + labels[i] + _T("  ");
+        if (i < status)  bar += CString(_T("[V] ")) + labels[i] + _T("  ");
         else if (i == status) bar += CString(_T("[>] ")) + labels[i] + _T("  ");
         else                  bar += CString(_T("[ ] ")) + labels[i] + _T("  ");
     }
