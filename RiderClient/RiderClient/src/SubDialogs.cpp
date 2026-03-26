@@ -5,6 +5,8 @@
 #include "Protocol.h"
 #include "AppContext.h"
 #include "json.hpp"
+#include <map>
+#include <vector>
 using json = nlohmann::json;
 
 // Shared OnCtlColor helper macro - avoids code duplication
@@ -140,7 +142,9 @@ BEGIN_MESSAGE_MAP(SettlementDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 SettlementDlg::SettlementDlg(CWnd* pParent) : CDialogEx(IDD_SETTLEMENT_DLG, pParent) {}
-SettlementDlg::~SettlementDlg() {}
+SettlementDlg::~SettlementDlg() {
+    AppContext::Get().socket.UnregisterWnd(CMD_RIDER_MY_LIST);
+}
 
 void SettlementDlg::DoDataExchange(CDataExchange* pDX)
 {
@@ -151,7 +155,7 @@ void SettlementDlg::DoDataExchange(CDataExchange* pDX)
 BOOL SettlementDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
-    AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_MY_LIST, GetSafeHwnd());
 
     m_listSettlement.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
     m_listSettlement.InsertColumn(0, _T("날짜"),        LVCFMT_LEFT,   100);
@@ -201,18 +205,37 @@ LRESULT SettlementDlg::OnSocketRecv(WPARAM, LPARAM lParam)
         json res = json::parse(body);
         if (res.value("status", 0) != STATUS_SUCCESS) return 0;
 
+        // 날짜별로 집계 (key: "MM/DD" 앞 5자)
+        // records: [{order_id, store_name, delivery_fee, status, created_at}, ...]
+        std::map<std::string, std::pair<int,int>> dateMap; // date -> (건수, 합계)
+        std::vector<std::string> dateOrder; // 날짜 순서 유지
+
+        for (const auto& r : res["records"]) {
+            std::string createdAt = r.value("created_at", "");
+            // created_at 형식: "MM/DD HH:MM" — 날짜 부분(앞 5자) 추출
+            std::string date = createdAt.size() >= 5 ? createdAt.substr(0, 5) : createdAt;
+            int fee = r.value("delivery_fee", 0);
+
+            if (dateMap.find(date) == dateMap.end()) {
+                dateOrder.push_back(date);
+                dateMap[date] = {0, 0};
+            }
+            dateMap[date].first++;       // 건수 +1
+            dateMap[date].second += fee; // 합계 누적
+        }
+
         m_listSettlement.DeleteAllItems();
         int row = 0;
-        for (const auto& r : res["records"]) {
-            CA2T storeW(r.value("store_name","").c_str(), CP_UTF8);
-            CA2T dateW(r.value("created_at","").c_str(), CP_UTF8);
-            CString feeStr;
-            feeStr.Format(_T("%d원"), r.value("delivery_fee", 0));
+        for (const auto& date : dateOrder) {
+            auto& v = dateMap[date];
+            CA2T dateW(date.c_str(), CP_UTF8);
+            CString cntStr, feeStr;
+            cntStr.Format(_T("%d건"), v.first);
+            feeStr.Format(_T("%d원"), v.second);
             int nRow = m_listSettlement.InsertItem(row++, CString(dateW));
-            m_listSettlement.SetItemText(nRow, 1, CString(storeW));
+            m_listSettlement.SetItemText(nRow, 1, cntStr);
             m_listSettlement.SetItemText(nRow, 2, feeStr);
-            CA2T statusW(r.value("status","Done").c_str(), CP_UTF8);
-            m_listSettlement.SetItemText(nRow, 3, CString(statusW));
+            m_listSettlement.SetItemText(nRow, 3, _T("정산예정"));
         }
     } catch (...) {}
     return 0;
@@ -312,7 +335,9 @@ BEGIN_MESSAGE_MAP(TodayHistoryDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 TodayHistoryDlg::TodayHistoryDlg(CWnd* pParent) : CDialogEx(IDD_TODAY_HISTORY_DLG, pParent) {}
-TodayHistoryDlg::~TodayHistoryDlg() {}
+TodayHistoryDlg::~TodayHistoryDlg() {
+    AppContext::Get().socket.UnregisterWnd(CMD_RIDER_MY_LIST);
+}
 
 void TodayHistoryDlg::DoDataExchange(CDataExchange* pDX)
 {
@@ -323,7 +348,7 @@ void TodayHistoryDlg::DoDataExchange(CDataExchange* pDX)
 BOOL TodayHistoryDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
-    AppContext::Get().socket.SetNotifyWnd(GetSafeHwnd());
+    AppContext::Get().socket.RegisterWnd(CMD_RIDER_MY_LIST, GetSafeHwnd());
 
     SYSTEMTIME st = {};
     GetLocalTime(&st);
