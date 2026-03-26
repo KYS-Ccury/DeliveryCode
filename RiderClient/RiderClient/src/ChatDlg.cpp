@@ -89,12 +89,8 @@ void ChatDlg::SendMessage(const CString& text)
         return;
     }
 
-    ChatMessage msg;
-    msg.senderType = _T("RIDER");
-    msg.message    = text;
-    msg.sentAt     = _T("방금");
-    msg.isMine     = true;
-    AppendMessage(msg);
+    // 화면 직접 추가 제거 — 서버 브로드캐스트(NTF_RECV_MSG 604)로 수신 시 표시
+    // (이전에 여기서 AppendMessage를 직접 호출해 2번 표시되는 문제 수정)
 
     CT2A textUtf8(text, CP_UTF8);
     json req;
@@ -176,6 +172,10 @@ LRESULT ChatDlg::OnSocketRecv(WPARAM, LPARAM lParam)
         } catch (...) {}
         return 0;
     }
+
+    // 메시지 전송 ACK(601) — 화면 표시 없이 무시
+    // 실제 메시지 표시는 서버 브로드캐스트(NTF_RECV_MSG 604 → WM_CHAT_RECV)에서만 수행
+    if (protocol == CMD_CHAT_SEND) return 0;
 
     if (protocol != CMD_CHAT_HISTORY) return 0;
 
