@@ -16,18 +16,23 @@ std::string ChatDB::escape(const std::string& s) {
 
 // ============================================================
 //  findOrCreateRoom
-//  주어진 (key, roomType) 쌍의 채팅방이 이미 존재하면 반환하고,
-//  없으면 새로 생성 후 반환한다.
-//  chat_rooms.order_id 컬럼을 범용 key 로 재활용한다.
+//  RIDER_ADMIN 타입은 rider_id 컬럼으로 식별한다.
+//  그 외 타입(CUSTOMER_OWNER 등)은 order_id 컬럼으로 식별한다.
 // ============================================================
 ChatDB::RoomResult ChatDB::findOrCreateRoom(int key, const std::string& roomType) {
     RoomResult result;
     auto& db = MariaDBManager::getInstance();
 
+    // ── 컬럼 선택 ────────────────────────────────────────────
+    // RIDER_ADMIN 은 rider_id 컬럼 사용
+    // 그 외는 order_id 컬럼 사용
+    bool isRiderAdmin = (roomType == "RIDER_ADMIN");
+    std::string colName = isRiderAdmin ? "rider_id" : "order_id";
+
     // 기존 활성 방 조회
     auto rows = db.executeQuery(
         "SELECT room_id FROM chat_rooms "
-        "WHERE order_id="  + std::to_string(key) +
+        "WHERE " + colName + "=" + std::to_string(key) +
         "  AND room_type='" + escape(roomType) + "'"
         "  AND is_active=TRUE LIMIT 1");
 
@@ -40,13 +45,13 @@ ChatDB::RoomResult ChatDB::findOrCreateRoom(int key, const std::string& roomType
 
     // 없으면 새로 생성
     bool inserted = db.executeUpdate(
-        "INSERT INTO chat_rooms (order_id, room_type, is_active) "
+        "INSERT INTO chat_rooms (" + colName + ", room_type, is_active) "
         "VALUES (" + std::to_string(key) + ",'" + escape(roomType) + "',TRUE)");
 
     if (!inserted) {
         std::cerr << "[ChatDB] findOrCreateRoom: INSERT 실패 (key="
                   << key << ", type=" << roomType << ")" << std::endl;
-        return result; // result.ok == false
+        return result;
     }
 
     result.roomId = static_cast<int>(db.getLastInsertId());
@@ -57,8 +62,6 @@ ChatDB::RoomResult ChatDB::findOrCreateRoom(int key, const std::string& roomType
 
 // ============================================================
 //  queryRoom
-//  room_id 가 유효한(is_active=TRUE) 방인지 확인하고
-//  기본 정보를 반환한다.
 // ============================================================
 ChatDB::RoomInfo ChatDB::queryRoom(int roomId) {
     RoomInfo info;
@@ -69,7 +72,7 @@ ChatDB::RoomInfo ChatDB::queryRoom(int roomId) {
         "WHERE room_id=" + std::to_string(roomId) +
         "  AND is_active=TRUE LIMIT 1");
 
-    if (rows.empty()) return info; // found == false
+    if (rows.empty()) return info;
 
     info.roomId  = roomId;
     info.orderId = rows[0].count("order_id") && !rows[0].at("order_id").empty()
@@ -80,8 +83,6 @@ ChatDB::RoomInfo ChatDB::queryRoom(int roomId) {
 
 // ============================================================
 //  insertMessage
-//  chat_messages 에 메시지를 삽입하고
-//  message_id 와 sent_at(HH:MM) 을 반환한다.
 // ============================================================
 ChatDB::SendMsgResult ChatDB::insertMessage(int roomId,
                                             int senderId,
@@ -97,12 +98,11 @@ ChatDB::SendMsgResult ChatDB::insertMessage(int roomId,
 
     if (!ok) {
         std::cerr << "[ChatDB] insertMessage: INSERT 실패" << std::endl;
-        return result; // ok == false
+        return result;
     }
 
     int msgId = static_cast<int>(db.getLastInsertId());
 
-    // sent_at 조회 (HH:MM 포맷)
     auto ts = db.executeQuery(
         "SELECT DATE_FORMAT(sent_at,'%H:%i') AS t "
         "FROM chat_messages "
@@ -116,7 +116,6 @@ ChatDB::SendMsgResult ChatDB::insertMessage(int roomId,
 
 // ============================================================
 //  queryMessages
-//  room_id 에 속한 메시지를 오래된 순으로 최대 limit 건 반환한다.
 // ============================================================
 std::vector<ChatDB::ChatMessage> ChatDB::queryMessages(int roomId, int limit) {
     auto& db = MariaDBManager::getInstance();
@@ -146,7 +145,6 @@ std::vector<ChatDB::ChatMessage> ChatDB::queryMessages(int roomId, int limit) {
 
 // ============================================================
 //  process  —  MiddleHandler 라우팅 진입점
-//  RiderDB::process / CommonDB::process 와 동일한 패턴
 // ============================================================
 nlohmann::json ChatDB::process(uint16_t dbProtocol, const nlohmann::json& reqJson) {
     nlohmann::json res;
