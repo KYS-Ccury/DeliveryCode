@@ -47,16 +47,6 @@ void BaseHandler::sendError(Session* session, uint16_t protocol,
         session->sendPacket(static_cast<uint8_t>(m_clientType), protocol, res.dump());
 }
 
-std::string BaseHandler::escapeStr(const std::string& s) {
-    std::string out;
-    out.reserve(s.size() * 2);
-    for (char c : s) {
-        if (c == '\'' || c == '\\' || c == '"') out += '\\';
-        out += c;
-    }
-    return out;
-}
-
 void BaseHandler::sendResponse(Session* session, uint16_t protocol,
                                 const nlohmann::json& payload) {
     if (session)
@@ -86,8 +76,8 @@ void BaseHandler::handleLogin(Session* session, const std::string& jsonBody) {
 
         auto& db = MariaDBManager::getInstance();
         std::string q =
-            "SELECT user_id FROM users WHERE login_id = '" + escapeStr(loginId) +
-            "' AND password = '" + escapeStr(password) +
+            "SELECT user_id FROM users WHERE login_id = '" + MariaDBManager::escape(loginId) +
+            "' AND password = '" + MariaDBManager::escape(password) +
             "' AND role = '" + m_roleName +
             "' AND status = 'ACTIVE' LIMIT 1";
 
@@ -128,7 +118,7 @@ void BaseHandler::handleSignup(Session* session, const std::string& jsonBody) {
         // 클라이언트: { "action":"CHECK_ID", "id":"..." }
         std::string action = req.value("action", "");
         if (action == "CHECK_ID") {
-            std::string checkId = escapeStr(req.value("id", ""));
+            std::string checkId = MariaDBManager::escape(req.value("id", ""));
             if (checkId.empty()) {
                 sendError(session, CmdCommon::REQ_SIGNUP,
                           Status::BAD_REQUEST, "아이디를 입력하세요.");
@@ -145,11 +135,11 @@ void BaseHandler::handleSignup(Session* session, const std::string& jsonBody) {
             return;
         }
 
-        std::string loginId = escapeStr(req.value("id",      ""));
-        std::string pw      = escapeStr(req.value("pw",      ""));
-        std::string name    = escapeStr(req.value("name",    ""));
-        std::string phone   = escapeStr(req.value("phone",   ""));
-        std::string address = escapeStr(req.value("address", ""));
+        std::string loginId = MariaDBManager::escape(req.value("id",      ""));
+        std::string pw      = MariaDBManager::escape(req.value("pw",      ""));
+        std::string name    = MariaDBManager::escape(req.value("name",    ""));
+        std::string phone   = MariaDBManager::escape(req.value("phone",   ""));
+        std::string address = MariaDBManager::escape(req.value("address", ""));
 
         if (loginId.empty() || pw.empty()) {
             sendError(session, CmdCommon::REQ_SIGNUP,
@@ -247,9 +237,9 @@ void BaseHandler::handleGetProfile(Session* session, const std::string& jsonBody
 
         // ── 카드 등록 ────────────────────────────────────────
         if (reqType == "add_card") {
-            std::string alias   = escapeStr(req.value("card_alias",      "내 카드"));
-            std::string masked  = escapeStr(req.value("card_num_masked", ""));
-            std::string mtype   = escapeStr(req.value("method_type",     "CARD"));
+            std::string alias   = MariaDBManager::escape(req.value("card_alias",      "내 카드"));
+            std::string masked  = MariaDBManager::escape(req.value("card_num_masked", ""));
+            std::string mtype   = MariaDBManager::escape(req.value("method_type",     "CARD"));
 
             db.executeUpdate(
                 "INSERT INTO payment_methods "

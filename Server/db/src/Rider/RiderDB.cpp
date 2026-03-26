@@ -1,36 +1,26 @@
 #include "RiderDB.h"
+#include "CommonDB.h"    // 비밀번호 확인/변경은 CommonDB 사용
 #include <iostream>
 #include <sstream>
 #include <iomanip>
 
 // ── 내부 유틸 ──────────────────────────────────────────────
-std::string RiderDB::escape(const std::string& s) {
-    std::string out;
-    out.reserve(s.size() * 2);
-    for (char c : s) {
-        if (c == '\'' || c == '\\' || c == '"') out += '\\';
-        out += c;
-    }
-    return out;
-}
-
-std::string RiderDB::makeOrderCode(int orderId) {
+static std::string makeOrderCode(int orderId) {
     std::ostringstream ss;
     ss << "ORD" << std::setw(6) << std::setfill('0') << orderId;
     return ss.str();
 }
 
 // ============================================================
-//  [인증 관련]
+//  [라이더 프로필]
 // ============================================================
-
 bool RiderDB::insertRiderProfile(int userId, const std::string& vehicleType) {
     auto& db = MariaDBManager::getInstance();
     return db.executeUpdate(
         "INSERT INTO rider_profiles "
         "(user_id, vehicle_type, is_working, is_accepting, is_online) "
         "VALUES (" + std::to_string(userId) +
-        ",'" + escape(vehicleType) + "',FALSE,FALSE,FALSE)");
+        ",'" + MariaDBManager::escape(vehicleType) + "',FALSE,FALSE,FALSE)");
 }
 
 bool RiderDB::insertRiderProfileIfMissing(int userId) {
@@ -38,13 +28,15 @@ bool RiderDB::insertRiderProfileIfMissing(int userId) {
     auto rows = db.executeQuery(
         "SELECT user_id FROM rider_profiles "
         "WHERE user_id=" + std::to_string(userId) + " LIMIT 1");
-    if (!rows.empty()) return true;   // 이미 있음
+    if (!rows.empty()) return true;
     return insertRiderProfile(userId, "BIKE");
 }
 
 RiderDB::RiderProfile RiderDB::queryRiderProfile(int userId) {
     RiderProfile result;
     auto& db = MariaDBManager::getInstance();
+    // users JOIN rider_profiles — users 정보는 CommonDB.queryUserBasic 과
+    // 중복되지만 라이더는 rider_profiles 와 함께 한 번에 조회해야 효율적
     auto rows = db.executeQuery(
         "SELECT u.name, u.phone, "
         "       rp.vehicle_type, rp.is_working, rp.is_accepting "
@@ -53,8 +45,7 @@ RiderDB::RiderProfile RiderDB::queryRiderProfile(int userId) {
         "WHERE u.user_id=" + std::to_string(userId) + " LIMIT 1");
 
     if (rows.empty()) return result;
-
-    auto& r = rows[0];
+    const auto& r  = rows[0];
     result.found       = true;
     result.name        = r.count("name")         ? r.at("name")         : "";
     result.phone       = r.count("phone")        ? r.at("phone")        : "";
@@ -67,31 +58,16 @@ RiderDB::RiderProfile RiderDB::queryRiderProfile(int userId) {
 
 bool RiderDB::setOnline(int userId, bool online) {
     auto& db = MariaDBManager::getInstance();
-    std::string val = online ? "TRUE" : "FALSE";
     return db.executeUpdate(
-        "UPDATE rider_profiles SET is_online=" + val +
+        "UPDATE rider_profiles SET is_online=" +
+        std::string(online ? "TRUE" : "FALSE") +
         " WHERE user_id=" + std::to_string(userId));
-}
-
-bool RiderDB::changePassword(int userId,
-                             const std::string& curPw,
-                             const std::string& newPw) {
-    auto& db = MariaDBManager::getInstance();
-    // 현재 비밀번호 확인
-    auto chk = db.executeQuery(
-        "SELECT user_id FROM users WHERE user_id=" + std::to_string(userId) +
-        " AND password='" + escape(curPw) + "' LIMIT 1");
-    if (chk.empty()) return false;
-
-    return db.executeUpdate(
-        "UPDATE users SET password='" + escape(newPw) +
-        "' WHERE user_id=" + std::to_string(userId));
 }
 
 bool RiderDB::changeVehicleType(int userId, const std::string& vehicleType) {
     auto& db = MariaDBManager::getInstance();
     return db.executeUpdate(
-        "UPDATE rider_profiles SET vehicle_type='" + escape(vehicleType) +
+        "UPDATE rider_profiles SET vehicle_type='" + MariaDBManager::escape(vehicleType) +
         "' WHERE user_id=" + std::to_string(userId));
 }
 
@@ -100,19 +76,17 @@ bool RiderDB::changeAccountInfo(int userId,
                                 const std::string& accountHolder,
                                 const std::string& accountNumber) {
     auto& db = MariaDBManager::getInstance();
-    // rider_profiles 스키마에 bank_name, account_holder, account_number 컬럼 있을 경우
     return db.executeUpdate(
         "UPDATE rider_profiles SET "
-        "bank_name='"        + escape(bankName)       + "', "
-        "account_holder='"   + escape(accountHolder)  + "', "
-        "account_number='"   + escape(accountNumber)  + "' "
-        "WHERE user_id="     + std::to_string(userId));
+        "bank_name='"      + MariaDBManager::escape(bankName)       + "', "
+        "account_holder='" + MariaDBManager::escape(accountHolder)  + "', "
+        "account_number='" + MariaDBManager::escape(accountNumber)  + "' "
+        "WHERE user_id="   + std::to_string(userId));
 }
 
 // ============================================================
-//  [배달 관련]
+//  [배차 / 배달]
 // ============================================================
-
 std::vector<RiderDB::DispatchOrder> RiderDB::queryDispatchList() {
     auto& db = MariaDBManager::getInstance();
     auto rows = db.executeQuery(
@@ -135,9 +109,9 @@ std::vector<RiderDB::DispatchOrder> RiderDB::queryDispatchList() {
         item.destAddr    = row.at("dest_addr");
         item.deliveryFee = row.count("delivery_fee") && !row.at("delivery_fee").empty()
                            ? std::stoi(row.at("delivery_fee")) : 0;
-        item.totalPrice  = row.count("total_price") && !row.at("total_price").empty()
+        item.totalPrice  = row.count("total_price")  && !row.at("total_price").empty()
                            ? std::stoi(row.at("total_price"))  : 0;
-        item.elapsedSec  = row.count("elapsed_sec") && !row.at("elapsed_sec").empty()
+        item.elapsedSec  = row.count("elapsed_sec")  && !row.at("elapsed_sec").empty()
                            ? std::stoi(row.at("elapsed_sec"))  : 0;
         result.push_back(item);
     }
@@ -153,7 +127,7 @@ RiderDB::AcceptResult RiderDB::acceptDispatch(int orderId, int riderId) {
         auto check = db.executeQuery(
             "SELECT order_id FROM orders "
             "WHERE order_id=" + std::to_string(orderId) +
-            " AND status='ACCEPTED' AND rider_id IS NULL LIMIT 1");
+            "  AND status='ACCEPTED' AND rider_id IS NULL LIMIT 1");
         if (check.empty()) return false;
 
         // 라이더 배정 + 상태 DELIVERING
@@ -163,11 +137,13 @@ RiderDB::AcceptResult RiderDB::acceptDispatch(int orderId, int riderId) {
             "WHERE order_id=" + std::to_string(orderId));
         if (!ok) return false;
 
+        // 배차 이력 기록
         db.executeUpdate(
             "INSERT INTO dispatch_logs (order_id, rider_id, result) VALUES ("
             + std::to_string(orderId) + ","
             + std::to_string(riderId) + ",'ACCEPT')");
 
+        // 주문 상태 이력 기록
         db.executeUpdate(
             "INSERT INTO order_status_logs "
             "(order_id, from_status, to_status, changed_by) VALUES ("
@@ -177,9 +153,9 @@ RiderDB::AcceptResult RiderDB::acceptDispatch(int orderId, int riderId) {
         return true;
     });
 
-    if (!txOk) return result;   // result.ok = false
+    if (!txOk) return result;   // result.ok == false
 
-    // 주문 상세 조회
+    // 주문 상세 조회 (배차 수락 응답용)
     auto detail = db.executeQuery(
         "SELECT o.order_id, r.restaurant_name AS store_name, "
         "       r.address AS pickup_addr, o.delivery_address AS dest_addr, "
@@ -191,7 +167,7 @@ RiderDB::AcceptResult RiderDB::acceptDispatch(int orderId, int riderId) {
 
     result.ok = true;
     if (!detail.empty()) {
-        const auto& d = detail[0];
+        const auto& d         = detail[0];
         result.detail.found       = true;
         result.detail.orderId     = orderId;
         result.detail.storeName   = d.at("store_name");
@@ -200,9 +176,9 @@ RiderDB::AcceptResult RiderDB::acceptDispatch(int orderId, int riderId) {
         result.detail.destAddr    = d.at("dest_addr");
         result.detail.deliveryFee = d.count("delivery_fee") && !d.at("delivery_fee").empty()
                                     ? std::stoi(d.at("delivery_fee")) : 0;
-        result.detail.totalPrice  = d.count("total_price") && !d.at("total_price").empty()
+        result.detail.totalPrice  = d.count("total_price")  && !d.at("total_price").empty()
                                     ? std::stoi(d.at("total_price"))  : 0;
-        result.detail.customerId  = d.count("customer_id") && !d.at("customer_id").empty()
+        result.detail.customerId  = d.count("customer_id")  && !d.at("customer_id").empty()
                                     ? std::stoi(d.at("customer_id"))  : 0;
     }
     return result;
@@ -214,7 +190,7 @@ bool RiderDB::rejectDispatch(int orderId, int riderId, const std::string& reason
         "INSERT INTO dispatch_logs (order_id, rider_id, result) VALUES ("
         + std::to_string(orderId) + ","
         + std::to_string(riderId) + ",'"
-        + escape(reason) + "')");
+        + MariaDBManager::escape(reason) + "')");
 }
 
 bool RiderDB::pickupDone(int orderId, int riderId) {
@@ -232,12 +208,12 @@ RiderDB::DeliveryDoneResult RiderDB::deliveryDone(int orderId, int riderId) {
 
     bool txOk = db.executeTransaction([&]() -> bool {
         auto check = db.executeQuery(
-            "SELECT o.order_id, r.base_delivery_fee AS fee, o.customer_id "
+            "SELECT r.base_delivery_fee AS fee, o.customer_id "
             "FROM orders o "
             "JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
             "WHERE o.order_id=" + std::to_string(orderId) +
-            " AND o.rider_id=" + std::to_string(riderId) +
-            " AND o.status='DELIVERING' LIMIT 1");
+            "  AND o.rider_id=" + std::to_string(riderId) +
+            "  AND o.status='DELIVERING' LIMIT 1");
 
         if (check.empty()) return false;
 
@@ -246,16 +222,19 @@ RiderDB::DeliveryDoneResult RiderDB::deliveryDone(int orderId, int riderId) {
         result.customerId  = check[0].count("customer_id") && !check[0].at("customer_id").empty()
                              ? std::stoi(check[0].at("customer_id")) : 0;
 
+        // 주문 완료 + 개인정보 마스킹
         db.executeUpdate(
             "UPDATE orders SET status='DONE', is_masked=TRUE "
             "WHERE order_id=" + std::to_string(orderId));
 
+        // 수익 기록
         db.executeUpdate(
             "INSERT INTO rider_earnings (rider_id, order_id, delivery_fee) VALUES ("
             + std::to_string(riderId) + ","
             + std::to_string(orderId) + ","
             + std::to_string(result.deliveryFee) + ")");
 
+        // 상태 이력 기록
         db.executeUpdate(
             "INSERT INTO order_status_logs "
             "(order_id, from_status, to_status, changed_by) VALUES ("
@@ -319,9 +298,8 @@ std::vector<RiderDB::MyDispatchRecord> RiderDB::queryMyDispatches(int riderId) {
 }
 
 // ============================================================
-//  [상태/GPS 관련]
+//  [상태 / GPS]
 // ============================================================
-
 bool RiderDB::setWorkStatus(int riderId,
                             const std::string& action,
                             const std::string& vehicleType) {
@@ -350,7 +328,7 @@ bool RiderDB::setWorkStatus(int riderId,
 
     } else if (action == "VEHICLE") {
         q = "UPDATE rider_profiles "
-            "SET vehicle_type='" + escape(vehicleType) +
+            "SET vehicle_type='" + MariaDBManager::escape(vehicleType) +
             "' WHERE user_id=" + std::to_string(riderId);
 
     } else {

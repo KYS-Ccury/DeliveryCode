@@ -1,5 +1,6 @@
 #include "RiderHandler.h"
 #include "RiderDB.h"
+#include "MariaDBManager.h"
 #include "CommonDB.h"
 #include "Protocol.h"
 #include "Session.h"
@@ -20,7 +21,7 @@ void RiderHandler::onSignup(Session* session, const json& reqBody) {
         CommonDB::UserBasic ub;
         auto rows = MariaDBManager::getInstance().executeQuery(
             "SELECT user_id FROM users WHERE login_id='" +
-            escapeStr(loginId) + "' LIMIT 1");
+            MariaDBManager::escape(loginId) + "' LIMIT 1");
 
         if (rows.empty()) {
             sendError(session, CmdCommon::REQ_SIGNUP,
@@ -123,11 +124,14 @@ void RiderHandler::onGetProfile(Session* session, int userId, const json& req) {
                 return;
             }
 
-            if (!RiderDB::getInstance().changePassword(userId, curPw, newPw)) {
+            if (!CommonDB::getInstance().queryCheckPassword(userId, curPw)) {
                 sendError(session, CmdCommon::REQ_GET_PROFILE,
                           Status::UNAUTHORIZED, "현재 비밀번호가 올바르지 않습니다.");
                 return;
             }
+
+            // 비밀번호 변경 — CommonDB 위임
+            CommonDB::getInstance().queryChangePassword(userId, newPw);
 
             json res;
             res["status"] = Status::SUCCESS;
