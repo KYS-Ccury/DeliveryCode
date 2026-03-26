@@ -2,7 +2,19 @@
 // #include "MariaDBManager.h"
 // #include "Protocol.h"
 
+
 // using json = nlohmann::json;
+
+// std::string escapeStr(const std::string& s) {
+//     std::string out;
+//     out.reserve(s.size() * 2);
+//     for (char c : s) {
+//         if (c == '\'' || c == '\\' || c == '"') out += '\\';
+//         out += c;
+//     }
+//     return out;
+// }
+
 
 // // ================================================================
 // //  onSignup
