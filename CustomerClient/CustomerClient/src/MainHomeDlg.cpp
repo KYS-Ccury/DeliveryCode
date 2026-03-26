@@ -11,6 +11,8 @@
 #include "MyMenuPopup.h"
 #include "PointDlg.h"
 #include "EditInfoDlg.h"
+#include "MyInfoDlg.h"
+#include "ChatDlg.h"
 #include "AuthManager.h"
 #include "NetworkManager.h"
 #include "common/header/Types.h"
@@ -217,6 +219,7 @@ LRESULT MainHomeDlg::OnStoreListResponse(WPARAM, LPARAM lParam)
     }
     delete pBody; return 0;
 }
+
 void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
 {
     m_listStore.DeleteAllItems();
@@ -242,6 +245,7 @@ void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
     }
     if (stores.empty()) m_listStore.InsertItem(0,_T("해당 카테고리의 가게가 없습니다."));
 }
+
 void MainHomeDlg::UpdateStoreListUI(CString cat)
 {
     m_listStore.DeleteAllItems(); m_vecStoreCache.clear();
@@ -341,6 +345,12 @@ LRESULT MainHomeDlg::OnMyMenuSelected(WPARAM wParam, LPARAM)
     int id = (int)wParam;
     switch (id)
     {
+    case MYMENU_MY_INFO:                    // ★ 개인정보 확인
+    {
+        MyInfoDlg dlg(this);
+        dlg.DoModal();
+        break;
+    }
     case MYMENU_EDIT_INFO:
     {
         EditInfoDlg dlg(this);
@@ -350,6 +360,15 @@ LRESULT MainHomeDlg::OnMyMenuSelected(WPARAM wParam, LPARAM)
     case MYMENU_POINT:
     {
         PointDlg dlg(this);
+        dlg.DoModal();
+        break;
+    }
+    case MYMENU_ADMIN_CHAT:                 // ★ 관리자 채팅
+    {
+        ChatDlg dlg(this);
+        dlg.m_strTargetName = _T("관리자 문의");
+        dlg.m_strTargetID = _T("admin");
+        dlg.m_strTargetType = _T("admin");
         dlg.DoModal();
         break;
     }
