@@ -22,9 +22,9 @@ void Dispatcher::dispatch(Session* session, const PacketHeader& header, const st
 
     try {
         switch (cType) {
-            // case ClientType::CUSTOMER:
-            //     CustomerHandler::getInstance().process(session, protocol, jsonBody);
-            //     break;
+            case ClientType::CUSTOMER:
+                CustomerHandler::getInstance().process(session, protocol, jsonBody);
+                break;
 
             // case ClientType::OWNER:
                 // OwnerHandler::getInstance().process(session, protocol, jsonBody);
