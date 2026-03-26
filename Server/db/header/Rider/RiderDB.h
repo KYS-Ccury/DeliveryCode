@@ -4,12 +4,14 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 
+using json = nlohmann::json;
+
 class RiderDB {
 public:
 
-    static nlohmann::json process(uint16_t dbProtocol, const nlohmann::json& reqJson);
+    static json process(uint16_t dbProtocol, const json& reqJson);
     static void createProfile(int userId); // 리턴 타입이 json이면 nlohmann::json으로 맞춰주세요.
-    static nlohmann::json loginHook(int userId);
+    static json loginHook(int userId);
 
     static RiderDB& getInstance() {
         static RiderDB inst;
@@ -65,6 +67,7 @@ public:
         int         deliveryFee = 0;
         int         totalPrice  = 0;
         int         customerId  = 0;
+        int         ownerId     = 0;    // restaurants.owner_id
         bool        found       = false;
     };
 
@@ -80,12 +83,20 @@ public:
     bool rejectDispatch(int orderId, int riderId, const std::string& reason);
 
 
-    bool pickupDone(int orderId, int riderId);
+    struct PickupDoneResult {
+        bool ok         = false;
+        int  customerId = 0;
+        int  ownerId    = 0;    // restaurants.owner_id
+        int  orderId    = 0;
+    };
+
+    PickupDoneResult pickupDone(int orderId, int riderId);
 
     struct DeliveryDoneResult {
         bool ok          = false;
         int  deliveryFee = 0;
         int  customerId  = 0;
+        int  ownerId     = 0;
     };
 
     // 배달 완료: DELIVERING → DONE + rider_earnings INSERT (트랜잭션)

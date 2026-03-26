@@ -4,6 +4,8 @@
 #include <sstream>
 #include <iomanip>
 
+using json = nlohmann::json;
+
 // ── 내부 유틸 ──────────────────────────────────────────────
 static std::string makeOrderCode(int orderId) {
     std::ostringstream ss;
@@ -155,12 +157,12 @@ RiderDB::AcceptResult RiderDB::acceptDispatch(int orderId, int riderId) {
 
     if (!txOk) return result;   // result.ok == false
 
-    // 주문 상세 조회 (배차 수락 응답용)
+    // 주문 상세 조회 (배차 수락 응답용) — ownerId 포함
     auto detail = db.executeQuery(
         "SELECT o.order_id, r.restaurant_name AS store_name, "
         "       r.address AS pickup_addr, o.delivery_address AS dest_addr, "
         "       r.phone AS store_phone, r.base_delivery_fee AS delivery_fee, "
-        "       o.total_price, o.customer_id "
+        "       o.total_price, o.customer_id, r.owner_id "
         "FROM orders o "
         "JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
         "WHERE o.order_id=" + std::to_string(orderId) + " LIMIT 1");
@@ -180,6 +182,8 @@ RiderDB::AcceptResult RiderDB::acceptDispatch(int orderId, int riderId) {
                                     ? std::stoi(d.at("total_price"))  : 0;
         result.detail.customerId  = d.count("customer_id")  && !d.at("customer_id").empty()
                                     ? std::stoi(d.at("customer_id"))  : 0;
+        result.detail.ownerId     = d.count("owner_id")     && !d.at("owner_id").empty()
+                                    ? std::stoi(d.at("owner_id"))     : 0;
     }
     return result;
 }
@@ -193,13 +197,42 @@ bool RiderDB::rejectDispatch(int orderId, int riderId, const std::string& reason
         + CommonDB::escape(reason) + "')");
 }
 
-bool RiderDB::pickupDone(int orderId, int riderId) {
+RiderDB::PickupDoneResult RiderDB::pickupDone(int orderId, int riderId) {
+    PickupDoneResult result;
     auto& db = MariaDBManager::getInstance();
-    return db.executeUpdate(
+
+    // 주문 유효성 확인 + customer_id, owner_id 조회
+    auto rows = db.executeQuery(
+        "SELECT o.customer_id, r.owner_id "
+        "FROM orders o "
+        "JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
+        "WHERE o.order_id=" + std::to_string(orderId) +
+        "  AND o.rider_id=" + std::to_string(riderId) +
+        "  AND o.status='DELIVERING' LIMIT 1");
+
+    if (rows.empty()) return result;  // ok == false
+
+    result.customerId = rows[0].count("customer_id") && !rows[0].at("customer_id").empty()
+                        ? std::stoi(rows[0].at("customer_id")) : 0;
+    result.ownerId    = rows[0].count("owner_id") && !rows[0].at("owner_id").empty()
+                        ? std::stoi(rows[0].at("owner_id")) : 0;
+    result.orderId    = orderId;
+
+    // orders 상태 → WAITING_PICKUP (픽업 완료, 배달 중)
+    bool ok = db.executeUpdate(
+        "UPDATE orders SET status='WAITING_PICKUP' "
+        "WHERE order_id=" + std::to_string(orderId));
+    if (!ok) return result;
+
+    // 상태 변경 이력 기록
+    db.executeUpdate(
         "INSERT INTO order_status_logs "
         "(order_id, from_status, to_status, changed_by) VALUES ("
         + std::to_string(orderId) +
-        ",'DELIVERING','DELIVERING'," + std::to_string(riderId) + ")");
+        ",'DELIVERING','WAITING_PICKUP'," + std::to_string(riderId) + ")");
+
+    result.ok = true;
+    return result;
 }
 
 RiderDB::DeliveryDoneResult RiderDB::deliveryDone(int orderId, int riderId) {
@@ -208,12 +241,12 @@ RiderDB::DeliveryDoneResult RiderDB::deliveryDone(int orderId, int riderId) {
 
     bool txOk = db.executeTransaction([&]() -> bool {
         auto check = db.executeQuery(
-            "SELECT r.base_delivery_fee AS fee, o.customer_id "
+            "SELECT r.base_delivery_fee AS fee, o.customer_id, r.owner_id "
             "FROM orders o "
             "JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
             "WHERE o.order_id=" + std::to_string(orderId) +
             "  AND o.rider_id=" + std::to_string(riderId) +
-            "  AND o.status='DELIVERING' LIMIT 1");
+            "  AND (o.status='DELIVERING' OR o.status='WAITING_PICKUP') LIMIT 1");
 
         if (check.empty()) return false;
 
@@ -221,6 +254,8 @@ RiderDB::DeliveryDoneResult RiderDB::deliveryDone(int orderId, int riderId) {
                              ? std::stoi(check[0].at("fee")) : 0;
         result.customerId  = check[0].count("customer_id") && !check[0].at("customer_id").empty()
                              ? std::stoi(check[0].at("customer_id")) : 0;
+        result.ownerId     = check[0].count("owner_id") && !check[0].at("owner_id").empty()
+                             ? std::stoi(check[0].at("owner_id")) : 0;
 
         // 주문 완료 + 개인정보 마스킹
         db.executeUpdate(
@@ -355,8 +390,8 @@ bool RiderDB::updateGps(int riderId, double lat, double lng) {
 //  [MiddleHandler 및 CommonHandler 연동용 구현부] (추가 필수!)
 // ============================================================
 
-nlohmann::json RiderDB::process(uint16_t dbProtocol, const nlohmann::json& reqJson) {
-    nlohmann::json res;
+json RiderDB::process(uint16_t dbProtocol, const json& reqJson) {
+    json res;
     // 향후 1400번대(라이더) 프로토콜 번호에 따른 세부 분기 로직을 작성합니다.
     return res;
 }
@@ -366,8 +401,8 @@ void RiderDB::createProfile(int userId) {
     getInstance().insertRiderProfileIfMissing(userId);
 }
 
-nlohmann::json RiderDB::loginHook(int userId) {
-    nlohmann::json res;
+json RiderDB::loginHook(int userId) {
+    json res;
     
     // 1. 온라인 상태로 변경
     getInstance().setOnline(userId, true);
