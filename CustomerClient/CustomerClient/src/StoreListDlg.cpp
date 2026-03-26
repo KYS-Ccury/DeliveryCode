@@ -119,11 +119,11 @@ BOOL StoreListDlg::OnInitDialog()
     CenterWindow();
 
     // 메뉴 썸네일 ImageList 초기화
-    m_imgListMenu.Create(MENU_THUMB_W, MENU_THUMB_H, ILC_COLOR32 | ILC_MASK, 16, 8);
+    m_imgListMenu.Create(MENU_THUMB_W, MENU_THUMB_H, ILC_COLOR32, 16, 8);
     m_listMenu.SetImageList(&m_imgListMenu, LVSIL_SMALL);
 
     m_listMenu.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-    m_listMenu.InsertColumn(0, _T(""),       LVCFMT_LEFT,    76);  // ★ 이미지 컬럼
+    m_listMenu.InsertColumn(0, _T("사진"),   LVCFMT_LEFT,    76);  // 이미지 컬럼
     m_listMenu.InsertColumn(1, _T("메뉴명"), LVCFMT_LEFT,   160);
     m_listMenu.InsertColumn(2, _T("설명"),   LVCFMT_LEFT,   150);
     m_listMenu.InsertColumn(3, _T("가격"),   LVCFMT_RIGHT,   80);
@@ -205,21 +205,24 @@ void StoreListDlg::RebuildMenuListUI(const std::vector<MenuInfo>& menus, const C
 
     // ImageList 재구성
     if (m_imgListMenu.GetSafeHandle()) m_imgListMenu.DeleteImageList();
-    m_imgListMenu.Create(MENU_THUMB_W, MENU_THUMB_H, ILC_COLOR32 | ILC_MASK,
+    m_imgListMenu.Create(MENU_THUMB_W, MENU_THUMB_H, ILC_COLOR32,
                          (int)menus.size() + 1, 4);
     m_listMenu.SetImageList(&m_imgListMenu, LVSIL_SMALL);
 
-    // 기본 이미지 (회색 박스)
-    HBITMAP hDef = ::CreateBitmap(MENU_THUMB_W, MENU_THUMB_H, 1, 32, nullptr);
+    // 기본 이미지 (회색 박스) — 화면DC 기반 32bpp
+    HBITMAP hDef = nullptr;
     {
-        HDC hdc = ::CreateCompatibleDC(nullptr);
+        HDC hdcScreen = ::GetDC(nullptr);
+        HDC hdc = ::CreateCompatibleDC(hdcScreen);
+        hDef = ::CreateCompatibleBitmap(hdcScreen, MENU_THUMB_W, MENU_THUMB_H);
         HGDIOBJ hOld = ::SelectObject(hdc, hDef);
         RECT rc = {0, 0, MENU_THUMB_W, MENU_THUMB_H};
-        HBRUSH hBr = ::CreateSolidBrush(RGB(220, 220, 220));
+        HBRUSH hBr = ::CreateSolidBrush(RGB(210, 210, 210));
         ::FillRect(hdc, &rc, hBr); ::DeleteObject(hBr);
         ::SelectObject(hdc, hOld); ::DeleteDC(hdc);
+        ::ReleaseDC(nullptr, hdcScreen);
     }
-    int defIdx = m_imgListMenu.Add(CBitmap::FromHandle(hDef), RGB(0,0,0));
+    int defIdx = m_imgListMenu.Add(CBitmap::FromHandle(hDef), (CBitmap*)nullptr);
     ::DeleteObject(hDef);
 
     int row = 0;
@@ -234,7 +237,7 @@ void StoreListDlg::RebuildMenuListUI(const std::vector<MenuInfo>& menus, const C
             CString fullPath = ImageLoader::MakeServerPath(imgUrl);
             HBITMAP hBmp = ImageLoader::LoadResized(fullPath, MENU_THUMB_W, MENU_THUMB_H);
             if (hBmp) {
-                imgIdx = m_imgListMenu.Add(CBitmap::FromHandle(hBmp), RGB(0,0,0));
+                imgIdx = m_imgListMenu.Add(CBitmap::FromHandle(hBmp), (CBitmap*)nullptr);
                 ::DeleteObject(hBmp);
             }
         }
@@ -244,8 +247,13 @@ void StoreListDlg::RebuildMenuListUI(const std::vector<MenuInfo>& menus, const C
         CString p; p.Format(_T("%d원"), m.price);
 
         // 컬럼 0: 이미지
-        int r = m_listMenu.InsertItem(
-            LVIF_TEXT | LVIF_IMAGE, row++, _T(""), 0, 0, imgIdx, nullptr);
+        LVITEM lvi2 = {};
+        lvi2.mask     = LVIF_TEXT | LVIF_IMAGE;
+        lvi2.iItem    = row++;
+        lvi2.iSubItem = 0;
+        lvi2.pszText  = (LPTSTR)(LPCTSTR)_T("");
+        lvi2.iImage   = imgIdx;
+        int r = m_listMenu.InsertItem(&lvi2);
         m_listMenu.SetItemText(r, 1, n);  // 메뉴명
         m_listMenu.SetItemText(r, 2, d);  // 설명
         m_listMenu.SetItemText(r, 3, p);  // 가격

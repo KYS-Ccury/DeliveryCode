@@ -119,21 +119,19 @@ BOOL MainHomeDlg::OnInitDialog()
     m_brushBack.CreateSolidBrush(RGB(230, 245, 245));
     m_brushWhite.CreateSolidBrush(RGB(255, 255, 255));
 
-    // ── ImageList 초기화 (썸네일 60×60) ───────────────────────
-    m_imgListStore.Create(STORE_THUMB_W, STORE_THUMB_H, ILC_COLOR32 | ILC_MASK, 16, 8);
+    // ── ImageList 초기화 ──────────────────────────────────────
+    // LVSIL_SMALL로 썸네일 표시 + 행 높이 강제 설정
+    m_imgListStore.Create(STORE_THUMB_W, STORE_THUMB_H, ILC_COLOR32, 16, 8);
     m_listStore.SetImageList(&m_imgListStore, LVSIL_SMALL);
 
     m_listStore.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-    m_listStore.InsertColumn(0, _T(""),         LVCFMT_LEFT,   68);  // ★ 이미지 컬럼
+    m_listStore.InsertColumn(0, _T("사진"),     LVCFMT_LEFT,   70);  // 이미지 컬럼
     m_listStore.InsertColumn(1, _T("매장명"),   LVCFMT_LEFT,  140);
     m_listStore.InsertColumn(2, _T("배달시간"), LVCFMT_CENTER,  70);
     m_listStore.InsertColumn(3, _T("배달비"),   LVCFMT_CENTER,  70);
     m_listStore.InsertColumn(4, _T("최소주문"), LVCFMT_RIGHT,   85);
     m_listStore.InsertColumn(5, _T("가게소개"), LVCFMT_LEFT,   190);
 
-    // 행 높이를 이미지 크기에 맞게 설정
-    LVITEM lvi = {};
-    m_listStore.SetItemHeight(0, STORE_THUMB_H + 4); // 아이템 없을 때 미리 설정
 
     CWnd* pPH = GetDlgItem(IDC_STATIC_MENU_BAR);
     if (pPH) {
@@ -274,42 +272,56 @@ void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
     // ImageList 초기화 (기존 이미지 모두 제거 후 재구성)
     if (m_imgListStore.GetSafeHandle())
         m_imgListStore.DeleteImageList();
-    m_imgListStore.Create(STORE_THUMB_W, STORE_THUMB_H, ILC_COLOR32 | ILC_MASK, (int)stores.size() + 1, 4);
+    m_imgListStore.Create(STORE_THUMB_W, STORE_THUMB_H, ILC_COLOR32, (int)stores.size() + 1, 4);
     m_listStore.SetImageList(&m_imgListStore, LVSIL_SMALL);
 
-    // 기본 이미지 (이미지 없을 때 사용할 회색 사각형)
-    HBITMAP hDefault = ::CreateBitmap(STORE_THUMB_W, STORE_THUMB_H, 1, 32, nullptr);
+    // 기본 이미지 (이미지 없을 때 사용할 회색 사각형) — 화면DC 기반 32bpp
+    HBITMAP hDefault = nullptr;
     {
-        HDC hdc = ::CreateCompatibleDC(nullptr);
+        HDC hdcScreen = ::GetDC(nullptr);
+        HDC hdc = ::CreateCompatibleDC(hdcScreen);
+        hDefault = ::CreateCompatibleBitmap(hdcScreen, STORE_THUMB_W, STORE_THUMB_H);
         HGDIOBJ hOld = ::SelectObject(hdc, hDefault);
         RECT rc = {0, 0, STORE_THUMB_W, STORE_THUMB_H};
-        HBRUSH hBr = ::CreateSolidBrush(RGB(200, 200, 200));
+        HBRUSH hBr = ::CreateSolidBrush(RGB(210, 210, 210));
         ::FillRect(hdc, &rc, hBr);
         ::DeleteObject(hBr);
         ::SelectObject(hdc, hOld);
         ::DeleteDC(hdc);
+        ::ReleaseDC(nullptr, hdcScreen);
     }
-    int defImgIdx = m_imgListStore.Add(CBitmap::FromHandle(hDefault), RGB(0,0,0));
+    // Add(HBITMAP hbmImage, HBITMAP hbmMask) — nullptr mask
+    int defImgIdx = m_imgListStore.Add(CBitmap::FromHandle(hDefault), (CBitmap*)nullptr);
     ::DeleteObject(hDefault);
 
     for (int i = 0; i < (int)stores.size(); ++i) {
         // ── 이미지 로드 ───────────────────────────────────────
         int imgIdx = defImgIdx; // 기본: 회색 박스
         CString imgUrl = CA2T(stores[i].storeImageUrl.c_str(), CP_UTF8);
+        // 첫 번째 가게만 디버그 출력
+        if (i == 0) {
+            CString dbg;
+            dbg.Format(_T("storeImageUrl[0]='%s'"), (LPCTSTR)imgUrl);
+            ::MessageBoxW(nullptr, dbg, _T("URL 확인"), MB_OK);
+        }
         if (!imgUrl.IsEmpty()) {
             CString fullPath = ImageLoader::MakeServerPath(imgUrl);
             HBITMAP hBmp = ImageLoader::LoadResized(fullPath, STORE_THUMB_W, STORE_THUMB_H);
             if (hBmp) {
-                imgIdx = m_imgListStore.Add(CBitmap::FromHandle(hBmp), RGB(0,0,0));
+                imgIdx = m_imgListStore.Add(CBitmap::FromHandle(hBmp), (CBitmap*)nullptr);
                 ::DeleteObject(hBmp);
             }
         }
 
-        // 컬럼 0: 이미지 (아이콘으로 표시)
+        // LVITEM으로 이미지 인덱스 직접 지정
         CString n = CA2T(stores[i].storeName.c_str(), CP_UTF8);
-        int r = m_listStore.InsertItem(
-            LVIF_TEXT | LVIF_IMAGE,
-            i, _T(""), 0, 0, imgIdx, nullptr);
+        LVITEM lvi = {};
+        lvi.mask    = LVIF_TEXT | LVIF_IMAGE;
+        lvi.iItem   = i;
+        lvi.iSubItem= 0;
+        lvi.pszText = (LPTSTR)(LPCTSTR)_T("");
+        lvi.iImage  = imgIdx;
+        int r = m_listStore.InsertItem(&lvi);
 
         // 컬럼 1: 매장명
         m_listStore.SetItemText(r, 1, n);
@@ -322,7 +334,7 @@ void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
         // 컬럼 4: 최소주문
         CString a; a.Format(_T("%d원"), stores[i].minOrderAmount);
         m_listStore.SetItemText(r, 4, a);
-        // 컬럼 5: 가게소개 ★ description 필드 사용
+        // 컬럼 5: 가게소개
         CString desc = CA2T(stores[i].description.c_str(), CP_UTF8);
         m_listStore.SetItemText(r, 5, desc);
     }

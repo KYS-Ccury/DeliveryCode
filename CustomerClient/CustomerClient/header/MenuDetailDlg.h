@@ -43,6 +43,7 @@ protected:
     afx_msg void OnLvnItemchangedOptions(NMHDR* pNMHDR, LRESULT* pResult);
 
     afx_msg void OnPaint();      // 음식 이미지 그리기
+    afx_msg void OnDestroy();    // 이미지 리소스 해제
 
     DECLARE_MESSAGE_MAP()
 
