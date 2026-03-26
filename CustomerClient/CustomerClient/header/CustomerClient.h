@@ -25,6 +25,7 @@ public:
 	virtual BOOL InitInstance();
 
 // 구현입니다.
+	ULONG_PTR m_gdiplusToken = 0;  // GDI+ 토큰
 
 	DECLARE_MESSAGE_MAP()
 };

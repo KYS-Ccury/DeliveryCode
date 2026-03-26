@@ -15,6 +15,7 @@
 #include "ChatDlg.h"
 #include "AuthManager.h"
 #include "NetworkManager.h"
+#include "ImageLoader.h"
 #include "common/header/Types.h"
 
 #define WM_STORE_LIST_RESPONSE (WM_USER + 110)
@@ -158,25 +159,8 @@ BOOL MainHomeDlg::OnInitDialog()
 // ── 서버 UNC 경로로 이미지 로드 ──────────────────────────────
 HBITMAP MainHomeDlg::LoadImageFromServer(const CString& relPath)
 {
-    if (relPath.IsEmpty()) return nullptr;
-
-    // 경로 구분자 정규화 (/ → \)
-    CString path = relPath;
-    path.Replace(_T('/'), _T('\\'));
-
-    CString fullPath = CString(SERVER_IMAGE_ROOT) + path;
-
-    // GDI+ 또는 LoadImage로 로드
-    HBITMAP hBmp = (HBITMAP)::LoadImage(
-        nullptr, fullPath, IMAGE_BITMAP, 0, 0,
-        LR_LOADFROMFILE | LR_CREATEDIBSECTION);
-
-    if (!hBmp) {
-        // JPEG/PNG는 LoadImage가 안 되므로 GDI+로 시도
-        // GDI+ 사용을 위한 간단한 래퍼 (Gdiplus 헤더 필요)
-        // 지원 안 되면 nullptr 반환 (기본 아이콘 사용)
-    }
-    return hBmp;
+    CString fullPath = ImageLoader::MakeServerPath(relPath);
+    return ImageLoader::Load(fullPath);
 }
 
 void MainHomeDlg::ResizeBitmapTo(HBITMAP& hBmp, int w, int h)
@@ -313,9 +297,9 @@ void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
         int imgIdx = defImgIdx; // 기본: 회색 박스
         CString imgUrl = CA2T(stores[i].storeImageUrl.c_str(), CP_UTF8);
         if (!imgUrl.IsEmpty()) {
-            HBITMAP hBmp = LoadImageFromServer(imgUrl);
+            CString fullPath = ImageLoader::MakeServerPath(imgUrl);
+            HBITMAP hBmp = ImageLoader::LoadResized(fullPath, STORE_THUMB_W, STORE_THUMB_H);
             if (hBmp) {
-                ResizeBitmapTo(hBmp, STORE_THUMB_W, STORE_THUMB_H);
                 imgIdx = m_imgListStore.Add(CBitmap::FromHandle(hBmp), RGB(0,0,0));
                 ::DeleteObject(hBmp);
             }

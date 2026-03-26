@@ -31,6 +31,10 @@
 
 #include <afxsock.h>            // MFC 소켓 확장
 
+// GDI+ (PNG/JPG 이미지 로드용)
+#include <gdiplus.h>
+#pragma comment(lib, "gdiplus.lib")
+
 
 
 

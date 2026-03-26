@@ -23,6 +23,12 @@ CCustomerClientApp theApp;
 
 BOOL CCustomerClientApp::InitInstance()
 {
+    // GDI+ 초기화 (PNG/JPG 이미지 로드용)
+    Gdiplus::GdiplusStartupInput gdiplusInput;
+    ULONG_PTR gdiplusToken;
+    Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusInput, nullptr);
+    m_gdiplusToken = gdiplusToken;
+
     INITCOMMONCONTROLSEX InitCtrls;
     InitCtrls.dwSize = sizeof(InitCtrls);
     InitCtrls.dwICC  = ICC_WIN95_CLASSES;
@@ -55,6 +61,9 @@ BOOL CCustomerClientApp::InitInstance()
     mainDlg.DoModal();
 
     if (pShellManager) delete pShellManager;
+
+    // GDI+ 종료
+    Gdiplus::GdiplusShutdown(m_gdiplusToken);
 
 #if !defined(_AFXDLL) && !defined(_AFX_NO_MFC_CONTROLS_IN_DIALOGS)
     ControlBarCleanUp();

@@ -22,6 +22,7 @@
 #include "afxdialogex.h"
 #include "MenuDetailDlg.h"
 #include "OrderManager.h"
+#include "ImageLoader.h"
 
 // ── IDC 임시 정의 (resource.h 에 없으면) ─────────────────────
 #ifndef IDC_BTN_COUNT_MINUS_D
@@ -95,18 +96,14 @@ BOOL MenuDetailDlg::OnInitDialog()
     return TRUE;
 }
 
-// ── 서버 이미지 로드 ──────────────────────────────────────────
+// ── 서버 이미지 로드 (GDI+ 기반) ────────────────────────────
 void MenuDetailDlg::LoadMenuImage()
 {
     if (m_menuInfo.menuImageUrl.empty()) return;
 
-    CString path = CA2T(m_menuInfo.menuImageUrl.c_str(), CP_UTF8);
-    path.Replace(_T('/'), _T('\\'));
-    CString fullPath = CString(_T("\\\\10.10.10.122\\images\\")) + path;
-
-    m_hMenuImg = (HBITMAP)::LoadImage(
-        nullptr, fullPath, IMAGE_BITMAP, 0, 0,
-        LR_LOADFROMFILE | LR_CREATEDIBSECTION);
+    CString relPath = CA2T(m_menuInfo.menuImageUrl.c_str(), CP_UTF8);
+    CString fullPath = ImageLoader::MakeServerPath(relPath);
+    m_hMenuImg = ImageLoader::LoadResized(fullPath, 120, 120);
 
     if (m_hMenuImg) Invalidate();
 }

@@ -16,6 +16,7 @@
 #include "MenuDetailDlg.h"
 #include "ReviewListDlg.h"
 #include "NetworkManager.h"
+#include "ImageLoader.h"
 #include "AuthManager.h"
 #include "common/header/Types.h"
 
@@ -186,31 +187,16 @@ LRESULT StoreListDlg::OnMenuListResponse(WPARAM, LPARAM lParam)
     }
     delete pBody; return 0;
 }
-// ── 서버 이미지 로드 헬퍼 ──────────────────────────────────
+// ── 서버 이미지 로드 헬퍼 (GDI+ 사용) ──────────────────────
 HBITMAP StoreListDlg::LoadMenuImage(const CString& relPath)
 {
-    if (relPath.IsEmpty()) return nullptr;
-    CString path = relPath;
-    path.Replace(_T('/'), _T('\\'));
-    CString fullPath = CString(MENU_IMAGE_ROOT) + path;
-    return (HBITMAP)::LoadImage(nullptr, fullPath, IMAGE_BITMAP, 0, 0,
-                                LR_LOADFROMFILE | LR_CREATEDIBSECTION);
+    CString fullPath = ImageLoader::MakeServerPath(relPath);
+    return ImageLoader::Load(fullPath);
 }
 void StoreListDlg::ResizeBitmapTo(HBITMAP& hBmp, int w, int h)
 {
+    // GDI+의 LoadResized로 대체되어 직접 호출되지 않음 (호환성 유지)
     if (!hBmp) return;
-    BITMAP bm = {}; ::GetObject(hBmp, sizeof(bm), &bm);
-    if (bm.bmWidth == w && bm.bmHeight == h) return;
-    HDC hdcSrc = ::CreateCompatibleDC(nullptr);
-    HDC hdcDst = ::CreateCompatibleDC(nullptr);
-    HBITMAP hNew = ::CreateCompatibleBitmap(hdcSrc, w, h);
-    HGDIOBJ hOldSrc = ::SelectObject(hdcSrc, hBmp);
-    HGDIOBJ hOldDst = ::SelectObject(hdcDst, hNew);
-    ::SetStretchBltMode(hdcDst, HALFTONE);
-    ::StretchBlt(hdcDst, 0, 0, w, h, hdcSrc, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
-    ::SelectObject(hdcSrc, hOldSrc); ::SelectObject(hdcDst, hOldDst);
-    ::DeleteDC(hdcSrc); ::DeleteDC(hdcDst);
-    ::DeleteObject(hBmp); hBmp = hNew;
 }
 
 void StoreListDlg::RebuildMenuListUI(const std::vector<MenuInfo>& menus, const CString& filter)
@@ -241,13 +227,13 @@ void StoreListDlg::RebuildMenuListUI(const std::vector<MenuInfo>& menus, const C
         CString sub = CA2T(m.subCategory.c_str(),CP_UTF8);
         if (filter != _T("전체") && sub != filter) continue;
 
-        // 이미지 로드
+        // 이미지 로드 (GDI+ 기반)
         int imgIdx = defIdx;
         CString imgUrl = CA2T(m.menuImageUrl.c_str(), CP_UTF8);
         if (!imgUrl.IsEmpty()) {
-            HBITMAP hBmp = LoadMenuImage(imgUrl);
+            CString fullPath = ImageLoader::MakeServerPath(imgUrl);
+            HBITMAP hBmp = ImageLoader::LoadResized(fullPath, MENU_THUMB_W, MENU_THUMB_H);
             if (hBmp) {
-                ResizeBitmapTo(hBmp, MENU_THUMB_W, MENU_THUMB_H);
                 imgIdx = m_imgListMenu.Add(CBitmap::FromHandle(hBmp), RGB(0,0,0));
                 ::DeleteObject(hBmp);
             }
