@@ -95,6 +95,98 @@ void CustomerHandler::onGetProfile(Session* session, int userId, const json& req
     try {
         auto& db = MariaDBManager::getInstance();
 
+        std::string reqType = req.value("request_type", "");
+
+        // ── 카드 목록 조회 ────────────────────────────────────
+        if (reqType == "get_cards") {
+            auto rows = db.executeQuery(
+                "SELECT payment_method_id AS id, card_alias AS alias, "
+                "card_num_masked AS masked, method_type, is_default "
+                "FROM payment_methods WHERE user_id=" + std::to_string(userId) +
+                " ORDER BY is_default DESC, payment_method_id");
+
+            json methods = json::array();
+            for (auto& r : rows) {
+                json c;
+                c["id"]          = std::stoi(r.at("id"));
+                c["alias"]       = r.count("alias")   ? r.at("alias")   : "";
+                c["masked"]      = r.count("masked")  ? r.at("masked")  : "";
+                c["method_type"] = r.count("method_type") ? r.at("method_type") : "CARD";
+                c["is_default"]  = (r.count("is_default") && r.at("is_default") == "1");
+                methods.push_back(c);
+            }
+            json res;
+            res["status"]          = Status::SUCCESS;
+            res["payment_methods"] = methods;
+            session->sendPacket(static_cast<uint8_t>(m_clientType),
+                                CmdCommon::REQ_GET_PROFILE, res.dump());
+            return;
+        }
+
+        // ── 카드 등록 ─────────────────────────────────────────
+        if (reqType == "add_card") {
+            std::string alias   = req.value("card_alias",     "");
+            std::string masked  = req.value("card_num_masked","");
+            std::string type    = req.value("method_type",    "CARD");
+
+            // 첫 카드면 기본 카드로 설정
+            auto cnt = db.executeQuery(
+                "SELECT COUNT(*) AS cnt FROM payment_methods WHERE user_id=" +
+                std::to_string(userId));
+            bool isFirst = (cnt.empty() || cnt[0].at("cnt") == "0");
+
+            bool ok = db.executeUpdate(
+                "INSERT INTO payment_methods "
+                "(user_id, method_type, card_alias, card_num_masked, is_default) VALUES ("
+                + std::to_string(userId) + ",'"
+                + CommonDB::getInstance().escape(type)   + "','"
+                + CommonDB::getInstance().escape(alias)  + "','"
+                + CommonDB::getInstance().escape(masked) + "',"
+                + (isFirst ? "TRUE" : "FALSE") + ")");
+
+            json res;
+            res["status"] = ok ? Status::SUCCESS : Status::SERVER_ERROR;
+            session->sendPacket(static_cast<uint8_t>(m_clientType),
+                                CmdCommon::REQ_GET_PROFILE, res.dump());
+            return;
+        }
+
+        // ── 카드 삭제 ─────────────────────────────────────────
+        if (reqType == "delete_card") {
+            int pmID = req.value("payment_method_id", 0);
+            bool ok = db.executeUpdate(
+                "DELETE FROM payment_methods WHERE payment_method_id=" +
+                std::to_string(pmID) +
+                " AND user_id=" + std::to_string(userId));  // 본인 카드만 삭제
+
+            json res;
+            res["status"] = ok ? Status::SUCCESS : Status::SERVER_ERROR;
+            session->sendPacket(static_cast<uint8_t>(m_clientType),
+                                CmdCommon::REQ_GET_PROFILE, res.dump());
+            return;
+        }
+
+        // ── 기본 카드 설정 ────────────────────────────────────
+        if (reqType == "set_default_card") {
+            int pmID = req.value("payment_method_id", 0);
+
+            // 기존 기본 카드 해제
+            db.executeUpdate(
+                "UPDATE payment_methods SET is_default=FALSE WHERE user_id=" +
+                std::to_string(userId));
+            // 새 기본 카드 설정 (본인 카드만)
+            db.executeUpdate(
+                "UPDATE payment_methods SET is_default=TRUE "
+                "WHERE payment_method_id=" + std::to_string(pmID) +
+                " AND user_id=" + std::to_string(userId));
+
+            json res;
+            res["status"] = Status::SUCCESS;
+            session->sendPacket(static_cast<uint8_t>(m_clientType),
+                                CmdCommon::REQ_GET_PROFILE, res.dump());
+            return;
+        }
+        
         // 주소 변경 요청
         if (req.contains("address")) {
             db.executeUpdate(
