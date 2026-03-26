@@ -19,11 +19,16 @@ public:
     std::vector<int>         m_vecPreCheckedOptionIDs;  // ★ 추가
     CListCtrl                m_listOptions;
     void UpdateTotal();
+
+    // ★ 추가: OnOK() 시점에 체크된 옵션 ID 목록을 저장
+    std::vector<int> m_vecResultOptionIDs;   // DoModal 반환 후 CartDlg에서 읽음
+
 protected:
     virtual void DoDataExchange(CDataExchange* pDX);
     virtual BOOL OnInitDialog();
     afx_msg void OnBnClickedBtnCountMinus();
     afx_msg void OnBnClickedBtnCountPlus();
     afx_msg void OnLvnItemchangedListOptions(NMHDR* pNMHDR, LRESULT* pResult);
+    virtual void OnOK();
     DECLARE_MESSAGE_MAP()
 };

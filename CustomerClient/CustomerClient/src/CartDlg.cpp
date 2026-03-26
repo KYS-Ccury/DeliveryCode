@@ -580,45 +580,36 @@ void CartDlg::OnBnClickedBtnEditOption()
     CartItem& item = m_vecCart[n];
 
     OptionChangeDlg dlg(this);
-    dlg.m_strMenuName      = CA2T(item.menuName.c_str(), CP_UTF8);
-    dlg.m_nQuantity        = item.quantity;
-    dlg.m_nBasePrice       = item.basePrice;
-
-
-    // 해당 메뉴의 옵션 그룹 전달
-    // (OrderManager에서 캐시된 MenuInfo에서 찾기)
-    //auto menus = OrderManager::GetInstance().GetMenuData(
-    //    OrderManager::GetInstance().GetCurrentStoreID());
-    //for (const auto& mi : menus) {
-    //    if (mi.menuID == item.menuID) {
-    //        dlg.m_vecOptionGroups = mi.optionGroups;
-    //        break;
-    //    }
-    //}
-
-    // ★ CartItem에 저장된 optionGroups 직접 사용 (캐시 조회 불필요)
+    dlg.m_strMenuName = CA2T(item.menuName.c_str(), CP_UTF8);
+    dlg.m_nQuantity = item.quantity;
+    dlg.m_nBasePrice = item.basePrice;
     dlg.m_vecOptionGroups = item.optionGroups;
 
-    // ★ 기존 선택 옵션 ID 목록 → 체크 상태 복원용
+    // 기존 선택 옵션 체크 복원용
     dlg.m_vecPreCheckedOptionIDs.clear();
     for (const auto& sel : item.selectedOptions)
         dlg.m_vecPreCheckedOptionIDs.push_back(sel.optionID);
 
-    if (dlg.DoModal() == IDOK) {
+    // ★ DoModal() 호출 — 여기서 창이 열림
+    if (dlg.DoModal() == IDOK)
+    {
         if (dlg.m_nQuantity <= 0) {
             // 수량 0 → 장바구니에서 삭제
             m_vecCart.erase(m_vecCart.begin() + n);
-        } else {
+        }
+        else {
             item.quantity = dlg.m_nQuantity;
-
-            // ── 체크된 옵션으로 selectedOptions 갱신 ─────────
             item.selectedOptions.clear();
-            int row = 0;
+
+            // ★ DoModal 반환 후 m_vecResultOptionIDs로 비교 (GetCheck 사용 안 함)
             for (const auto& og : dlg.m_vecOptionGroups) {
                 for (const auto& oi : og.items) {
-                    if (dlg.m_listOptions.GetCheck(row))
+                    bool bChecked = std::find(
+                        dlg.m_vecResultOptionIDs.begin(),
+                        dlg.m_vecResultOptionIDs.end(),
+                        oi.optionID) != dlg.m_vecResultOptionIDs.end();
+                    if (bChecked)
                         item.selectedOptions.push_back(oi);
-                    row++;
                 }
             }
             item.CalculateTotalPrice();
