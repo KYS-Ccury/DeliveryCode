@@ -22,22 +22,22 @@ void Dispatcher::dispatch(Session* session, const PacketHeader& header, const st
 
     try {
         switch (cType) {
-            case ClientType::CUSTOMER:
-                CustomerHandler::getInstance().process(session, protocol, jsonBody);
-                break;
+            // case ClientType::CUSTOMER:
+            //     CustomerHandler::getInstance().process(session, protocol, jsonBody);
+            //     break;
 
             case ClientType::OWNER:
                 // OwnerHandler::getInstance().process(session, protocol, jsonBody);
                 std::cerr << "[Dispatcher] OWNER 미구현 protocol=" << protocol << std::endl;
                 break;
 
-            case ClientType::RIDER:
-                RiderHandler::getInstance().process(session, protocol, jsonBody);
-                break;
+            // case ClientType::RIDER:
+            //     RiderHandler::getInstance().process(session, protocol, jsonBody);
+            //     break;
 
-            case ClientType::ADMIN:
-                AdminHandler::getInstance().process(session, protocol, jsonBody);
-                break;
+            // case ClientType::ADMIN:
+            //     AdminHandler::getInstance().process(session, protocol, jsonBody);
+            //     break;
 
             default:
                 std::cerr << "[Dispatcher] 알 수 없는 ClientType: "

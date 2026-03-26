@@ -1,7 +1,8 @@
 #include "EpollServer.h"
-#include "CustomerHandler.h"
-#include "RiderHandler.h"
-#include "AdminHandler.h"
+// #include "CustomerHandler.h"
+// #include "RiderHandler.h"
+// #include "OwnerHandler.h"
+// #include "AdminHandler.h"
 #include <iostream>
 #include "Session.h"
 #include "ThreadPool.h"
@@ -12,6 +13,7 @@
 
 EpollServer::EpollServer(int port, ThreadPool* pool) 
     : port(port), server_fd(-1), epoll_fd(-1), pool(pool) {
+        s_instance = this;
 }
 
 EpollServer::~EpollServer() {
@@ -126,9 +128,11 @@ void EpollServer::rearmSocket(int client_fd) {
 }
 
 void EpollServer::closeConnection(int client_fd) {
-    // 모든 핸들러에서 세션 해제 (어떤 역할이든 안전하게 정리)
-    CustomerHandler::getInstance().unregisterSession(client_fd);
-    RiderHandler::getInstance().unregisterSession(client_fd);
+    // 1. 모든 핸들러에서 세션 완벽하게 해제
+    // CustomerHandler::getInstance().unregisterSession(client_fd);
+    // RiderHandler::getInstance().unregisterSession(client_fd);
+    // OwnerHandler::getInstance().unregisterSession(client_fd); // <-- 추가!
+    // AdminHandler::getInstance().unregisterSession(client_fd); // <-- 추가!
 
     std::lock_guard<std::mutex> lock(session_mutex);
     epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);
@@ -189,11 +193,11 @@ std::shared_ptr<Session> EpollServer::getSession(int fd) {
 }
 
 // ★ getSessionByUserID(): userID로 Session 포인터 반환 (없으면 nullptr)
-Session* EpollServer::getSessionByUserID(int userID) {
+std::shared_ptr<Session> EpollServer::getSessionByUserID(int userID) {
     std::lock_guard<std::mutex> lock(session_mutex);
     for (auto& kv : sessions) {
         if (kv.second && kv.second->getUserID() == userID)
-            return kv.second.get();
+            return kv.second; // 참조 카운트를 증가시켜 안전하게 반환
     }
     return nullptr;
 }
