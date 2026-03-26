@@ -1,0 +1,14 @@
+﻿//  紐⑤뱺 ?몃뱾?ш? ?곕씪???섎뒗 怨듯넻 ?명꽣?섏씠?ㅼ씠??
+
+#pragma once
+
+#include "../server/Packet.h"
+
+class IHandler {
+public:
+    //  媛???뚮㈇?먯씠??
+    virtual ~IHandler() = default;
+
+    //  ?⑦궥??泥섎━?섎뒗 ?명꽣?섏씠?ㅼ씠??
+    virtual void handle(const Packet& packet) = 0;
+};
