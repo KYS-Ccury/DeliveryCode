@@ -84,7 +84,7 @@ void CLoginDlg::OnBtnLogin()
     CT2A ansiPw(strPw);
 
     json loginReq;
-    loginReq["id"] = std::string(ansiId);    // TODO: 서버 필드명 확인
+    loginReq["login_id"] = std::string(ansiId);// TODO: 서버 필드명 확인
     loginReq["password"] = std::string(ansiPw);     // TODO: 서버 필드명 확인
 
     // clientType=4(관리자), protocol=101(로그인)
