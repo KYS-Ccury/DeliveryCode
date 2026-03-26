@@ -1,7 +1,7 @@
 #include "Dispatcher.h"
 #include "CustomerHandler.h"
 #include "RiderHandler.h"
-// #include "AdminHandler.h"
+#include "AdminHandler.h"
 // #include "OwnerHandler.h"
 #include "Session.h"
 #include "Struct.h"   // Packet.h에서 이름 변경됨
