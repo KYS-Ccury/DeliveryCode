@@ -9,6 +9,9 @@
 // ============================================================
 AdminHandler::AdminHandler()
     : BaseHandler(ClientType::ADMIN, "ADMIN")
+    , m_auth(*this)
+    , m_userManage(*this)
+    , m_chat(*this)
 {
 }
 
@@ -70,7 +73,7 @@ void AdminHandler::process(Session* session, uint16_t protocol, const std::strin
 // ============================================================
 // onSignup — 관리자 회원가입은 지원하지 않는다.
 // ============================================================
-void AdminHandler::onSignup(Session* session, const nlohmann::json& reqBody)
+void AdminHandler::onSignup(Session* session, int userId, const nlohmann::json& reqBody)
 {
     std::cout << "-------------------------" << std::endl;
     std::cout << "관리자" << std::endl;
