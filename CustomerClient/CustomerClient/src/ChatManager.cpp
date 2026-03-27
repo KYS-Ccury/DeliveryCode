@@ -1,28 +1,13 @@
 // ================================================================
-//  ChatManager.cpp  ─  실시간 채팅 구현 (NetworkManager 기반)
+//  ChatManager.cpp  (고객 채팅 완성 버전)
 //
-//  [프로토콜]
-//  ▶ 채팅방 생성/입장
-//    REQ CmdChat::REQ_CREATE_ROOM (600):
-//      { "target_id":"store_101", "target_type":"store" }
-//    RES: { "status":2000, "room_id":"room_abc123" }
+//  기존 ChatManager.cpp 를 완전히 대체한다.
 //
-//  ▶ 메시지 전송
-//    REQ CmdChat::REQ_SEND_MSG (601):
-//      { "room_id":"room_abc123", "message":"안녕하세요" }
-//    RES: { "status":2000 }
-//
-//  ▶ 메시지 수신 (서버 PUSH)
-//    NTF CmdChat::NTF_RECV_MSG (604):
-//      { "room_id":"room_abc123",
-//        "sender_id":"store_101",
-//        "message":"네, 안녕하세요!",
-//        "timestamp":"2024-05-22 12:31" }
-//
-//  ▶ 과거 메시지 조회
-//    REQ CmdChat::REQ_GET_MSGS (602):
-//      { "room_id":"room_abc123", "limit":50 }
-//    RES: { "status":2000, "messages":[...] }
+//  주요 변경:
+//    - room_id 를 int 로 관리
+//    - target_type "admin" / "owner" 로 채팅방 유형 구분
+//    - REQ_GET_MSGS(602) 응답을 콜백으로 수신 → WM_CHAT_HISTORY 전달
+//    - NTF_RECV_MSG(604) 수신 시 WM_CHAT_RECEIVED 전달
 // ================================================================
 #include "pch.h"
 #include "ChatManager.h"
@@ -30,8 +15,9 @@
 #include "AuthManager.h"
 #include "common/header/Types.h"
 
-// WM_CHAT_RECEIVED 는 ChatDlg.h 에 정의
-#define WM_CHAT_RECEIVED (WM_USER + 101)
+// WM 메시지 정의 (ChatManager.h 에 선언됨)
+// #define WM_CHAT_RECEIVED  (WM_USER + 101)
+// #define WM_CHAT_HISTORY   (WM_USER + 102)
 
 // ── 간이 JSON 헬퍼 ────────────────────────────────────────────
 static std::string CMJStr(const std::string& json, const std::string& key)
@@ -61,140 +47,241 @@ static std::string CMEscape(const std::string& s)
     return out;
 }
 
-// =================================================================
+// ================================================================
 
-ChatManager::ChatManager()
-    : m_hNotifyWnd(nullptr)
-{}
+ChatManager::ChatManager() : m_hNotifyWnd(nullptr), m_currentRoomId(0) {}
 
 bool ChatManager::IsConnected() const
 {
     return NetworkManager::GetInstance().IsConnected();
 }
 
-// 호환용 (실제 연결은 NetworkManager 에서 이미 완료됨)
-bool ChatManager::ConnectToServer(const std::string& ip, int port)
+bool ChatManager::ConnectToServer(const std::string& /*ip*/, int /*port*/)
 {
     return NetworkManager::GetInstance().IsConnected();
 }
 
-void ChatManager::SetCurrentChatPartner(const std::string& partnerID)
+// ================================================================
+//  CreateOrGetRoom  (신규 인터페이스)
+//
+//  target_type : "admin" | "owner"
+//  orderId     : owner 채팅일 때 주문 ID, admin 이면 0
+// ================================================================
+void ChatManager::CreateOrGetRoom(const std::string& targetType, int orderId)
 {
-    m_currentPartnerID = partnerID;
-}
-
-// ── 채팅방 생성/입장 ──────────────────────────────────────────
-void ChatManager::CreateOrGetRoom(const std::string& targetID,
-                                   const std::string& targetType)
-{
-    m_currentPartnerID = targetID;
+    m_currentTargetType = targetType;
 
     auto& net = NetworkManager::GetInstance();
     if (!net.IsConnected()) return;
 
-    // REQ_CREATE_ROOM (600)
-    std::string json =
-        "{\"target_id\":\""   + CMEscape(targetID)   + "\","
-        "\"target_type\":\"" + CMEscape(targetType) + "\"}";
+    // ── JSON 요청 구성 ────────────────────────────────────────
+    std::string json;
+    if (targetType == "owner") {
+        json = "{\"target_type\":\"owner\","
+               "\"order_id\":"  + std::to_string(orderId) + "}";
+    } else {
+        // admin (기본)
+        json = "{\"target_type\":\"admin\"}";
+    }
 
-    // 방 ID 응답 콜백 (일회성)
+    // ── 채팅방 생성 응답 콜백 등록 (일회성) ───────────────────
     net.RegisterCallback(CmdChat::REQ_CREATE_ROOM,
         [this](uint16_t, const std::string& body) {
             int status = CMJInt(body, "status");
-            if (status == (int)Status::SUCCESS)
-                m_currentRoomID = CMJStr(body, "room_id");
+            if (status == static_cast<int>(Status::SUCCESS)) {
+                m_currentRoomId = CMJInt(body, "room_id");
+                std::cout << "[ChatManager] 채팅방 입장 roomId="
+                          << m_currentRoomId << std::endl;
+
+                // 방 준비 완료 → 수신 콜백 등록 후 과거 메시지 요청
+                RegisterNtfCallback();
+                RegisterHistoryCallback();
+                RequestHistory();
+            }
         });
 
-    net.SendPacket((uint8_t)ClientType::CUSTOMER,
+    net.SendPacket(static_cast<uint8_t>(ClientType::CUSTOMER),
                    CmdChat::REQ_CREATE_ROOM, json);
 }
 
-// ── 수신 콜백 등록 ────────────────────────────────────────────
-void ChatManager::RegisterReceiveCallback(HWND hWnd)
+// ================================================================
+//  CreateOrGetRoom  (기존 인터페이스 호환)
+//  ChatDlg::OnInitDialog 에서 targetType = "admin"/"store" 로 호출함
+// ================================================================
+void ChatManager::CreateOrGetRoom(const std::string& targetID,
+                                   const std::string& targetType)
 {
-    m_hNotifyWnd = hWnd;
+    m_partnerLabel = targetID;
 
-    // NTF_RECV_MSG (604) 수신 시 ChatDlg 에 PostMessage
-    NetworkManager::GetInstance().RegisterCallback(CmdChat::NTF_RECV_MSG,
+    // 기존 targetType 값 → 새 포맷으로 변환
+    std::string newType = (targetType == "store" || targetType == "owner")
+                          ? "owner" : "admin";
+    // owner 타입이면 order_id 가 별도로 필요하나,
+    // 기존 인터페이스에는 orderId 가 없으므로 DeliveryOkDlg 쪽 신규 호출을 권장.
+    // 여기서는 admin 처럼 처리하거나, 호출부가 int 버전 인터페이스로 이미 전환됐다면
+    // 이 경로는 관리자 채팅(admin)에만 사용된다.
+    CreateOrGetRoom(newType, 0);
+}
+
+// ================================================================
+//  RegisterNtfCallback  —  NTF_RECV_MSG(604) 실시간 수신 등록
+// ================================================================
+void ChatManager::RegisterNtfCallback()
+{
+    auto& net = NetworkManager::GetInstance();
+    net.RegisterCallback(CmdChat::NTF_RECV_MSG,
         [this](uint16_t, const std::string& body) {
             if (!m_hNotifyWnd) return;
 
             ChatMessage* pMsg = new ChatMessage();
-            pMsg->senderID  = CMJStr(body, "sender_id");
-            pMsg->message   = CMJStr(body, "message");
-            pMsg->timestamp = CMJStr(body, "timestamp");
-            pMsg->isMine    = false;
+            pMsg->senderRole = CMJStr(body, "sender_role");
+            pMsg->senderID   = CMJStr(body, "sender_id");
+            pMsg->message    = CMJStr(body, "message");
+            pMsg->timestamp  = CMJStr(body, "sent_at");
 
-            // 로컬 히스토리에 추가
+            // 내 메시지인지 판별
+            std::string myId = AuthManager::GetInstance().GetCurrentUserID();
+            pMsg->isMine = (!myId.empty() && pMsg->senderID == myId);
+
+            // 로컬 캐시 추가
             {
                 std::lock_guard<std::mutex> lock(m_historyMutex);
-                m_chatHistory[m_currentPartnerID].push_back(*pMsg);
+                m_chatHistory[m_currentRoomId].push_back(*pMsg);
             }
 
             ::PostMessage(m_hNotifyWnd, WM_CHAT_RECEIVED, 0, (LPARAM)pMsg);
         });
 }
 
+// ================================================================
+//  RegisterHistoryCallback  —  REQ_GET_MSGS(602) 응답 등록
+// ================================================================
+void ChatManager::RegisterHistoryCallback()
+{
+    auto& net = NetworkManager::GetInstance();
+    net.RegisterCallback(CmdChat::REQ_GET_MSGS,
+        [this](uint16_t, const std::string& body) {
+            if (!m_hNotifyWnd) return;
+
+            // messages 배열 파싱
+            // 형식: {"status":2000,"room_id":7,"messages":[{...},{...}]}
+            std::vector<ChatMessage>* pList = new std::vector<ChatMessage>();
+
+            std::string myId = AuthManager::GetInstance().GetCurrentUserID();
+            std::string myRole = "CUSTOMER";
+
+            // messages 배열 추출 (간이 파서)
+            std::string arrToken = "\"messages\":[";
+            auto arrPos = body.find(arrToken);
+            if (arrPos != std::string::npos) {
+                arrPos += arrToken.size();
+                auto arrEnd = body.rfind(']');
+                if (arrEnd != std::string::npos && arrEnd > arrPos) {
+                    std::string arrStr = body.substr(arrPos, arrEnd - arrPos);
+                    // 각 { } 블록 추출
+                    size_t p = 0;
+                    while (p < arrStr.size()) {
+                        auto s = arrStr.find('{', p);
+                        if (s == std::string::npos) break;
+                        auto e = arrStr.find('}', s);
+                        if (e == std::string::npos) break;
+                        std::string item = arrStr.substr(s, e - s + 1);
+
+                        ChatMessage msg;
+                        msg.senderRole = CMJStr(item, "sender_role");
+                        msg.message    = CMJStr(item, "content");
+                        msg.timestamp  = CMJStr(item, "sent_at");
+                        msg.senderID   = msg.senderRole; // role 을 ID 대체 표시
+                        msg.isMine     = (msg.senderRole == myRole);
+
+                        pList->push_back(msg);
+                        p = e + 1;
+                    }
+                }
+            }
+
+            // 로컬 캐시 갱신
+            {
+                std::lock_guard<std::mutex> lock(m_historyMutex);
+                m_chatHistory[m_currentRoomId] = *pList;
+            }
+
+            // WM_CHAT_HISTORY 로 ChatDlg 에 전달
+            ::PostMessage(m_hNotifyWnd, WM_CHAT_HISTORY, 0, (LPARAM)pList);
+        });
+}
+
+// ================================================================
+//  RegisterReceiveCallback  —  ChatDlg 가 열릴 때 HWND 등록
+// ================================================================
+void ChatManager::RegisterReceiveCallback(HWND hWnd)
+{
+    m_hNotifyWnd = hWnd;
+    // CreateOrGetRoom 이 먼저 호출되고 roomId 가 이미 확정된 경우에는
+    // 여기서 바로 콜백 재등록
+    if (m_currentRoomId > 0) {
+        RegisterNtfCallback();
+        RegisterHistoryCallback();
+    }
+    // roomId 가 아직 0 이면 CreateOrGetRoom 의 응답 콜백 안에서 등록됨
+}
+
 void ChatManager::UnregisterReceiveCallback()
 {
     m_hNotifyWnd = nullptr;
     NetworkManager::GetInstance().UnregisterCallback(CmdChat::NTF_RECV_MSG);
+    NetworkManager::GetInstance().UnregisterCallback(CmdChat::REQ_GET_MSGS);
+    m_currentRoomId = 0;
 }
 
-// ── 메시지 전송 ───────────────────────────────────────────────
-bool ChatManager::SendMessageTo(const std::string& targetID,
-                                 const std::string& msg)
+// ================================================================
+//  RequestHistory  —  서버에 과거 메시지 100건 조회 요청
+// ================================================================
+void ChatManager::RequestHistory()
 {
+    if (m_currentRoomId <= 0) return;
     auto& net = NetworkManager::GetInstance();
-    if (!net.IsConnected()) return false;
-    if (m_currentRoomID.empty()) return false;
+    if (!net.IsConnected()) return;
 
     std::string json =
-        "{\"room_id\":\""  + CMEscape(m_currentRoomID) + "\","
-        "\"message\":\""  + CMEscape(msg)              + "\"}";
+        "{\"room_id\":"  + std::to_string(m_currentRoomId) +
+        ",\"limit\":100}";
 
-    // REQ_SEND_MSG (601)
-    net.SendPacket((uint8_t)ClientType::CUSTOMER,
+    net.SendPacket(static_cast<uint8_t>(ClientType::CUSTOMER),
+                   CmdChat::REQ_GET_MSGS, json);
+}
+
+// ================================================================
+//  SendMessage  —  메시지 전송
+// ================================================================
+bool ChatManager::SendMessage(const std::string& msg)
+{
+    auto& net = NetworkManager::GetInstance();
+    if (!net.IsConnected())     return false;
+    if (m_currentRoomId <= 0)   return false;
+
+    std::string json =
+        "{\"room_id\":"  + std::to_string(m_currentRoomId) +
+        ",\"message\":\"" + CMEscape(msg) + "\"}";
+
+    net.SendPacket(static_cast<uint8_t>(ClientType::CUSTOMER),
                    CmdChat::REQ_SEND_MSG, json);
-
-    // 로컬 히스토리에 내 메시지 추가
-    ChatMessage myMsg;
-    myMsg.senderID = AuthManager::GetInstance().GetCurrentUserID();
-    myMsg.message  = msg;
-    myMsg.isMine   = true;
-    {
-        std::lock_guard<std::mutex> lock(m_historyMutex);
-        m_chatHistory[targetID].push_back(myMsg);
-    }
     return true;
 }
 
-// ── 과거 메시지 조회 ──────────────────────────────────────────
-std::vector<ChatMessage> ChatManager::GetChatHistory(const std::string& targetID)
+// ================================================================
+//  GetChatHistory  (기존 인터페이스 호환 — 로컬 캐시 반환)
+// ================================================================
+std::vector<ChatMessage> ChatManager::GetChatHistory(const std::string&)
 {
-    // 로컬 캐시가 있으면 즉시 반환
-    {
-        std::lock_guard<std::mutex> lock(m_historyMutex);
-        auto it = m_chatHistory.find(targetID);
-        if (it != m_chatHistory.end() && !it->second.empty())
-            return it->second;
-    }
-
-    // 서버 조회 (REQ_GET_MSGS 602) — 비동기, 결과는 콜백으로 처리
-    auto& net = NetworkManager::GetInstance();
-    if (net.IsConnected() && !m_currentRoomID.empty()) {
-        std::string json =
-            "{\"room_id\":\"" + CMEscape(m_currentRoomID) + "\","
-            "\"limit\":50}";
-        net.SendPacket((uint8_t)ClientType::CUSTOMER,
-                       CmdChat::REQ_GET_MSGS, json);
-        // 응답은 NTF_RECV_MSG 콜백 루트로 처리됨
-    }
+    std::lock_guard<std::mutex> lock(m_historyMutex);
+    auto it = m_chatHistory.find(m_currentRoomId);
+    if (it != m_chatHistory.end()) return it->second;
     return {};
 }
 
 void ChatManager::OnMessageReceived(const ChatMessage& msg)
 {
     std::lock_guard<std::mutex> lock(m_historyMutex);
-    m_chatHistory[m_currentPartnerID].push_back(msg);
+    m_chatHistory[m_currentRoomId].push_back(msg);
 }

@@ -1,4 +1,15 @@
 #pragma once
+// ================================================================
+//  DeliveryOkDlg.h  (사장님 채팅 버튼 추가 버전)
+//
+//  변경 사항:
+//    - IDC_BTN_CHAT (1806) 버튼 클릭 핸들러 추가
+//      → ChatDlg 를 target_type="owner", order_id=m_nOrderId 로 열기
+//    - m_nOrderId 필드 추가 (호출자가 주문 ID 설정)
+//
+//  resource.h 에서 이미 정의됨:
+//    IDC_BTN_CHAT  1806  (기존 정의 재사용)
+// ================================================================
 #include "afxdialogex.h"
 #include "OrderInfo.h"
 
@@ -22,29 +33,32 @@ public:
     int     m_nTotalAmount      = 0;
     int     m_nEstimatedMinutes = 30;
 
-    // ── 추가 정보 (신규) ──────────────────────────────────────
-    CString m_strDeliveryAddr;   // 배달 주소
-    CString m_strOrderDateTime;  // 주문 시각
-    int     m_nUsedPoint    = 0; // 사용 포인트
-    int     m_nDeliveryFee  = 0; // 배달비
-    CString m_strPayMethod;      // 결제 수단명
+    // ── 추가 정보 ─────────────────────────────────────────────
+    CString m_strDeliveryAddr;
+    CString m_strOrderDateTime;
+    int     m_nUsedPoint    = 0;
+    int     m_nDeliveryFee  = 0;
+    CString m_strPayMethod;
 
-    // 기존 m_strOrderList(단순 문자열) 대신 구조체 벡터로 교체
+    // ★ 사장님 채팅에 사용할 주문 ID (int)
+    int     m_nOrderId      = 0;
+
     struct OrderLineItem {
         CString strMenuName;
-        CString strOptions;   // "옵션A +500, 옵션B +300" 형태
+        CString strOptions;
         int     nQuantity;
-        int     nPrice;       // 해당 항목 소계
+        int     nPrice;
     };
-    std::vector<OrderLineItem> m_vecOrderLines;  // 신규 추가
+    std::vector<OrderLineItem> m_vecOrderLines;
 
-    bool m_bDelivery = true;  // false면 포장(픽업)
+    bool m_bDelivery = true;
 
 protected:
     virtual void DoDataExchange(CDataExchange* pDX);
     virtual BOOL OnInitDialog();
 
     afx_msg void    OnBnClickedOk();
+    afx_msg void    OnBnClickedBtnChat();          // ★ 사장님 채팅
     afx_msg LRESULT OnOrderStatusChanged(WPARAM wParam, LPARAM lParam);
 
     DECLARE_MESSAGE_MAP()

@@ -536,6 +536,7 @@ LRESULT CartDlg::OnOrderResponse(WPARAM, LPARAM lParam)
         dlg.m_strPayMethod      = strPayLabel;
         dlg.m_bDelivery = m_bDelivery;    // ★ 포장/배달 플래그
 
+        dlg.m_nOrderId = (oid.empty()) ? 0 : std::stoi(oid);
         // ★ 옵션 포함 주문 항목 구성 (온라인 분기)
         for (const auto& item : m_vecCart)
         {

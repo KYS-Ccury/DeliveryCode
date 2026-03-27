@@ -1,5 +1,12 @@
 #pragma once
-#include "Basehandler.h" // 1. 대문자 H로 수정 완료
+// ============================================================
+//  CustomerHandler.h  (채팅 함수 추가 버전)
+//
+//  변경 사항:
+//    handleChatCreateRoom / handleChatSendMsg / handleChatGetMsgs
+//    3개 함수 추가 (Customer_Chat.cpp 에 구현)
+// ============================================================
+#include "Basehandler.h"
 
 class CustomerHandler : public BaseHandler {
 private:
@@ -18,19 +25,16 @@ public:
     void pushOrderStatus(Session* session, int orderID, int status, const std::string& msg);
 
 protected:
-
-    // 2. 구현부는 Customer_Auth.cpp에 있으므로 {} 를 빼고 ; 로 선언만 합니다.
-    // void onSignup(Session* session, const nlohmann::json& reqBody) override;
-    void onSignup(Session* session, int userId, const nlohmann::json& reqBody) override;
+    void onSignup      (Session* session, int userId, const nlohmann::json& reqBody) override;
     void onLoginSuccess(Session* session, int userId, const nlohmann::json& reqBody) override;
-    void onLogout(Session* session, int userId) override;
-    void onGetProfile(Session* session, int userId, const nlohmann::json& reqBody) override;
+    void onLogout      (Session* session, int userId) override;
+    void onGetProfile  (Session* session, int userId, const nlohmann::json& reqBody) override;
 
 private:
-    // 3. 회원 탈퇴 선언 추가
+    // 100번대 기타
     void handleWithdraw    (Session* s, const std::string& b); // 105
 
-    // 고객 전용 (CmdCustomer 200~210)
+    // 고객 전용 (CmdCustomer 200~212)
     void handleStoreList   (Session* s, const std::string& b); // 200
     void handleMenuList    (Session* s, const std::string& b); // 201
     void handleCreateOrder (Session* s, const std::string& b); // 202
@@ -40,4 +44,9 @@ private:
     void handleWriteReview (Session* s, const std::string& b); // 206
     void handleReviewList  (Session* s, const std::string& b); // 207
     void handleCancelOrder (Session* s, const std::string& b); // 208
+
+    // ── 채팅 (CmdChat 600~602) ──────────────────────────────
+    void handleChatCreateRoom(Session* s, const std::string& b); // 600
+    void handleChatSendMsg   (Session* s, const std::string& b); // 601
+    void handleChatGetMsgs   (Session* s, const std::string& b); // 602
 };
