@@ -78,6 +78,7 @@ static std::vector<StoreInfo> ParseStoreArray(const std::string& json)
         si.description        = MHJStr(o,"description");
         si.storeImageUrl      = MHJStr(o,"image_url");
         si.minOrderAmount     = MHJInt(o,"min_order");
+        si.deliveryFee        = MHJInt(o, "delivery_fee");
         si.distance           = MHJDouble(o,"distance");
         if (si.storeID > 0) stores.push_back(si);
         i = e + 1;

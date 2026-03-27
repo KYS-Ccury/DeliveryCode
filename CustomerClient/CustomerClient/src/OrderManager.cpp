@@ -80,6 +80,7 @@ static StoreInfo ParseStoreObj(const std::string& obj)
 
     // delivery_fee 는 숫자로 올 수도 있음
     int fee = OMJInt(obj, "delivery_fee");
+    s.deliveryFee = fee;
     if (fee > 0) {
         char buf[32];
         _itoa_s(fee, buf, 10);

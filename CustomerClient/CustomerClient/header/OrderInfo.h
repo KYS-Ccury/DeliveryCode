@@ -60,6 +60,8 @@ public:
 
     bool isDelivery;          // 수령 방법 (true: 배달, false: 포장)
 
+    int deliveryFee;          // 배달비
+
 
 
     // 상세 내역 조회를 위한 추가 필드

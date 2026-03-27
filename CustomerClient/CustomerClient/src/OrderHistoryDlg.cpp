@@ -102,6 +102,7 @@ static OrderInfo ParseOrderObj(const std::string& obj)
     info.storeName = OHJStr(obj, "store_name");
     info.orderDateTime = OHJStr(obj, "order_time");
     info.totalPayment = OHJInt(obj, "total_price");
+    info.deliveryFee = OHJInt(obj, "delivery_fee");
 
     info.deliveryStatus = OHJInt(obj, "status");
     std::string dm = OHJStr(obj, "delivery_method");
@@ -326,6 +327,14 @@ void OrderHistoryDlg::PopulateOrderInfo(const OrderInfo& info)
                     (LPCTSTR)strOpt, opt.extraPrice);
                 pLB->AddString(strOptLine);
             }
+        }
+
+        // ★ 추가: 배달비 출력
+        if (info.deliveryFee > 0) {
+            pLB->AddString(_T("------------------------------------------"));
+            CString strFee;
+            strFee.Format(_T("배달비  +%d원"), info.deliveryFee);
+            pLB->AddString(strFee);
         }
 
         if (info.items.empty())

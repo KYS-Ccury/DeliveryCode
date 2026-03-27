@@ -284,6 +284,11 @@ void CartDlg::UpdateCartUI()
         auto& om = OrderManager::GetInstance();
         // GetStoreDeliveryFee 같은 함수가 있다면 사용, 없다면 m_allStores 등에서 검색
         fee = om.GetDeliveryFeeByStore(currentStoreID);
+
+        //CString dbg;
+        //dbg.Format(_T("[DEBUG] m_bDelivery=%d, currentStoreID=%d, cartSize=%d"),
+        //    (int)m_bDelivery, currentStoreID, (int)m_vecCart.size());
+        //AfxMessageBox(dbg);
     }
 
     // 추가: 에디트 박스에서 현재 입력된 포인트 읽어오기
@@ -535,7 +540,10 @@ LRESULT CartDlg::OnOrderResponse(WPARAM, LPARAM lParam)
             }
             //if (m_bDelivery) totalAmt += 3000; // 배달비
             int actualFee = 0;
-            if (m_bDelivery && curStoreID != -1) {
+            if (res.contains("delivery_fee")) {
+                actualFee = res["delivery_fee"].get<int>(); // 서버가 준 값을 직접 신뢰
+            }
+            else if (m_bDelivery && curStoreID != -1) {
                 actualFee = OrderManager::GetInstance().GetDeliveryFeeByStore(curStoreID);
             }
 

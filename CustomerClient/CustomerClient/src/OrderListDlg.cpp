@@ -53,6 +53,7 @@ static OrderInfo ParseOLOrderObj(const json& j)
         info.storeName = j.value("store_name", "");
         info.orderDateTime = j.value("order_time", "");
         info.totalPayment = j.value("total_price", 0);
+        info.deliveryFee = j.value("delivery_fee", 0);
         info.deliveryStatus = (DeliveryStatus)j.value("status", 0);
 
         // 서버에서 보내주는 "DELIVERY" 또는 "PICKUP" 문자열을 bool 값으로 변환
@@ -322,6 +323,14 @@ void OrderListDlg::PopulateDetailPanel(int index)
                 (LPCTSTR)strOptName, opt.extraPrice);
             m_listItems.AddString(strOpt);
         }
+    }
+
+    // ★ 추가: 배달비 출력
+    if (o.deliveryFee > 0) {
+        m_listItems.AddString(_T("------------------------------------------"));
+        CString strFee;
+        strFee.Format(_T("배달비 (+%d원)"), o.deliveryFee);
+        m_listItems.AddString(strFee);
     }
 
     // 총 결제금액
