@@ -76,6 +76,9 @@ public:
     int  GetMyPoints();
     void SetMyPoints(int points);   // ★ 로그인 응답에서 포인트 저장
 
+    // 배달비
+    int GetDeliveryFeeByStore(int storeID);
+
 private:
     OrderManager();
     ~OrderManager() {}

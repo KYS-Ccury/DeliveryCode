@@ -43,4 +43,6 @@ void StoreInfo::Clear()
     storeImageUrl = "";
     description = "";
 
+    deliveryFee = 0;
+
 }

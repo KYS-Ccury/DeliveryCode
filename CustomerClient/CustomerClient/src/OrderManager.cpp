@@ -346,3 +346,14 @@ void OrderManager::RegisterOrderStatusCallback(
             if (callback) callback(oidStr, status, msg);
         });
 }
+
+int OrderManager::GetDeliveryFeeByStore(int storeID)
+{
+    // m_allStores는 OrderManager 내부에 저장된 가게 목록 변수명에 맞게 수정하세요.
+    for (const auto& store : m_allStores) {
+        if (store.storeID == storeID) {
+            return store.deliveryFee; // StoreInfo 구조체에 deliveryFee 멤버가 있어야 함
+        }
+    }
+    return 0; // 못 찾으면 0원
+}

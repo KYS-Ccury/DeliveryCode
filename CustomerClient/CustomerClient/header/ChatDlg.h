@@ -37,4 +37,5 @@ private:
     void AppendMessage(const ChatMessage& msg);
     void AppendSystemMsg(const CString& text);
     void ClearMessages();
+
 };

@@ -22,6 +22,13 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
             return;
         }
 
+        // 해당 가게의 배달비 조회
+        auto storeRows = db.executeQuery("SELECT base_delivery_fee FROM restaurants WHERE store_id = " + std::to_string(storeID));
+        int actualDeliveryFee = 0;
+        if (!storeRows.empty()) {
+            actualDeliveryFee = std::stoi(storeRows[0].at("delivery_fee"));
+        }
+
         int totalPrice = 0;
         for (auto& it : req["items"]) {
             int qty   = it.value("qty", 1);
@@ -30,6 +37,11 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
             if (it.contains("options"))
                 for (auto& opt : it["options"])
                     totalPrice += opt.value("extra_price", 0) * qty;
+        }
+
+        // 배달비 추가 로직
+        if (isDel) {
+            totalPrice += actualDeliveryFee; 
         }
 
         if (usePoint > 0) {
@@ -105,6 +117,7 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
         json res;
         res["status"]            = Status::SUCCESS;
         res["order_id"]          = (int)orderID;
+        res["delivery_fee"]      = actualDeliveryFee; // ★ 추가: 계산된 배달비를 응답에 포함
         res["estimated_minutes"] = 30;
         session->sendPacket(static_cast<uint8_t>(m_clientType), CmdCustomer::REQ_CREATE_ORDER, res.dump());
 
@@ -127,7 +140,7 @@ void CustomerHandler::handleOrderHistory(Session* session, const std::string&) {
         auto rows = db.executeQuery(
             "SELECT o.order_id, r.restaurant_name AS store_name, "
             "o.total_price, o.status, o.created_at AS order_time, "
-            "o.delivery_method, o.delivery_address "
+            "o.delivery_method, o.delivery_address, r.base_delivery_fee " // ★ r.base_delivery_fee 추가
             "FROM orders o "
             "JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
             "WHERE o.customer_id=" + std::to_string(uid) +
@@ -160,6 +173,7 @@ void CustomerHandler::handleOrderHistory(Session* session, const std::string&) {
             o["order_id"]        = oid;
             o["store_name"]      = r.at("store_name");
             o["total_price"]     = std::stoi(r.count("total_price") ? r.at("total_price") : "0");
+            o["delivery_fee"]    = std::stoi(r.count("delivery_fee") ? r.at("delivery_fee") : "0"); // ★ 추가
             o["status"]          = statusToInt(r.count("status") ? r.at("status") : "");
             o["order_time"]      = r.count("order_time")      ? r.at("order_time")      : "";
             o["delivery_method"] = r.count("delivery_method") ? r.at("delivery_method") : "";
@@ -236,7 +250,7 @@ void CustomerHandler::handleOrderDetail(Session* session, const std::string& bod
 
         // 3. 본인(uid)의 주문(orderID)이 맞는지 쿼리에서 안전하게 조회
         auto rows = db.executeQuery(
-            "SELECT o.order_id, r.restaurant_name AS store_name, r.phone AS store_phone, "
+            "SELECT o.order_id, r.restaurant_name AS store_name, r.phone AS store_phone, r.base_delivery_fee, "
             "o.total_price, o.status, o.created_at AS order_time, o.delivery_method, o.delivery_address "
             "FROM orders o JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
             "WHERE o.order_id=" + std::to_string(orderID) + " AND o.customer_id=" + std::to_string(uid));
@@ -254,6 +268,7 @@ void CustomerHandler::handleOrderDetail(Session* session, const std::string& bod
         res["store_name"]   = r.at("store_name");
         res["store_phone"]  = r.count("store_phone")  ? r.at("store_phone")  : "";
         res["total_price"]  = std::stoi(r.count("total_price") ? r.at("total_price") : "0");
+        res["delivery_fee"] = std::stoi(r.count("delivery_fee") ? r.at("delivery_fee") : "0"); // ★ 추가
         res["order_status"] = r.count("status") ? r.at("status") : "";
         res["order_time"]   = r.count("order_time") ? r.at("order_time") : "";
 

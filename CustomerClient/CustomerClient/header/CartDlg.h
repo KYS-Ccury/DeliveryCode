@@ -47,6 +47,7 @@ protected:
     afx_msg void    OnBnClickedRadioPickup();
     afx_msg LRESULT OnOrderResponse(WPARAM wParam, LPARAM lParam);
     afx_msg void OnBnClickedBtnAddrChange();
+    afx_msg void OnEnChangeEditUsePoint();
     DECLARE_MESSAGE_MAP()
 
 private:
@@ -57,6 +58,10 @@ private:
     std::vector<int>  m_vecCardIDs;
     std::string       m_strLastAddr;    // 주문 시 배달 주소 캐시
     int               m_nLastUsePoint{ 0 }; // 주문 시 포인트 사용액 캐시
+
+    // 1. 포인트 관련 변수 추가
+    int m_nUsePoint = 0;      // 실시간 입력 중인 포인트 (UpdateCartUI용)
+
 
     void LoadPaymentCards();
 };

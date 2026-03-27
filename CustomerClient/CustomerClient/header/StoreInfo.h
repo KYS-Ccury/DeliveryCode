@@ -20,6 +20,7 @@ public:
     std::string deliveryTime;       // 예상 배달 시간
     std::string storeImageUrl;      // 매장 대표 이미지 경로
     std::string description;        // 가게 소개글
+    int deliveryFee;                // 배달비
 
     StoreInfo();
     void Clear();
