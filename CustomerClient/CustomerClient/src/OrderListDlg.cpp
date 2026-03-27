@@ -23,6 +23,9 @@
 #include "NetworkManager.h"
 #include "AuthManager.h"
 #include "common/header/Types.h"
+#include "json.hpp"
+
+using json = nlohmann::json;
 
 #define WM_ORDERLIST_RESPONSE (WM_USER + 170)
 
@@ -33,72 +36,60 @@
 //static constexpr int STATUS_COMPLETE = 3;
 //static constexpr int STATUS_CANCELED = 4;
 
-// ─── 간이 JSON 파싱 ──────────────────────────────────────────
-static std::string OLJStr(const std::string& json, const std::string& key)
-{
-    std::string token = "\"" + key + "\":\"";
-    auto pos = json.find(token);
-    if (pos == std::string::npos) return "";
-    pos += token.size();
-    auto end = json.find('"', pos);
-    return (end == std::string::npos) ? "" : json.substr(pos, end - pos);
-}
-
-static int OLJInt(const std::string& json, const std::string& key)
-{
-    std::string token = "\"" + key + "\":";
-    auto pos = json.find(token);
-    if (pos == std::string::npos) return -1;
-    try { return std::stoi(json.substr(pos + token.size())); }
-    catch (...) { return -1; }
-}
-
-// JSON 배열에서 객체 추출
-static std::vector<std::string> OLExtractObjects(const std::string& json,
-    const std::string& arrayKey)
-{
-    std::vector<std::string> result;
-    std::string token = "\"" + arrayKey + "\":[";
-    auto arrPos = json.find(token);
-    if (arrPos == std::string::npos) return result;
-    size_t i = arrPos + token.size();
-    while (i < json.size()) {
-        auto objStart = json.find('{', i);
-        if (objStart == std::string::npos) break;
-        int depth = 0; size_t objEnd = objStart;
-        for (; objEnd < json.size(); ++objEnd) {
-            if (json[objEnd] == '{')      ++depth;
-            else if (json[objEnd] == '}') { if (--depth == 0) break; }
-        }
-        result.push_back(json.substr(objStart, objEnd - objStart + 1));
-        i = objEnd + 1;
-    }
-    return result;
-}
-
-// JSON → OrderInfo 파싱
-static OrderInfo ParseOLOrderObj(const std::string& obj)
+// JSON -> OrderInfo 파싱 (nlohmann/json 버전)
+static OrderInfo ParseOLOrderObj(const json& j)
 {
     OrderInfo info;
-    info.orderID = OLJStr(obj, "order_id");
-    info.storeID = OLJInt(obj, "store_id");
-    info.storeName = OLJStr(obj, "store_name");
-    info.orderDateTime = OLJStr(obj, "order_datetime");
-    info.totalPayment = OLJInt(obj, "total_payment");
-    info.deliveryStatus = OLJInt(obj, "status");
-    std::string dm = OLJStr(obj, "delivery_method");
-    info.isDelivery = (dm != "포장");
-    info.deliveryAddress = OLJStr(obj, "delivery_address");
 
-    // items 배열 파싱 → storeName 필드 재활용해 저장 (OrderInfo 구조에 따라 조정)
-    auto itemObjs = OLExtractObjects(obj, "items");
-    for (const auto& item : itemObjs) {
-        OrderItem oi;
-        oi.menuName = OLJStr(item, "menu_name");
-        oi.quantity = OLJInt(item, "quantity");
-        oi.price = OLJInt(item, "price");
-        info.items.push_back(oi);
+    try {
+        // 1. 주문 기본 정보
+        if (j.contains("order_id")) {
+            if (j["order_id"].is_number())
+                info.orderID = std::to_string(j["order_id"].get<int>());
+            else
+                info.orderID = j.value("order_id", "");
+        }
+
+        info.storeName = j.value("store_name", "");
+        info.orderDateTime = j.value("order_time", "");
+        info.totalPayment = j.value("total_price", 0);
+        info.deliveryStatus = (DeliveryStatus)j.value("status", 0);
+
+        // 서버에서 보내주는 "DELIVERY" 또는 "PICKUP" 문자열을 bool 값으로 변환
+        std::string dm = j.value("delivery_method", "");
+        if (dm == "DELIVERY") {
+            info.isDelivery = true;  // 배달
+        }
+        else {
+            info.isDelivery = false; // 포장(PICKUP)
+        }
+
+        // 2. 메뉴 및 옵션 파싱 (이 부분이 핵심입니다)
+        if (j.contains("items") && j["items"].is_array()) {
+            for (const auto& item : j["items"]) {
+                OrderItem oi;
+                oi.menuName = item.value("menu_name", "");
+                oi.quantity = item.value("quantity", 0);
+                oi.price = item.value("price", 0);
+
+                // ★ 추가: 옵션 배열 파싱 (서버의 "options" 키와 매칭)
+                if (item.contains("options") && item["options"].is_array()) {
+                    for (const auto& optJson : item["options"]) {
+                        OrderOptionInfo optInfo;
+                        optInfo.optionName = optJson.value("option_name", "");
+                        optInfo.extraPrice = optJson.value("extra_price", 0);
+                        oi.options.push_back(optInfo); // OrderItem의 options 벡터에 저장
+                    }
+                }
+
+                info.items.push_back(oi);
+            }
+        }
     }
+    catch (const std::exception& e) {
+        OutputDebugStringA(("JSON Parse Error: " + std::string(e.what())).c_str());
+    }
+
     return info;
 }
 
@@ -200,17 +191,34 @@ LRESULT OrderListDlg::OnOrderHistoryResponse(WPARAM, LPARAM lParam)
     std::string* pBody = reinterpret_cast<std::string*>(lParam);
     if (!pBody) return 0;
 
-    int status = OLJInt(*pBody, "status");
-    if (status == (int)Status::SUCCESS) {
-        m_vecOrders.clear();
-        auto orderObjs = OLExtractObjects(*pBody, "orders");
-        for (const auto& obj : orderObjs)
-            m_vecOrders.push_back(ParseOLOrderObj(obj));
-        RebuildOrderListUI();
+    try {
+        // 전체 응답 본문을 JSON으로 파싱
+        auto jRes = json::parse(*pBody);
+
+        // 서버의 Status::SUCCESS (2000) 확인
+        int status = jRes.value("status", -1);
+
+        if (status == 2000) { // Status::SUCCESS
+            m_vecOrders.clear();
+
+            // "orders" 배열을 순회하며 파싱
+            if (jRes.contains("orders") && jRes["orders"].is_array()) {
+                for (const auto& oJson : jRes["orders"]) {
+                    m_vecOrders.push_back(ParseOLOrderObj(oJson));
+                }
+            }
+            RebuildOrderListUI();
+        }
+        else {
+            m_listHistory.DeleteAllItems();
+            m_listHistory.InsertItem(0, _T("주문 내역이 없거나 가져오지 못했습니다."));
+        }
     }
-    else {
+    catch (json::parse_error& e) {
+        // JSON 형식이 잘못되었을 때 예외 처리
+        OutputDebugStringA(e.what());
         m_listHistory.DeleteAllItems();
-        m_listHistory.InsertItem(0, _T("주문 내역을 가져오지 못했습니다."));
+        m_listHistory.InsertItem(0, _T("데이터 파싱 오류가 발생했습니다."));
     }
 
     delete pBody;
@@ -292,8 +300,7 @@ void OrderListDlg::PopulateDetailPanel(int index)
 
     // 수령 방법
     CString strMethod = o.isDelivery ? _T("배달") : _T("포장(픽업)");
-    SetDlgItemText(IDC_STATIC_OL_METHOD,
-        _T("수령방법 : ") + strMethod);
+    SetDlgItemText(IDC_STATIC_OL_METHOD, _T("수령방법 : ") + strMethod);
 
     // 상태
     SetDlgItemText(IDC_STATIC_OL_STATUS, GetStatusText(o.deliveryStatus));
@@ -306,6 +313,15 @@ void OrderListDlg::PopulateDetailPanel(int index)
         strLine.Format(_T("%s  x%d  %d원"),
             (LPCTSTR)strName, item.quantity, item.price * item.quantity);
         m_listItems.AddString(strLine);
+
+        for (const auto& opt : item.options) {
+            CString strOpt;
+            CString strOptName = CA2T(opt.optionName.c_str(), CP_UTF8);
+            // └ 기호를 넣어 메뉴 아래에 포함된 옵션임을 표시
+            strOpt.Format(_T("   └ %s (+%d원)"),
+                (LPCTSTR)strOptName, opt.extraPrice);
+            m_listItems.AddString(strOpt);
+        }
     }
 
     // 총 결제금액
