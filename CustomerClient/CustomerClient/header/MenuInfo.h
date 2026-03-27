@@ -44,6 +44,8 @@ public:
 
     int menuID;                 // 메뉴 고유 ID
 
+    int storeID;                // 추가 매장ID
+
     std::string menuName;       // 음식명 (CUS-09)
 
     std::string description;    // ★ 메뉴 설명 (서버 "desc" 키)

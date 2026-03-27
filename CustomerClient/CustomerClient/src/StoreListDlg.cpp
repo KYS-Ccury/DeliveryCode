@@ -422,21 +422,29 @@ LRESULT StoreListDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM)
 
 BOOL StoreListDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 {
-    if (m_wndScrollMenu.GetSafeHwnd()) {
-        CRect r; m_wndScrollMenu.GetWindowRect(&r);
-        if (r.PtInRect(pt)) return m_wndScrollMenu.OnMouseWheel(nFlags,zDelta,pt);
+    int n = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR)->iItem;
+    if (n < 0) { *pResult=0; return; }
+    CString sel = m_listMenu.GetItemText(n,0);
+    // 컬럼 1이 메뉴명 (컬럼 0은 이미지)
+    CString sel1 = m_listMenu.GetItemText(n, 1);
+    if (!sel.IsEmpty() && sel1.IsEmpty()) sel1 = sel;
+    else if (!sel1.IsEmpty()) sel = sel1;
+    for (auto& m : m_vecMenuCache) {
+        if (CA2T(m.menuName.c_str(),CP_UTF8) == sel ||
+            CA2T(m.menuName.c_str(),CP_UTF8) == sel1) {
+            MenuDetailDlg dlg(this);
+            dlg.m_strMenuName = sel;
+            dlg.m_menuInfo    = m;
+            dlg.m_menuInfo.storeID = m_storeInfo.storeID;
+            dlg.DoModal(); break;
+        }
     }
-    return CDialogEx::OnMouseWheel(nFlags,zDelta,pt);
+    *pResult=0;
 }
-
-void StoreListDlg::OnBnClickedBtnBack()
+void StoreListDlg::OnBnClickedBtnCart()
 {
-    NetworkManager::GetInstance().UnregisterCallback(CmdCustomer::REQ_MENU_LIST);
-    NetworkManager::GetInstance().UnregisterCallback(CmdCustomer::REQ_GET_IMAGE);
-    EndDialog(IDCANCEL);
+    CartDlg dlg(this); if(dlg.DoModal()==IDOK) CDialogEx::OnOK();
 }
-
-void StoreListDlg::OnBnClickedBtnCart()  { CartDlg dlg(this); dlg.DoModal(); }
 
 void StoreListDlg::OnBnClickedBtnStoreInfo()
 {

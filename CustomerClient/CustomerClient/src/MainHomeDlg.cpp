@@ -86,6 +86,7 @@ static std::vector<StoreInfo> ParseStoreArray(const std::string& json)
         si.storeImageUrl      = MHJStr(o,"image_url");
         si.logoUrl            = MHJStr(o,"logo_url");  // ★ 로고
         si.minOrderAmount     = MHJInt(o,"min_order");
+        si.deliveryFee        = MHJInt(o, "delivery_fee");
         si.distance           = MHJDouble(o,"distance");
         if (si.storeID > 0) stores.push_back(si);
         i = e + 1;
@@ -468,7 +469,7 @@ void MainHomeDlg::OnNMDblclkListStor(NMHDR* pNMHDR, LRESULT* pResult)
 {
     int n = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR)->iItem;
     if (n >= 0 && n < (int)m_vecStoreCache.size()) {
-        OrderManager::GetInstance().SelectStore(m_vecStoreCache[n].storeID);
+        //OrderManager::GetInstance().SelectStore(m_vecStoreCache[n].storeID);
         StoreListDlg dlg(this);
         dlg.m_strStoreName = CA2T(m_vecStoreCache[n].storeName.c_str(),CP_UTF8);
         dlg.m_storeInfo    = m_vecStoreCache[n];  // logoUrl 포함됨

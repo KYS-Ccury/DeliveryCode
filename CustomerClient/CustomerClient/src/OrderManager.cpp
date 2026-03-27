@@ -80,6 +80,7 @@ static StoreInfo ParseStoreObj(const std::string& obj)
 
     // delivery_fee 는 숫자로 올 수도 있음
     int fee = OMJInt(obj, "delivery_fee");
+    s.deliveryFee = fee;
     if (fee > 0) {
         char buf[32];
         _itoa_s(fee, buf, 10);
@@ -189,7 +190,7 @@ std::vector<StoreInfo> OrderManager::GetStoresByCategory(const std::string& cate
 // ── 메뉴 데이터 로드 (내부 캐시 저장) ───────────────────────
 void OrderManager::LoadMenuData(int storeID, const std::string& /*category*/)
 {
-    m_currentStoreID = storeID;
+    //m_currentStoreID = storeID;
     // 실제 메뉴 로드는 StoreListDlg에서 REQ_MENU_LIST를 직접 송신하고
     // 응답을 캐시에 저장함 (아래 SetMenuCache 참조)
 }
@@ -220,10 +221,24 @@ void OrderManager::SetMenuCache(int storeID, const std::vector<MenuInfo>& menus)
 // ── 장바구니 ─────────────────────────────────────────────────
 bool OrderManager::AddToCart(int storeID, const CartItem& item)
 {
-    if (m_currentStoreID != -1 && m_currentStoreID != storeID)
-        return false; // 다른 가게 → 호출자에서 처리
+    // 로그 추가: 현재 상태를 강제로 출력
+    TRACE(_T("### AddToCart 호출 - 인자ID: %d, 내부ID: %d, 장바구니크기: %d\n"),
+        storeID, m_currentStoreID, (int)m_cartList.size());
 
-    m_currentStoreID = storeID;
+    // 1. 장바구니가 비어있다면 ID를 -1로 간주하여 초기화 허용
+    if (m_cartList.empty()) {
+        m_currentStoreID = -1;
+    }
+
+    // 2. 다른 가게 체크
+    if (m_currentStoreID != -1 && m_currentStoreID != storeID)
+        return false;
+
+    // 3. 첫 아이템이라면 가게 ID 설정
+    if (m_currentStoreID == -1) {
+        m_currentStoreID = storeID;
+    }
+
     m_cartList.push_back(item);
     return true;
 }
@@ -238,6 +253,7 @@ int OrderManager::GetTotalAmount() const
 {
     int total = 0;
     for (const auto& item : m_cartList)
+
         total += item.totalPrice;
     return total;
 }
