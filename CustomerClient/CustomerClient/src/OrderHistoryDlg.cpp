@@ -37,7 +37,11 @@
 #include "ReviewWriteDlg.h"
 #include "NetworkManager.h"
 #include "AuthManager.h"
+#include "OrderInfo.h"
 #include "common/header/Types.h"
+#include "json.hpp"
+
+using json = nlohmann::json;
 
 #define WM_ORDER_HISTORY_RESPONSE (WM_USER + 160)
 #define WM_ORDER_STATUS_PUSH      (WM_USER + 161)
@@ -88,15 +92,39 @@ static std::vector<std::string> OHExtractObjects(const std::string& json,
 static OrderInfo ParseOrderObj(const std::string& obj)
 {
     OrderInfo info;
-    info.orderID        = OHJStr(obj, "order_id");
-    info.storeID        = OHJInt(obj, "store_id");
-    info.storeName      = OHJStr(obj, "store_name");
-    info.orderDateTime  = OHJStr(obj, "order_datetime");
-    info.totalPayment   = OHJInt(obj, "total_payment");
+    info.orderID = OHJStr(obj, "order_id");  // 숫자면 아래 처리
+    // order_id가 숫자인 경우 대응
+    if (info.orderID.empty()) {
+        int oid = OHJInt(obj, "order_id");
+        if (oid > 0) info.orderID = std::to_string(oid);
+    }
+    info.storeID = OHJInt(obj, "store_id");
+    info.storeName = OHJStr(obj, "store_name");
+    info.orderDateTime = OHJStr(obj, "order_time");
+    info.totalPayment = OHJInt(obj, "total_price");
     info.deliveryStatus = OHJInt(obj, "status");
-    std::string dm      = OHJStr(obj, "delivery_method");
-    info.isDelivery     = (dm != "포장");
+    std::string dm = OHJStr(obj, "delivery_method");
+    info.isDelivery = (dm != "PICKUP");   // ★ 서버가 "DELIVERY"/"PICKUP"으로 보냄
     info.deliveryAddress = OHJStr(obj, "delivery_address");
+
+    // ★ items 파싱
+    auto itemObjs = OHExtractObjects(obj, "items");
+    for (const auto& iObj : itemObjs) {
+        OrderItem item;
+        item.menuName = OHJStr(iObj, "menu_name");
+        item.quantity = OHJInt(iObj, "quantity");
+        item.price = OHJInt(iObj, "price");
+
+        // 옵션 파싱
+        auto optObjs = OHExtractObjects(iObj, "options");
+        for (const auto& oObj : optObjs) {
+            OrderOptionInfo opt;
+            opt.optionName = OHJStr(oObj, "option_name");
+            opt.extraPrice = OHJInt(oObj, "extra_price");
+            item.options.push_back(opt);
+        }
+        info.items.push_back(item);
+    }
     return info;
 }
 
@@ -120,6 +148,7 @@ BEGIN_MESSAGE_MAP(OrderHistoryDlg, CDialogEx)
     //ON_BN_CLICKED(IDC_BTN_WRITE_REVIEW,     &OrderHistoryDlg::OnBnClickedBtnWriteReview)
     ON_MESSAGE(WM_ORDER_HISTORY_RESPONSE,   &OrderHistoryDlg::OnOrderHistoryResponse)
     ON_MESSAGE(WM_ORDER_STATUS_PUSH,        &OrderHistoryDlg::OnOrderStatusPush)
+    ON_WM_TIMER()  // ★ 추가
 END_MESSAGE_MAP()
 
 BOOL OrderHistoryDlg::OnInitDialog()
@@ -173,6 +202,9 @@ BOOL OrderHistoryDlg::OnInitDialog()
     // ── 서버에 주문 내역 요청 ─────────────────────────────────
     RequestOrderHistory();
 
+    // ★ 5초마다 상태 폴링 (주문 완료/취소되면 타이머 중단)
+    SetTimer(1, 5000, nullptr);
+
     return TRUE;
 }
 
@@ -191,21 +223,59 @@ void OrderHistoryDlg::RequestOrderHistory()
 // ── 주문 내역 서버 응답 ───────────────────────────────────────
 LRESULT OrderHistoryDlg::OnOrderHistoryResponse(WPARAM, LPARAM lParam)
 {
-    std::string* pBody = reinterpret_cast<std::string*>(lParam);
-    if (!pBody) return 0;
+    // 1. lParam을 안전하게 string 포인터로 받기
+    std::string* pRawBody = reinterpret_cast<std::string*>(lParam);
+    if (!pRawBody || pRawBody->empty()) return 0;
 
-    int status = OHJInt(*pBody, "status");
-    if (status == (int)Status::SUCCESS) {
-        m_vecOrders.clear();
-        auto orderObjs = OHExtractObjects(*pBody, "orders");
-        for (const auto& obj : orderObjs)
-            m_vecOrders.push_back(ParseOrderObj(obj));
+    try {
+        // 2. 문자열을 실제 JSON 객체로 파싱
+        nlohmann::json j = nlohmann::json::parse(*pRawBody);
 
-        // 가장 최근 주문(첫 번째)을 화면에 표시
-        if (!m_vecOrders.empty())
-            PopulateOrderInfo(m_vecOrders.front());
+        // 3. 서버 응답 성공 여부 확인 (Status::SUCCESS == 2000)
+        if (j.contains("status") && j["status"] == 2000) {
+            m_vecOrders.clear();
+
+            if (j.contains("orders") && j["orders"].is_array()) {
+                for (auto& obj : j["orders"]) {
+                    // obj(json 객체)를 OrderInfo 구조체로 변환하여 벡터에 저장
+                    // ParseOrderObj가 json 객체를 직접 받도록 수정되어 있다면 obj 전달,
+                    // 아니면 obj.dump() 전달
+                    m_vecOrders.push_back(ParseOrderObj(obj.dump()));
+                }
+            }
+
+            // 4. 데이터가 있다면 UI 갱신
+            if (!m_vecOrders.empty()) {
+                const OrderInfo& latestOrder = m_vecOrders.front();
+                int newStatus = latestOrder.deliveryStatus;
+
+                // ★ 상태가 바뀌었거나, 처음 데이터를 받은 경우 UI 갱신
+                if (m_nCurrentStatus == -1 || newStatus != m_nCurrentStatus) {
+                    m_nCurrentStatus = newStatus; // 현재 상태값 저장 (중요!)
+
+                    // 작성하신 UI 채우기 함수 호출
+                    PopulateOrderInfo(latestOrder);
+
+                    // 상태별 알림창
+                    if (newStatus == STATUS_COMPLETE) {
+                        AfxMessageBox(_T("배달이 완료되었습니다!\n맛있게 드세요!"), MB_ICONINFORMATION);
+                        KillTimer(1); // 완료 시 폴링 중단
+                    }
+                    else if (newStatus == STATUS_CANCELED) {
+                        AfxMessageBox(_T("주문이 취소되었습니다."), MB_ICONWARNING);
+                        KillTimer(1); // 취소 시 폴링 중단
+                    }
+                }
+            }
+        }
     }
-    delete pBody;
+    catch (const std::exception& e) {
+        // 파싱 에러 발생 시 로그 (한글 깨짐이나 키 이름 불일치 등)
+        TRACE(_T("JSON Parse Error in Response: %S\n"), e.what());
+    }
+
+    // 5. 서버에서 new한 메모리 해제 (메모리 누수 방지)
+    delete pRawBody;
     return 0;
 }
 
@@ -225,24 +295,42 @@ void OrderHistoryDlg::PopulateOrderInfo(const OrderInfo& info)
     SetDlgItemText(IDC_STATIC_FINAL_TOTAL, strAmt);
 
     CString strMethod = info.isDelivery ? _T("배달") : _T("포장(픽업)");
-    CString strTime   = CA2T(info.orderDateTime.c_str(), CP_UTF8);
+    CString strTime = CA2T(info.orderDateTime.c_str(), CP_UTF8);
     CString strEst;
-    strEst.Format(_T("수령 방법: %s  |  주문시간: %s"),
-                  (LPCTSTR)strMethod, (LPCTSTR)strTime);
+    strEst.Format(_T("수령방법: %s  |  주문시간: %s"),
+        (LPCTSTR)strMethod, (LPCTSTR)strTime);
     SetDlgItemText(IDC_STATIC_ESTIMATED_TIME, strEst);
 
     UpdateStatusBar(info.deliveryStatus);
 
-    // 배달 완료 상태일 때만 리뷰 작성 버튼 활성화
-    //CWnd* pReviewBtn = GetDlgItem(IDC_BTN_WRITE_REVIEW);
-    //if (pReviewBtn) {
-    //    bool canReview = (info.deliveryStatus == STATUS_COMPLETE);
-    //    pReviewBtn->EnableWindow(canReview ? TRUE : FALSE);
-    //    pReviewBtn->ShowWindow(SW_SHOW);
-    //}
+    // ★ 주문 메뉴 + 옵션 리스트박스 채우기
+    CWnd* pListWnd = this->GetDlgItem(IDC_LIST_ORDER_ITEMS);
+    if (pListWnd) {
+        CListBox* pLB = static_cast<CListBox*>(pListWnd);
+        pLB->ResetContent();
 
-    // 주문 아이템은 별도 REQ_ORDER_DETAIL(204)로 조회하거나
-    // orders 배열 내 items 필드를 파싱해 listbox에 추가
+        for (const auto& item : info.items) {
+            // 메뉴명 + 수량 + 가격
+            CString strMenu = CA2T(item.menuName.c_str(), CP_UTF8);
+            CString strLine;
+            strLine.Format(_T("%s  x%d  %d원"),
+                (LPCTSTR)strMenu, item.quantity, item.price * item.quantity);
+            pLB->AddString(strLine);
+
+            // 옵션 들여쓰기 표시
+            for (const auto& opt : item.options) {
+                CString strOpt = CA2T(opt.optionName.c_str(), CP_UTF8);
+                CString strOptLine;
+                strOptLine.Format(_T("    ∟ %s  +%d원"),
+                    (LPCTSTR)strOpt, opt.extraPrice);
+                pLB->AddString(strOptLine);
+            }
+        }
+
+        if (info.items.empty())
+            pLB->AddString(_T("주문 내역을 불러오는 중..."));
+    }
+
     m_strOrderNum = strOrderID;
     m_strShopName = strStore;
     m_nTotalAmount = info.totalPayment;
@@ -298,9 +386,24 @@ void OrderHistoryDlg::OnBnClickedBtnChat()
 
 void OrderHistoryDlg::OnBnClickedBtnBack()
 {
+    KillTimer(1);  // ★ 추가
     NetworkManager::GetInstance().UnregisterCallback(CmdCustomer::REQ_ORDER_HISTORY);
     NetworkManager::GetInstance().UnregisterCallback(CmdCustomer::NTF_ORDER_STATUS);
     EndDialog(IDCANCEL);
+}
+
+void OrderHistoryDlg::OnTimer(UINT_PTR nIDEvent)
+{
+    if (nIDEvent == 1) {
+        // 이미 완료/취소된 상태면 폴링 중단
+        if (m_nCurrentStatus == STATUS_COMPLETE ||
+            m_nCurrentStatus == STATUS_CANCELED) {
+            KillTimer(1);
+            return;
+        }
+        RequestOrderHistory();  // 재조회 요청
+    }
+    CDialogEx::OnTimer(nIDEvent);
 }
 
 // ── 리뷰 작성 버튼 ───────────────────────────────────────────

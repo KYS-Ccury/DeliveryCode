@@ -40,6 +40,7 @@ protected:
     // 서버 응답 핸들러
     afx_msg LRESULT OnOrderHistoryResponse(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnOrderStatusPush(WPARAM wParam, LPARAM lParam);
+    afx_msg void OnTimer(UINT_PTR nIDEvent);  // ★ 추가
 
     DECLARE_MESSAGE_MAP()
 
