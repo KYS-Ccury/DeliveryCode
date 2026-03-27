@@ -43,14 +43,12 @@ void CustomerHandler::handleStoreList(Session* session, const std::string& body)
             "SELECT r.restaurant_id AS id, r.restaurant_name AS name, "
             "fc.category_name AS category, r.base_delivery_fee AS delivery_fee, "
             "r.min_order_amt, r.rating_avg AS rating, r.address, r.phone, "
-            "r.notice AS description, r.latitude, r.longitude, "
+            "r.notice AS description, r.latitude, r.longitude, r.logo_url, "
             "r.business_hours AS open_time, r.holiday "
             "FROM restaurants r "
             "JOIN food_categories fc ON fc.category_id = r.category_id "
             "WHERE r.is_open = TRUE ";
         if (!category.empty() && category != "전체")
-            q += "AND fc.category_name='" + CommonDB::getInstance().escape(category) + "' ";
-            q += "AND fc.category_name='" + CommonDB::getInstance().escape(category) + "' ";
         q += "ORDER BY r.rating_avg DESC";
 
         auto rows = db.executeQuery(q);
@@ -130,7 +128,6 @@ void CustomerHandler::handleMenuList(Session* session, const std::string& body) 
             "FROM menus m JOIN menu_categories mc ON mc.menu_category_id = m.menu_category_id "
             "WHERE mc.restaurant_id=" + std::to_string(storeID);
         if (!subCat.empty() && subCat != "전체")
-            menuQ += " AND mc.category_name='" + CommonDB::getInstance().escape(subCat) + "'";
             menuQ += " AND mc.category_name='" + CommonDB::getInstance().escape(subCat) + "'";
         menuQ += " ORDER BY mc.sort_order, mc.menu_category_id, m.menu_id";
 
