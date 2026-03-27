@@ -44,6 +44,9 @@ private:
     void handleWriteReview (Session* s, const std::string& b); // 206
     void handleReviewList  (Session* s, const std::string& b); // 207
     void handleCancelOrder (Session* s, const std::string& b); // 208
+    void handleMyPoint      (Session* s, const std::string& b); // 209
+    void handleChangePassword(Session* s, const std::string& b); // 211
+    void handleMyInfo       (Session* s, const std::string& b); // 212
 
     // ── 채팅 (CmdChat 600~602) ──────────────────────────────
     void handleChatCreateRoom(Session* s, const std::string& b); // 600

@@ -63,7 +63,10 @@ void CustomerHandler::process(Session* session, uint16_t protocol, const std::st
             case CmdCustomer::REQ_PAYMENT:       handlePayment     (session, body); break;
             case CmdCustomer::REQ_WRITE_REVIEW:  handleWriteReview (session, body); break;
             case CmdCustomer::REQ_REVIEW_LIST:   handleReviewList  (session, body); break;
-            case CmdCustomer::REQ_CANCEL_ORDER:  handleCancelOrder (session, body); break;
+            case CmdCustomer::REQ_CANCEL_ORDER:    handleCancelOrder   (session, body); break;
+            case CmdCustomer::REQ_MY_POINT:        handleMyPoint       (session, body); break;
+            case CmdCustomer::REQ_CHANGE_PASSWORD: handleChangePassword(session, body); break;
+            case CmdCustomer::REQ_MY_INFO:         handleMyInfo        (session, body); break;
             default:
                 std::cerr << "[CustomerHandler] 알 수 없는 200번대 프로토콜: " << protocol << "\n";
                 sendError(session, protocol, Status::BAD_REQUEST, "Unknown protocol");
