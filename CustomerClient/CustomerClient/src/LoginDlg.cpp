@@ -50,6 +50,7 @@
 
 // ── 기본 서버 설정 ────────────────────────────────────────────
 static const TCHAR* DEFAULT_SERVER_IP   = _T("10.10.10.122");
+// static const TCHAR* DEFAULT_SERVER_IP   = _T("127.0.0.1");
 static const TCHAR* DEFAULT_SERVER_PORT = _T("8080");
 
 // ── JSON 파싱 헬퍼 ────────────────────────────────────────────

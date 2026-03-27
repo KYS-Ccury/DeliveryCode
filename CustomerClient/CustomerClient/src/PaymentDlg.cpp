@@ -166,6 +166,7 @@ BEGIN_MESSAGE_MAP(PaymentDlg, CDialogEx)
     ON_MESSAGE(WM_PROFILE_RESPONSE,   &PaymentDlg::OnProfileResponse)
     ON_MESSAGE(WM_ADDCARD_RESPONSE,   &PaymentDlg::OnAddCardResponse)
     ON_MESSAGE(WM_DELCARD_RESPONSE,   &PaymentDlg::OnDelCardResponse)
+    ON_MESSAGE(WM_SETDEFAULT_RESPONSE, &PaymentDlg::OnSetDefaultResponse)
 END_MESSAGE_MAP()
 
 // ── 초기화 ────────────────────────────────────────────────────
@@ -322,6 +323,7 @@ void PaymentDlg::OnBnClickedOk()
         "\"card_num_masked\":\"" + maskedStr + "\","
         "\"method_type\":\"CARD\"}";
 
+    net.UnregisterCallback(CmdCommon::REQ_GET_PROFILE);  // ★ 추가
     net.RegisterCallback(CmdCommon::REQ_GET_PROFILE,
         [this](uint16_t, const std::string& body) {
             std::string* pBody = new std::string(body);
@@ -407,6 +409,7 @@ void PaymentDlg::OnBnClickedDeleteCard()
         "{\"request_type\":\"delete_card\","
         "\"payment_method_id\":" + std::to_string(cardID) + "}";
 
+    net.UnregisterCallback(CmdCommon::REQ_GET_PROFILE);  // ★ 추가
     net.RegisterCallback(CmdCommon::REQ_GET_PROFILE,
         [this](uint16_t, const std::string& body) {
             std::string* pb = new std::string(body);
@@ -481,15 +484,27 @@ void PaymentDlg::OnBnClickedSetDefault()
         "{\"request_type\":\"set_default_card\","
         "\"payment_method_id\":" + std::to_string(cardID) + "}";
 
+    // net.UnregisterCallback(CmdCommon::REQ_GET_PROFILE);  // ★ 추가
+    // net.RegisterCallback(CmdCommon::REQ_GET_PROFILE,
+    //     [this](uint16_t, const std::string& body) {
+    //         std::string* pb = new std::string(body);
+    //         // 성공하면 목록 재조회 (WM_PROFILE_RESPONSE 재활용)
+    //         this->PostMessage(WM_PROFILE_RESPONSE, 0, (LPARAM)pb);
+    //     });
+
+    // m_bWaiting.store(true);
+    // net.SendPacket((uint8_t)ClientType::CUSTOMER, CmdCommon::REQ_GET_PROFILE, json);
+    net.UnregisterCallback(CmdCommon::REQ_GET_PROFILE);
     net.RegisterCallback(CmdCommon::REQ_GET_PROFILE,
         [this](uint16_t, const std::string& body) {
             std::string* pb = new std::string(body);
-            // 성공하면 목록 재조회 (WM_PROFILE_RESPONSE 재활용)
-            this->PostMessage(WM_PROFILE_RESPONSE, 0, (LPARAM)pb);
+            // ★ WM_PROFILE_RESPONSE 대신 전용 메시지 사용
+            this->PostMessage(WM_SETDEFAULT_RESPONSE, 0, (LPARAM)pb);
         });
 
     m_bWaiting.store(true);
     net.SendPacket((uint8_t)ClientType::CUSTOMER, CmdCommon::REQ_GET_PROFILE, json);
+
 }
 
 // ── 취소 버튼 ─────────────────────────────────────────────────
@@ -523,4 +538,34 @@ void PaymentDlg::SaveCardsToCache()
 void PaymentDlg::LoadCardsFromCache()
 {
     m_vecCards = g_cachedCards;
+}
+
+LRESULT PaymentDlg::OnSetDefaultResponse(WPARAM, LPARAM lParam)
+{
+    std::string* pBody = reinterpret_cast<std::string*>(lParam);
+    m_bWaiting.store(false);
+
+    if (pBody) {
+        int status = PJInt(*pBody, "status");
+        delete pBody;
+
+        if (status == (int)Status::SUCCESS) {
+            // ★ 성공하면 목록 재조회 요청
+            auto& net = NetworkManager::GetInstance();
+            if (net.IsConnected()) {
+                net.UnregisterCallback(CmdCommon::REQ_GET_PROFILE);
+                net.RegisterCallback(CmdCommon::REQ_GET_PROFILE,
+                    [this](uint16_t, const std::string& body) {
+                        std::string* pb = new std::string(body);
+                        this->PostMessage(WM_PROFILE_RESPONSE, 0, (LPARAM)pb);
+                    });
+                net.SendPacket((uint8_t)ClientType::CUSTOMER,
+                               CmdCommon::REQ_GET_PROFILE,
+                               "{\"request_type\":\"get_cards\"}");
+            }
+        } else {
+            AfxMessageBox(_T("기본 카드 설정에 실패했습니다."), MB_ICONERROR);
+        }
+    }
+    return 0;
 }

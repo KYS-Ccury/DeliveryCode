@@ -174,7 +174,7 @@ void CustomerHandler::onGetProfile(Session* session, int userId, const json& req
             db.executeUpdate(
                 "UPDATE payment_methods SET is_default=FALSE WHERE user_id=" +
                 std::to_string(userId));
-            // 새 기본 카드 설정 (본인 카드만)
+            // 새 기본 카드 설정
             db.executeUpdate(
                 "UPDATE payment_methods SET is_default=TRUE "
                 "WHERE payment_method_id=" + std::to_string(pmID) +

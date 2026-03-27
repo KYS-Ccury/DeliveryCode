@@ -4,6 +4,8 @@
 #include "ChatUtil.h"
 #include <iostream>
 
+using json = nlohmann::json;
+
 void CustomerHandler::process(Session* session, uint16_t protocol, const std::string& body) {
     // 1. 100번대 공통 프로토콜 처리 (switch문으로 통일)
     if (protocol >= 100 && protocol <= 199) {
@@ -11,7 +13,36 @@ void CustomerHandler::process(Session* session, uint16_t protocol, const std::st
             case CmdCommon::REQ_SIGNUP:      handleSignup(session, body); break;
             case CmdCommon::REQ_LOGIN:       handleLogin(session, body); break;
             case CmdCommon::REQ_LOGOUT:      handleLogout(session, body); break;
-            case CmdCommon::REQ_GET_PROFILE: handleGetProfile(session, body); break;
+            // case CmdCommon::REQ_GET_PROFILE: handleGetProfile(session, body); break;
+
+            case CmdCommon::REQ_GET_PROFILE:
+            {
+                // ★ 카드 관련 요청은 BaseHandler 거치지 않고 직접 처리
+                try {
+                    json req = json::parse(body.empty() ? "{}" : body);
+                    std::string reqType = req.value("request_type", "");
+
+                    if (reqType == "get_cards"        ||
+                        reqType == "add_card"         ||
+                        reqType == "delete_card"      ||
+                        reqType == "set_default_card")
+                    {
+                        int uid = getUserIdByFd(session->getFd());
+                        if (uid <= 0) {
+                            sendError(session, CmdCommon::REQ_GET_PROFILE,
+                                      Status::UNAUTHORIZED, "로그인이 필요합니다.");
+                            break;
+                        }
+                        onGetProfile(session, uid, req);  // Customer_Auth.cpp의 카드 처리로 직행
+                        break;
+                    }
+                } catch (...) {}
+
+                // 카드 관련 아니면 BaseHandler 기존 흐름대로
+                handleGetProfile(session, body);
+                break;
+            }
+
             case CmdCommon::REQ_WITHDRAW:    handleWithdraw(session, body); break; // 105번 탈퇴
             default:
                 // 필요시 공통 프로토콜 에러 처리
