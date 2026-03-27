@@ -38,7 +38,6 @@ public:
     std::shared_ptr<Session> getSession(int fd);
 
     // userID → Session 반환 (없으면 nullptr)
-    Session* getSessionByUserID(int userID);
-
+    std::shared_ptr<Session> getSessionByUserID(int userID);
     static EpollServer* s_instance;
 };

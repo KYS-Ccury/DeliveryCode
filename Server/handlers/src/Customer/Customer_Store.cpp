@@ -1,7 +1,9 @@
-#include "CustomerHandler.h"
+﻿#include "CustomerHandler.h"
 #include "MariaDBManager.h"
 #include "Protocol.h"
 #include <cmath>
+
+#include "CommonDB.h"
 
 using json = nlohmann::json;
 
@@ -45,7 +47,7 @@ void CustomerHandler::handleStoreList(Session* session, const std::string& body)
             "JOIN food_categories fc ON fc.category_id = r.category_id "
             "WHERE r.is_open = TRUE ";
         if (!category.empty() && category != "전체")
-            q += "AND fc.category_name='" + escapeStr(category) + "' ";
+            q += "AND fc.category_name='" + CommonDB::getInstance().escape(category) + "' ";
         q += "ORDER BY r.rating_avg DESC";
 
         auto rows = db.executeQuery(q);
@@ -73,6 +75,27 @@ void CustomerHandler::handleStoreList(Session* session, const std::string& body)
             double km = (sLat!=0.0 && sLng!=0.0) ? std::round(calcDistanceKm(userLat,userLng,sLat,sLng)*10)/10.0 : 0.0;
             s["distance"]      = km;
             s["delivery_time"] = (km > 0.0) ? estimateDeliveryTime(km) : "20~30분";
+
+            // 가게 대표 이미지: 해당 가게의 첫 번째 메뉴 이미지 사용
+            int rid = s["id"].get<int>();
+            auto imgRows = db.executeQuery(
+                "SELECT m.image_url FROM menus m "
+                "JOIN menu_categories mc ON mc.menu_category_id = m.menu_category_id "
+                "WHERE mc.restaurant_id=" + std::to_string(rid) +
+                "  AND m.image_url IS NOT NULL AND m.image_url != '' "
+                "ORDER BY m.menu_id LIMIT 1");
+            // ★ image_url이 없으면 placeholder_<restaurant_id> 사용
+            //   서버가 REQ_GET_IMAGE(217)로 요청받으면 컬러 PNG를 동적 생성
+            if (!imgRows.empty() && imgRows[0].count("image_url") &&
+                !imgRows[0].at("image_url").empty()) {
+                s["image_url"] = imgRows[0].at("image_url");
+            } else {
+                s["image_url"] = "placeholder_" + std::to_string(rid);
+            }
+            // ★ 디버그 로그 — 빌드 확인 후 제거 가능
+            std::cout << "[Store] id=" << rid
+                      << " image_url=" << s["image_url"].get<std::string>() << "\n";
+
             stores.push_back(s);
         }
         json res; res["status"] = Status::SUCCESS; res["stores"] = stores;
@@ -104,7 +127,7 @@ void CustomerHandler::handleMenuList(Session* session, const std::string& body) 
             "FROM menus m JOIN menu_categories mc ON mc.menu_category_id = m.menu_category_id "
             "WHERE mc.restaurant_id=" + std::to_string(storeID);
         if (!subCat.empty() && subCat != "전체")
-            menuQ += " AND mc.category_name='" + escapeStr(subCat) + "'";
+            menuQ += " AND mc.category_name='" + CommonDB::getInstance().escape(subCat) + "'";
         menuQ += " ORDER BY mc.sort_order, mc.menu_category_id, m.menu_id";
 
         auto menuRows = db.executeQuery(menuQ);

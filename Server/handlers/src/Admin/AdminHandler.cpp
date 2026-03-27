@@ -2,7 +2,7 @@
 #include "Protocol.h"
 #include <iostream>
 
-using json = nlohmann::json;
+// using json = nlohmann::json;
 
 // ============================================================
 // 싱글톤 생성자 — BaseHandler에 ADMIN 타입과 역할명을 전달한다.
@@ -51,13 +51,13 @@ void AdminHandler::process(Session* session, uint16_t protocol, const std::strin
     case CmdAdmin::REQ_MANAGE_REVIEW:  handleManageReview (session, jsonBody); return;
     }
 
-    // ── 600번대: 채팅 ──
-    switch (protocol)
-    {
-    case CmdChat::REQ_SEND_MSG:   handleSendMsg (session, jsonBody); return;
-    case CmdChat::REQ_GET_MSGS:   handleGetMsgs (session, jsonBody); return;
-    case CmdChat::REQ_ROOM_LIST:  handleRoomList(session, jsonBody); return;
-    }
+//     // ── 600번대: 채팅 ──
+//     switch (protocol)
+//     {
+//     case CmdChat::REQ_SEND_MSG:   handleSendMsg (session, jsonBody); return;
+//     case CmdChat::REQ_GET_MSGS:   handleGetMsgs (session, jsonBody); return;
+//     case CmdChat::REQ_ROOM_LIST:  handleRoomList(session, jsonBody); return;
+//     }
 
     // 미처리 프로토콜 로그를 출력한다.
     std::cout << "-------------------------" << std::endl;

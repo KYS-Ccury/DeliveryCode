@@ -2,6 +2,8 @@
 #include "MariaDBManager.h"
 #include "Protocol.h"
 
+#include "CommonDB.h"
+
 using json = nlohmann::json;
 void CustomerHandler::handleWriteReview(Session* session, const std::string& body) {
     try {
@@ -33,7 +35,7 @@ void CustomerHandler::handleWriteReview(Session* session, const std::string& bod
 
         // 5. 리뷰 저장
         bool ok = db.executeUpdate("INSERT INTO reviews (order_id, customer_id, rating, content) VALUES ("
-            + std::to_string(orderID) + "," + std::to_string(uid) + "," + std::to_string(rating) + ",'" + escapeStr(content) + "')");
+            + std::to_string(orderID) + "," + std::to_string(uid) + "," + std::to_string(rating) + ",'" + CommonDB::getInstance().escape(content) + "')");
         if (!ok) { sendError(session, CmdCustomer::REQ_WRITE_REVIEW, Status::SERVER_ERROR, "저장 실패"); return; }
 
         // 6. 식당 평균 별점 업데이트 로직 (훌륭합니다!)

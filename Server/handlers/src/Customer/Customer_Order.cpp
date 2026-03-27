@@ -2,6 +2,8 @@
 #include "MariaDBManager.h"
 #include "Protocol.h"
 
+#include "CommonDB.h"
+
 using json = nlohmann::json;
 void CustomerHandler::handleCreateOrder(Session* session, const std::string& body) {
     try {
@@ -20,6 +22,13 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
             return;
         }
 
+        // 해당 가게의 배달비 조회
+        auto storeRows = db.executeQuery("SELECT base_delivery_fee FROM restaurants WHERE store_id = " + std::to_string(storeID));
+        int actualDeliveryFee = 0;
+        if (!storeRows.empty()) {
+            actualDeliveryFee = std::stoi(storeRows[0].at("delivery_fee"));
+        }
+
         int totalPrice = 0;
         for (auto& it : req["items"]) {
             int qty   = it.value("qty", 1);
@@ -28,6 +37,11 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
             if (it.contains("options"))
                 for (auto& opt : it["options"])
                     totalPrice += opt.value("extra_price", 0) * qty;
+        }
+
+        // 배달비 추가 로직
+        if (isDel) {
+            totalPrice += actualDeliveryFee; 
         }
 
         if (usePoint > 0) {
@@ -43,7 +57,7 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
         bool ok = db.executeUpdate(
             "INSERT INTO orders (customer_id, restaurant_id, status, total_price, delivery_method, delivery_address) VALUES ("
             + std::to_string(uid) + "," + std::to_string(storeID) + ",'PENDING'," + std::to_string(totalPrice) + ",'"
-            + method + "','" + escapeStr(delAddr) + "')");
+            + method + "','" + CommonDB::getInstance().escape(delAddr) + "')");
         if (!ok) { sendError(session, CmdCustomer::REQ_CREATE_ORDER, Status::SERVER_ERROR, "주문 생성 실패"); return; }
         
         uint64_t orderID = db.getLastInsertId();
@@ -57,7 +71,7 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
             std::string menuName = "";
             auto mnRows = db.executeQuery(
                 "SELECT menu_name FROM menus WHERE menu_id=" + std::to_string(menuID));
-            if (!mnRows.empty()) menuName = escapeStr(mnRows[0].at("menu_name"));
+            if (!mnRows.empty()) menuName = CommonDB::getInstance().escape(mnRows[0].at("menu_name"));
 
             db.executeUpdate(
                 "INSERT INTO order_items "
@@ -77,7 +91,7 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
                     auto onRows = db.executeQuery(
                         "SELECT option_name FROM option_items WHERE option_item_id="
                         + std::to_string(optItemID));
-                    if (!onRows.empty()) optName = escapeStr(onRows[0].at("option_name"));
+                    if (!onRows.empty()) optName = CommonDB::getInstance().escape(onRows[0].at("option_name"));
 
                     if (optItemID)
                         db.executeUpdate(
@@ -103,6 +117,7 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
         json res;
         res["status"]            = Status::SUCCESS;
         res["order_id"]          = (int)orderID;
+        res["delivery_fee"]      = actualDeliveryFee; // ★ 추가: 계산된 배달비를 응답에 포함
         res["estimated_minutes"] = 30;
         session->sendPacket(static_cast<uint8_t>(m_clientType), CmdCustomer::REQ_CREATE_ORDER, res.dump());
 
@@ -113,40 +128,108 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
 
 void CustomerHandler::handleOrderHistory(Session* session, const std::string&) {
     try {
-        auto& db  = MariaDBManager::getInstance();
-            int uid = getUserIdByFd(session->getFd());
-            if (uid <= 0) { sendError(session, CmdCustomer::REQ_ORDER_HISTORY, Status::UNAUTHORIZED, "로그인 필요"); return; }
+        auto& db = MariaDBManager::getInstance();
+        int uid = getUserIdByFd(session->getFd());
+        if (uid <= 0) {
+            sendError(session, CmdCustomer::REQ_ORDER_HISTORY,
+                      Status::UNAUTHORIZED, "로그인 필요");
+            return;
+        }
 
+        // ★ delivery_method, delivery_address 추가
         auto rows = db.executeQuery(
-            "SELECT o.order_id, r.restaurant_name AS store_name, o.total_price, o.status, o.created_at AS order_time "
-            "FROM orders o JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
-            "WHERE o.customer_id=" + std::to_string(uid) + " ORDER BY o.created_at DESC LIMIT 50");
+            "SELECT o.order_id, r.restaurant_name AS store_name, "
+            "o.total_price, o.status, o.created_at AS order_time, "
+            "o.delivery_method, o.delivery_address, r.base_delivery_fee " // ★ r.base_delivery_fee 추가
+            "FROM orders o "
+            "JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
+            "WHERE o.customer_id=" + std::to_string(uid) +
+            " ORDER BY o.created_at DESC LIMIT 50");
 
+        // ★ 1. 클라이언트(OrderInfo.h)의 enum 숫자에 맞게 매핑 수정
         auto statusToInt = [](const std::string& s) {
-            if (s == "CANCELED" || s == "REJECTED") return 0;
-            if (s == "PENDING") return 1;
-            if (s == "ACCEPTED" || s == "COOKING") return 2;
-            if (s == "WAITING_PICKUP" || s == "DELIVERING") return 3;
-            if (s == "DONE") return 4;
-            return 0;
+            if (s == "PENDING" || s == "WAITING")           return 0; // STATUS_WAITING (접수 대기)
+            if (s == "ACCEPTED" || s == "COOKING" || s == "PREPARING") return 1; // STATUS_PREPARING (조리 중)
+            if (s == "WAITING_PICKUP" || s == "DELIVERING") return 2; // STATUS_DELIVERING (배달 중)
+            if (s == "DONE" || s == "COMPLETE")             return 3; // STATUS_COMPLETE (배달 완료)
+            if (s == "CANCELED" || s == "REJECTED")         return 4; // STATUS_CANCELED (주문 취소)
+            return 0; // 기본값
         };
+
+        // auto statusToInt = [](const std::string& s) {
+        //     if (s == "CANCELED" || s == "REJECTED") return 0;
+        //     if (s == "PENDING")                     return 1;
+        //     if (s == "ACCEPTED" || s == "COOKING")  return 2;
+        //     if (s == "WAITING_PICKUP" || s == "DELIVERING") return 3;
+        //     if (s == "DONE")                        return 4;
+        //     return 0;
+        // };
 
         json orders = json::array();
         for (auto& r : rows) {
+            int oid = std::stoi(r.at("order_id"));
             json o;
-            o["order_id"]    = std::stoi(r.at("order_id"));
-            o["store_name"]  = r.at("store_name");
-            o["total_price"] = std::stoi(r.count("total_price") ? r.at("total_price") : "0");
-            o["status"]      = statusToInt(r.count("status") ? r.at("status") : "");
-            o["order_time"]  = r.count("order_time") ? r.at("order_time") : "";
+
+            o["order_id"]        = oid;
+            o["store_name"]      = r.at("store_name");
+            o["total_price"]     = std::stoi(r.count("total_price") ? r.at("total_price") : "0");
+            o["delivery_fee"]    = std::stoi(r.count("delivery_fee") ? r.at("delivery_fee") : "0"); // ★ 추가
+            o["status"]          = statusToInt(r.count("status") ? r.at("status") : "");
+            o["order_time"]      = r.count("order_time")      ? r.at("order_time")      : "";
+            o["delivery_method"] = r.count("delivery_method") ? r.at("delivery_method") : "";
+            o["delivery_address"]= r.count("delivery_address")? r.at("delivery_address"): "";
+
+            // o["order_id"]        = std::to_string(oid);  // 클라이언트 OrderInfo.h에서 std::string으로 선언됨
+            // o["store_name"]      = r.at("store_name");
+            // o["total_payment"]   = std::stoi(r.count("total_price") ? r.at("total_price") : "0"); // total_price -> total_payment
+            // o["status"]          = statusToInt(r.count("status") ? r.at("status") : "");
+            // o["order_datetime"]  = r.count("order_time") ? r.at("order_time") : "";               // order_time -> order_datetime
+            // o["delivery_method"] = r.count("delivery_method") ? r.at("delivery_method") : "";
+            // o["delivery_address"]= r.count("delivery_address")? r.at("delivery_address"): "";
+
+            // ★ 주문 메뉴 + 옵션 조회
+            auto itemRows = db.executeQuery(
+                "SELECT oi.order_item_id, oi.menu_name, oi.quantity, oi.price_at_order "
+                "FROM order_items oi "
+                "WHERE oi.order_id=" + std::to_string(oid));
+
+            json items = json::array();
+            for (auto& it : itemRows) {
+                int oiID = std::stoi(it.at("order_item_id"));
+                json item;
+                item["menu_name"] = it.at("menu_name");
+                item["quantity"]  = std::stoi(it.count("quantity")       ? it.at("quantity")       : "1");
+                item["price"]     = std::stoi(it.count("price_at_order") ? it.at("price_at_order") : "0");
+
+                // ★ 옵션 조회
+                auto optRows = db.executeQuery(
+                    "SELECT option_name, extra_price "
+                    "FROM order_item_options "
+                    "WHERE order_item_id=" + std::to_string(oiID));
+
+                json opts = json::array();
+                for (auto& op : optRows) {
+                    json opt;
+                    opt["option_name"] = op.at("option_name");
+                    opt["extra_price"] = std::stoi(op.count("extra_price") ? op.at("extra_price") : "0");
+                    opts.push_back(opt);
+                }
+                item["options"] = opts;
+                items.push_back(item);
+            }
+            o["items"] = items;
             orders.push_back(o);
         }
 
-        json res; res["status"] = Status::SUCCESS; res["orders"] = orders;
-        session->sendPacket(static_cast<uint8_t>(m_clientType), CmdCustomer::REQ_ORDER_HISTORY, res.dump());
+        json res;
+        res["status"] = Status::SUCCESS;
+        res["orders"] = orders;
+        session->sendPacket(static_cast<uint8_t>(m_clientType),
+                            CmdCustomer::REQ_ORDER_HISTORY, res.dump());
 
     } catch (const std::exception& e) {
-        sendError(session, CmdCustomer::REQ_ORDER_HISTORY, Status::SERVER_ERROR, e.what());
+        sendError(session, CmdCustomer::REQ_ORDER_HISTORY,
+                  Status::SERVER_ERROR, e.what());
     }
 }
 
@@ -167,7 +250,7 @@ void CustomerHandler::handleOrderDetail(Session* session, const std::string& bod
 
         // 3. 본인(uid)의 주문(orderID)이 맞는지 쿼리에서 안전하게 조회
         auto rows = db.executeQuery(
-            "SELECT o.order_id, r.restaurant_name AS store_name, r.phone AS store_phone, "
+            "SELECT o.order_id, r.restaurant_name AS store_name, r.phone AS store_phone, r.base_delivery_fee, "
             "o.total_price, o.status, o.created_at AS order_time, o.delivery_method, o.delivery_address "
             "FROM orders o JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
             "WHERE o.order_id=" + std::to_string(orderID) + " AND o.customer_id=" + std::to_string(uid));
@@ -185,6 +268,7 @@ void CustomerHandler::handleOrderDetail(Session* session, const std::string& bod
         res["store_name"]   = r.at("store_name");
         res["store_phone"]  = r.count("store_phone")  ? r.at("store_phone")  : "";
         res["total_price"]  = std::stoi(r.count("total_price") ? r.at("total_price") : "0");
+        res["delivery_fee"] = std::stoi(r.count("delivery_fee") ? r.at("delivery_fee") : "0"); // ★ 추가
         res["order_status"] = r.count("status") ? r.at("status") : "";
         res["order_time"]   = r.count("order_time") ? r.at("order_time") : "";
 

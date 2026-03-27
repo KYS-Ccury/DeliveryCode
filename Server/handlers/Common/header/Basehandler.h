@@ -17,11 +17,10 @@ protected:
 
     void registerSession(int fd, int userId);
     void sendError(Session* session, uint16_t protocol, uint16_t statusCode, const std::string& message);
-    std::string escapeStr(const std::string& s);
     void sendResponse(Session* session, uint16_t protocol, const nlohmann::json& payload);
    
     // 자식에서 반드시 구현해야 할 훅(Hook)
-    virtual void onSignup(Session* session, const nlohmann::json& reqBody) = 0;
+    virtual void onSignup(Session* session, int userId, const nlohmann::json& reqBody) = 0; 
     virtual void onLoginSuccess(Session* session, int userId, const nlohmann::json& reqBody) = 0;
     virtual void onLogout(Session* session, int userId) = 0;
     virtual void onGetProfile(Session* session, int userId, const nlohmann::json& reqBody) = 0;

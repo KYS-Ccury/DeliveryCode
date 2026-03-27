@@ -2,10 +2,11 @@
 #include "MiddleHandler.h"
 #include "Protocol.h"
 #include "CommonDB.h"
-#include "RiderDBHandler.h"
-#include "CustomerDBHandler.h"
+#include "RiderDB.h"
+#include "ChatDB.h"
+// #include "CustomerDBHandler.h"
 // #include "OwnerDBHandler.h"
-#include "AdminDBHandler.h"
+// #include "AdminDBHandler.h"
 #include <iostream>
 
 using json = nlohmann::json;
@@ -17,21 +18,25 @@ json MiddleHandler::processDBRequest(uint16_t dbProtocol, const json& reqJson) {
         // [1100번대] 공통 / 인증 DB 처리
         return CommonDB::process(dbProtocol, reqJson);
     } 
-    else if (dbProtocol >= 1200 && dbProtocol < 1300) {
+    // else if (dbProtocol >= 1200 && dbProtocol < 1300) {
         // [1200번대] 고객 DB 처리
         // return CustomerDBHandler::process(dbProtocol, reqJson);
-    } 
-    else if (dbProtocol >= 1300 && dbProtocol < 1400) {
+    // } 
+    // else if (dbProtocol >= 1300 && dbProtocol < 1400) {
         // [1300번대] 사장님 DB 처리
         // return OwnerDBHandler::process(dbProtocol, reqJson);
-    } 
+    // } 
     else if (dbProtocol >= 1400 && dbProtocol < 1500) {
         // [1400번대] 라이더 DB 처리
-        return RiderDBHandler::process(dbProtocol, reqJson);
+        return RiderDB::process(dbProtocol, reqJson);
     } 
-    else if (dbProtocol >= 1500 && dbProtocol < 1600) {
+    // else if (dbProtocol >= 1500 && dbProtocol < 1600) {
         // [1500번대] 관리자 DB 처리
         // return AdminDBHandler::process(dbProtocol, reqJson);
+    // }
+    else if (dbProtocol >= 1600 && dbProtocol < 1700) {
+        // [1600번대] 채팅 DB 처리
+        return ChatDB::process(dbProtocol, reqJson);
     }
 
     // 매칭되는 프로토콜이 없을 경우
