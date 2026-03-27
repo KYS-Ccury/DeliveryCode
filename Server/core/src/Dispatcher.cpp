@@ -35,7 +35,7 @@ void Dispatcher::dispatch(Session* session, const PacketHeader& header, const st
                 RiderHandler::getInstance().process(session, protocol, jsonBody);
                 break;
 
-            // case ClientType::ADMIN:
+            case ClientType::ADMIN:
             //     AdminHandler::getInstance().process(session, protocol, jsonBody);
             //     break;
 

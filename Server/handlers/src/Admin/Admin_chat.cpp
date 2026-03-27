@@ -1,11 +1,13 @@
 #include "AdminHandler.h"
 #include "MariaDBManager.h"
+#include "MariaDB_AcceptManager.h"
 #include "Protocol.h"
 #include <iostream>
 
 using json = nlohmann::json;
 
-// ============================================================
+// ★ AdminChat 생성자
+AdminChat::AdminChat(BaseHandler& handler) : m_handler(handler) {}// ============================================================
 // 601: handleSendMsg — 관리자가 메시지를 전송한다.
 // chat_messages 테이블에 INSERT하고 성공 응답을 보낸다.
 // ============================================================
@@ -34,12 +36,13 @@ void AdminHandler::handleSendMsg(Session* session, const std::string& jsonBody)
         // 현재 로그인된 관리자 userId를 가져온다.
         int adminUserId = getUserIdByFd(session->getFd());
         auto& db = MariaDBManager::getInstance();
+        auto& dbEsc = MariaDB_AcceptManager::getInstance();
 
         // 메시지를 DB에 저장한다.
         std::string q =
             "INSERT INTO chat_messages (room_id, sender_id, message, is_admin, created_at) "
-            "VALUES ('" + escapeStr(roomId) + "', " + std::to_string(adminUserId) +
-            ", '" + escapeStr(message) + "', 1, NOW())";
+            "VALUES ('" + dbEsc.escapeStr(roomId) + "', " + std::to_string(adminUserId) +
+            ", '" + dbEsc.escapeStr(message) + "', 1, NOW())";
 
         if (!db.executeUpdate(q)) {
             std::cout << "-------------------------" << std::endl;
@@ -87,12 +90,13 @@ void AdminHandler::handleGetMsgs(Session* session, const std::string& jsonBody)
         }
 
         auto& db = MariaDBManager::getInstance();
+        auto& dbEsc = MariaDB_AcceptManager::getInstance();
 
         // 해당 채팅방의 메시지를 시간순으로 조회한다.
         std::string q =
             "SELECT message, is_admin, created_at "
             "FROM chat_messages "
-            "WHERE room_id = '" + escapeStr(roomId) + "' "
+            "WHERE room_id = '" + dbEsc.escapeStr(roomId) + "' "
             "ORDER BY created_at ASC "
             "LIMIT 500";
 
