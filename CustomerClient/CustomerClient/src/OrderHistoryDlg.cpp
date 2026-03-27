@@ -1,4 +1,4 @@
-
+﻿
 // ================================================================
 //  OrderHistoryDlg.cpp  ─  주문 현황 화면 (서버 연동 완성본)
 //
@@ -290,9 +290,9 @@ LRESULT OrderHistoryDlg::OnOrderStatusPush(WPARAM, LPARAM lParam)
 void OrderHistoryDlg::OnBnClickedBtnChat()
 {
     ChatDlg dlg(this);
-    dlg.m_strTargetName = m_strShopName;
-    dlg.m_strTargetID   = _T("store");   // 사장님 채팅
-    dlg.m_strTargetType = _T("store");
+    dlg.m_strTargetName = m_strShopName.IsEmpty() ? _T("가게 문의") : m_strShopName + _T(" 문의");
+    dlg.m_strTargetType = _T("owner");
+    dlg.m_nOrderId      = 0;
     dlg.DoModal();
 }
 

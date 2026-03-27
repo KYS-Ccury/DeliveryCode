@@ -1,28 +1,3 @@
-// ================================================================
-//  ChatDlg.cpp  (고객 채팅 다이얼로그 완성 버전)
-//
-//  기존 ChatDlg.cpp 를 완전히 대체한다.
-//
-//  ▶ 흐름
-//    OnInitDialog
-//      → ChatManager::CreateOrGetRoom(targetType, orderId)
-//         → 서버에 600 전송
-//         → 응답 수신 시: joinRoom + RequestHistory(602 전송)
-//      → RegisterReceiveCallback(hWnd) : HWND 등록
-//
-//    WM_CHAT_HISTORY (WM_USER+102)
-//      → 과거 메시지 vector 수신 → 리스트박스 일괄 표시
-//
-//    WM_CHAT_RECEIVED (WM_USER+101)
-//      → 실시간 ChatMessage* 수신 → 리스트박스 1건 추가
-//
-//    OnBnClickedBtnChatSend
-//      → ChatManager::SendMessage(msg) → 601 전송
-//      → 내 메시지는 로컬에서 바로 표시 (에코는 NTF_RECV_MSG 로도 옴)
-//
-//    OnBnClickedBtnChatBack
-//      → UnregisterReceiveCallback → EndDialog
-// ================================================================
 #include "pch.h"
 #include "CustomerClient.h"
 #include "afxdialogex.h"
@@ -46,6 +21,7 @@ BEGIN_MESSAGE_MAP(ChatDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_CHAT_SEND, &ChatDlg::OnBnClickedBtnChatSend)
     ON_MESSAGE(WM_CHAT_RECEIVED,     &ChatDlg::OnChatReceived)
     ON_MESSAGE(WM_CHAT_HISTORY,      &ChatDlg::OnChatHistory)
+    ON_MESSAGE(WM_CHAT_ROOM_READY,   &ChatDlg::OnChatRoomReady)
 END_MESSAGE_MAP()
 
 // ================================================================
@@ -55,50 +31,66 @@ BOOL ChatDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
 
-    // ── 타이틀 설정 ──────────────────────────────────────────
     SetDlgItemText(IDC_STATIC_CHAT_TITLE,
         m_strTargetName.IsEmpty() ? _T("채팅") : m_strTargetName);
 
-    auto& cm = ChatManager::GetInstance();
+    // SysListView32 초기화
+    CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_CHAT_MSGS);
+    if (pList) {
+        CRect rc;
+        pList->GetClientRect(&rc);
+        pList->InsertColumn(0, _T(""), LVCFMT_LEFT, rc.Width());
+        pList->SetExtendedStyle(pList->GetExtendedStyle() | LVS_EX_FULLROWSELECT);
+    }
 
-    // ── HWND 먼저 등록 (콜백이 hWnd 를 참조함) ───────────────
+    auto& cm = ChatManager::GetInstance();
     cm.RegisterReceiveCallback(GetSafeHwnd());
 
-    // ── 채팅방 생성/입장 요청 ─────────────────────────────────
-    // target_type 결정
-    std::string targetType = "admin"; // 기본값: 관리자 채팅
+    std::string targetType = "admin";
     if (!m_strTargetType.IsEmpty()) {
         std::string t = std::string(CT2A(m_strTargetType, CP_UTF8));
         if (t == "owner" || t == "store") targetType = "owner";
     }
-
-    // CreateOrGetRoom → 서버에 600 전송
-    // 내부에서 방 준비 완료 시 RegisterNtfCallback + RegisterHistoryCallback
-    // + RequestHistory(602) 를 자동으로 수행함
     cm.CreateOrGetRoom(targetType, m_nOrderId);
 
-    // ── "연결 중..." 안내 ─────────────────────────────────────
-    CListBox* pList = (CListBox*)GetDlgItem(IDC_LIST_CHAT_MSGS);
-    if (pList) pList->AddString(_T("── 채팅방에 연결 중입니다... ──"));
+    // 연결 중 안내 (WM_CHAT_ROOM_READY 수신 시 제거됨)
+    AppendSystemMsg(_T("채팅방에 연결 중입니다..."));
 
     return TRUE;
 }
 
 // ================================================================
-//  ClearMessages  — 리스트박스 전체 초기화
+//  WM_CHAT_ROOM_READY  — 채팅방 연결 완료 (600 응답 수신 후)
+//  "연결 중..." 텍스트를 지우고 과거메시지를 기다림
 // ================================================================
-void ChatDlg::ClearMessages()
+LRESULT ChatDlg::OnChatRoomReady(WPARAM, LPARAM)
 {
-    CListBox* pList = (CListBox*)GetDlgItem(IDC_LIST_CHAT_MSGS);
-    if (pList) pList->ResetContent();
+    ClearMessages();
+    // 과거메시지는 WM_CHAT_HISTORY 로 곧 도착함
+    // (602 응답이 빈 경우 대비 안내문은 OnChatHistory 에서 표시)
+    return 0;
 }
 
 // ================================================================
-//  AppendMessage  — 리스트박스에 메시지 1건 추가
+//  helpers
 // ================================================================
+void ChatDlg::ClearMessages()
+{
+    CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_CHAT_MSGS);
+    if (pList) pList->DeleteAllItems();
+}
+
+void ChatDlg::AppendSystemMsg(const CString& text)
+{
+    CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_CHAT_MSGS);
+    if (!pList) return;
+    int idx = pList->InsertItem(pList->GetItemCount(), text);
+    pList->EnsureVisible(idx, FALSE);
+}
+
 void ChatDlg::AppendMessage(const ChatMessage& msg)
 {
-    CListBox* pList = (CListBox*)GetDlgItem(IDC_LIST_CHAT_MSGS);
+    CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_CHAT_MSGS);
     if (!pList) return;
 
     CString strMsg  = CA2T(msg.message.c_str(),   CP_UTF8);
@@ -106,16 +98,13 @@ void ChatDlg::AppendMessage(const ChatMessage& msg)
     CString line;
 
     if (msg.isMine) {
-        // 내 메시지: 오른쪽 정렬 느낌으로 구분
         if (strTime.IsEmpty())
-            line.Format(_T("  [나] %s"),          (LPCTSTR)strMsg);
+            line.Format(_T("  [나] %s"),       (LPCTSTR)strMsg);
         else
-            line.Format(_T("  [나] %s  (%s)"),    (LPCTSTR)strMsg, (LPCTSTR)strTime);
+            line.Format(_T("  [나] %s  (%s)"), (LPCTSTR)strMsg, (LPCTSTR)strTime);
     } else {
-        // 상대방 메시지
         CString strRole = CA2T(msg.senderRole.c_str(), CP_UTF8);
         if (strRole.IsEmpty()) strRole = _T("상대방");
-
         if (strTime.IsEmpty())
             line.Format(_T("[%s] %s"),           (LPCTSTR)strRole, (LPCTSTR)strMsg);
         else
@@ -123,45 +112,37 @@ void ChatDlg::AppendMessage(const ChatMessage& msg)
                                                  (LPCTSTR)strTime);
     }
 
-    int idx = pList->AddString(line);
-    pList->SetCurSel(idx);   // 맨 아래로 스크롤
+    int idx = pList->InsertItem(pList->GetItemCount(), line);
+    pList->EnsureVisible(idx, FALSE);
 }
 
 // ================================================================
-//  OnChatHistory  (WM_CHAT_HISTORY = WM_USER+102)
-//  과거 메시지 vector* 수신 → 리스트박스 일괄 표시
+//  WM_CHAT_HISTORY  — 과거 메시지 일괄 수신
 // ================================================================
-LRESULT ChatDlg::OnChatHistory(WPARAM /*wParam*/, LPARAM lParam)
+LRESULT ChatDlg::OnChatHistory(WPARAM, LPARAM lParam)
 {
     std::vector<ChatMessage>* pList =
         reinterpret_cast<std::vector<ChatMessage>*>(lParam);
     if (!pList) return 0;
 
     ClearMessages();
-
     if (pList->empty()) {
-        CListBox* pLB = (CListBox*)GetDlgItem(IDC_LIST_CHAT_MSGS);
-        if (pLB) pLB->AddString(_T("── 대화 내역이 없습니다. ──"));
+        AppendSystemMsg(_T("대화 내역이 없습니다."));
     } else {
         for (const auto& msg : *pList)
             AppendMessage(msg);
     }
-
     delete pList;
     return 0;
 }
 
 // ================================================================
-//  OnChatReceived  (WM_CHAT_RECEIVED = WM_USER+101)
-//  실시간 메시지 ChatMessage* 수신
+//  WM_CHAT_RECEIVED  — 실시간 메시지 (상대방만 표시)
 // ================================================================
-LRESULT ChatDlg::OnChatReceived(WPARAM /*wParam*/, LPARAM lParam)
+LRESULT ChatDlg::OnChatReceived(WPARAM, LPARAM lParam)
 {
     ChatMessage* pMsg = reinterpret_cast<ChatMessage*>(lParam);
     if (pMsg) {
-        // 서버 에코로 내 메시지가 다시 오면 중복 방지를 위해
-        // isMine == true 인 경우는 이미 OnBnClickedBtnChatSend 에서 표시됨
-        // → 여기서는 상대방 메시지만 표시
         if (!pMsg->isMine)
             AppendMessage(*pMsg);
         delete pMsg;
@@ -170,40 +151,33 @@ LRESULT ChatDlg::OnChatReceived(WPARAM /*wParam*/, LPARAM lParam)
 }
 
 // ================================================================
-//  OnBnClickedBtnChatSend  — 전송 버튼
+//  전송 버튼 / 엔터키
 // ================================================================
 void ChatDlg::OnBnClickedBtnChatSend()
 {
     CString strInput;
     GetDlgItemText(IDC_EDIT_CHAT_INPUT, strInput);
+    strInput.Trim();
     if (strInput.IsEmpty()) return;
 
     std::string msg = std::string(CT2A(strInput, CP_UTF8));
 
-    auto& cm = ChatManager::GetInstance();
+    SetDlgItemText(IDC_EDIT_CHAT_INPUT, _T(""));
+    GetDlgItem(IDC_EDIT_CHAT_INPUT)->SetFocus();
 
-    // 방이 아직 준비 안됐으면 안내
-    if (!cm.IsRoomReady()) {
-        AfxMessageBox(_T("채팅방에 연결 중입니다. 잠시 후 다시 시도하세요."),
-                      MB_ICONINFORMATION);
-        return;
-    }
+    // 내 메시지 즉시 로컬 표시
+    ChatMessage mine;
+    mine.senderRole = "CUSTOMER";
+    mine.senderID   = AuthManager::GetInstance().GetCurrentUserID();
+    mine.message    = msg;
+    mine.isMine     = true;
+    AppendMessage(mine);
 
-    if (cm.SendMessage(msg)) {
-        // 내 메시지 즉시 표시 (에코 중복 방지: OnChatReceived 에서는 isMine 스킵)
-        ChatMessage mine;
-        mine.senderRole = "CUSTOMER";
-        mine.senderID   = AuthManager::GetInstance().GetCurrentUserID();
-        mine.message    = msg;
-        mine.isMine     = true;
-        AppendMessage(mine);
-
-        SetDlgItemText(IDC_EDIT_CHAT_INPUT, _T(""));
-    }
+    ChatManager::GetInstance().SendMessage(msg);
 }
 
 // ================================================================
-//  OnBnClickedBtnChatBack  — 뒤로가기 버튼
+//  뒤로가기 / ESC
 // ================================================================
 void ChatDlg::OnBnClickedBtnChatBack()
 {

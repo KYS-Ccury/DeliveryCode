@@ -24,8 +24,9 @@
 #include <map>
 #include <mutex>
 
-#define WM_CHAT_RECEIVED  (WM_USER + 101)  // 실시간 메시지 수신
-#define WM_CHAT_HISTORY   (WM_USER + 102)  // 과거 메시지 일괄 수신
+#define WM_CHAT_RECEIVED   (WM_USER + 101)  // 실시간 메시지 수신
+#define WM_CHAT_HISTORY    (WM_USER + 102)  // 과거 메시지 일괄 수신
+#define WM_CHAT_ROOM_READY (WM_USER + 103)  // 채팅방 연결 완료
 
 struct ChatMessage {
     std::string senderRole;   // "CUSTOMER" | "ADMIN" | "OWNER"
