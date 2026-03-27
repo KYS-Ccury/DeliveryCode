@@ -51,7 +51,7 @@ void CustomerHandler::handleMyPoint(Session* session, const std::string& /*body*
         //        현재는 적립 내역만 표시
         auto histRows = db.executeQuery(
             "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS d, "
-            "       r.name AS store_name, "
+            "       r.restaurant_name AS store_name, "
             "       total_price "
             "FROM orders o "
             "JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
