@@ -84,9 +84,17 @@ namespace CmdOwner {
     constexpr uint16_t REQ_COOKING_DONE  = 307; // 조리 완료 처리
     constexpr uint16_t REQ_SALES_STATS   = 308; // 매출 통계 조회
     constexpr uint16_t REQ_CHANGE_STATUS = 309; // 영업 상태 변경
-
+    
     constexpr uint16_t NTF_NEW_ORDER     = 310; // [알림] 새 주문 알림
     constexpr uint16_t NTF_RIDER_MATCHED = 311; // [알림] 배차 정보 알림
+    // Protocol.h 의 CmdOwner 네임스페이스 안에 추가
+    constexpr uint16_t REQ_DEL_MENU      = 312; // 메뉴 삭제
+    constexpr uint16_t REQ_MENU_LIST     = 313; // 사장님 메뉴 목록 조회
+    constexpr uint16_t REQ_GET_SETTINGS    = 314; // 설정 조회
+    constexpr uint16_t REQ_UPDATE_SETTINGS = 315; // 설정 수정
+    constexpr uint16_t REQ_UPDATE_STATUS = 316; // 영업 상태 변경 (시작/중지)
+
+
 }
 
 // [400번대] 라이더용 (Rider)
@@ -99,7 +107,6 @@ namespace CmdRider {
     constexpr uint16_t REQ_MY_DISPATCHES   = 405; // 내 배차 목록
     constexpr uint16_t REQ_WORK_STATUS     = 406; // 출퇴근 설정
     constexpr uint16_t REQ_SEND_GPS        = 407; // 위치 전송(GPS)
-
     constexpr uint16_t NTF_NEW_DISPATCH    = 408; // [알림] 신규 주문 배차 알림
 }
 
@@ -121,13 +128,10 @@ namespace CmdChat {
     constexpr uint16_t REQ_SEND_MSG        = 601; // 메시지 전송
     constexpr uint16_t REQ_GET_MSGS        = 602; // 메시지 조회
     constexpr uint16_t REQ_ROOM_LIST       = 603; // 채팅방 목록
-    constexpr uint16_t NTF_RECV_MSG        = 604; // [알림] 메시지 수신
     constexpr uint16_t REQ_READ_RECEIPT    = 605; // 읽음 확인
+    constexpr uint16_t NTF_RECV_MSG        = 604; // [알림] 메시지 수신
 }
 
-// ============================================================
-//  5. DB 처리용 프로토콜 (Command IDs) - 서버 내부 통신
-// ============================================================
 
 // [1100번대] 공통 / 인증 DB 처리
 namespace CmdDBCommon {
@@ -161,6 +165,12 @@ namespace CmdDBOwner {
     constexpr uint16_t REQ_DB_COOKING_DONE  = 1307; // 조리 완료 상태 DB Update
     constexpr uint16_t REQ_DB_SALES_STATS   = 1308; // 매출 통계 조회 DB Select (Group By 등)
     constexpr uint16_t REQ_DB_CHANGE_STATUS = 1309; // 영업 상태(오픈/마감) DB Update
+    // Protocol.h 의 CmdDBOwner 네임스페이스 안에 추가
+    constexpr uint16_t REQ_DB_DEL_MENU   = 1312; // 메뉴 삭제 DB Delete
+    constexpr uint16_t REQ_DB_MENU_LIST  = 1313; // 사장님 메뉴 목록 DB Select
+    constexpr uint16_t REQ_DB_GET_SETTINGS    = 1314; 
+    constexpr uint16_t REQ_DB_UPDATE_SETTINGS = 1315;
+    constexpr uint16_t REQ_DB_UPDATE_STATUS = 1316; // DB 영업 상태 변경
 }
 
 // [1400번대] 라이더 DB 처리 (Rider)

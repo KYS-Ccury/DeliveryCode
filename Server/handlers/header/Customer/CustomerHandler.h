@@ -2,9 +2,6 @@
 
 #include "Basehandler.h"
 
-// ============================================================
-// CustomerHandler — 고객 패킷 라우터 (싱글톤)
-// ============================================================
 class CustomerHandler : public BaseHandler {
 public:
     static CustomerHandler& getInstance() {

@@ -1,7 +1,7 @@
 #include "EpollServer.h"
-// #include "CustomerHandler.h"  // CustomerHandler 구현 후 주석 해제
+#include "CustomerHandler.h" 
 #include "RiderHandler.h"
-// #include "OwnerHandler.h"
+#include "OwnerHandler.h"
 // #include "AdminHandler.h"
 #include "ChatRoomManager.h"
 #include <iostream>
@@ -129,15 +129,11 @@ void EpollServer::rearmSocket(int client_fd) {
 }
 
 void EpollServer::closeConnection(int client_fd) {
-    // 1. 모든 핸들러에서 세션 완벽하게 해제
-    // CustomerHandler::getInstance().unregisterSession(client_fd);  // 구현 후 활성화
-    RiderHandler::getInstance().unregisterSession(client_fd);
-
-    // 채팅 방 참가자 맵에서도 제거 (연결이 끊어진 fd 일괄 정리)
     ChatRoomManager::getInstance().removeClient(client_fd);
-    // OwnerHandler::getInstance().unregisterSession(client_fd); // <-- 추가!
-    // AdminHandler::getInstance().unregisterSession(client_fd); // <-- 추가!
-
+    CustomerHandler::getInstance().unregisterSession(client_fd);  
+    OwnerHandler::getInstance().unregisterSession(client_fd); 
+    RiderHandler::getInstance().unregisterSession(client_fd);
+    // AdminHandler::getInstance().unregisterSession(client_fd);
     std::lock_guard<std::mutex> lock(session_mutex);
     epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);
     sessions.erase(client_fd);

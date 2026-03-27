@@ -36,5 +36,6 @@ public:
     // 람다 안에서 executeQuery/executeUpdate 를 자유롭게 호출 가능
     // 예외 발생 시 자동 ROLLBACK
     bool executeTransaction(const std::function<bool()>& work);
-
+    static std::string escape(const std::string& s);
+    std::string escapeStr(const std::string& s); 
 };
