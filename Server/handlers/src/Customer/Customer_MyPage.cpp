@@ -45,34 +45,56 @@ void CustomerHandler::handleMyPoint(Session* session, const std::string& /*body*
         if (!ptRows.empty() && ptRows[0].count("point") && !ptRows[0].at("point").empty())
             try { point = std::stoi(ptRows[0].at("point")); } catch (...) {}
 
-        // ── 2. 포인트 내역: 완료된 주문에서 생성 (최근 20건) ─
-        // 적립: DONE 주문 → total_price * 1%
-        // 사용: total_price > actual_paid 인 경우는 별도 컬럼 없으므로
-        //        현재는 적립 내역만 표시
-        auto histRows = db.executeQuery(
-            "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS d, "
+        // ── 2. 포인트 내역 ────────────────────────────────────
+        //   적립: orders DONE 주문 → total_price * 1%
+        //   사용: point_log WHERE reason='ORDER_USE' (음수 amount)
+        json history = json::array();
+
+        // 적립 내역 (orders DONE)
+        auto earnRows = db.executeQuery(
+            "SELECT DATE_FORMAT(o.created_at, '%Y-%m-%d') AS d, "
             "       r.restaurant_name AS store_name, "
-            "       total_price "
+            "       o.total_price "
             "FROM orders o "
             "JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
             "WHERE o.customer_id=" + std::to_string(userId) +
             "  AND o.status='DONE' "
             "ORDER BY o.created_at DESC LIMIT 20");
 
-        json history = json::array();
-        for (const auto& row : histRows) {
+        for (const auto& row : earnRows) {
             int price = 0;
             if (row.count("total_price") && !row.at("total_price").empty())
                 try { price = std::stoi(row.at("total_price")); } catch (...) {}
-
-            int earned = price / 100;  // 1% 적립
+            int earned = price / 100;
             if (earned <= 0) continue;
 
+            std::string storeName = (row.count("store_name") && !row.at("store_name").empty())
+                                    ? row.at("store_name") : "주문";
             json item;
-            item["date"]   = row.count("d")          ? row.at("d")          : "";
-            std::string storeName = row.count("store_name") && !row.at("store_name").empty() ? row.at("store_name") : "주문";
+            item["date"]   = row.count("d") ? row.at("d") : "-";
             item["desc"]   = storeName + " 포인트 적립";
             item["amount"] = earned;
+            history.push_back(item);
+        }
+
+        // 사용 내역 (point_log ORDER_USE)
+        auto useRows = db.executeQuery(
+            "SELECT log_id, amount, "
+            "COALESCE(DATE_FORMAT(created_at,'%Y-%m-%d'),'-') AS d "
+            "FROM point_log "
+            "WHERE user_id=" + std::to_string(userId) +
+            "  AND reason='ORDER_USE' "
+            "ORDER BY log_id DESC LIMIT 20");
+
+        for (const auto& row : useRows) {
+            int amt = 0;
+            if (row.count("amount") && !row.at("amount").empty())
+                try { amt = std::stoi(row.at("amount")); } catch (...) {}
+
+            json item;
+            item["date"]   = (row.count("d") && !row.at("d").empty()) ? row.at("d") : "-";
+            item["desc"]   = "포인트 사용";
+            item["amount"] = amt;  // 음수(-N)로 저장됨
             history.push_back(item);
         }
 
