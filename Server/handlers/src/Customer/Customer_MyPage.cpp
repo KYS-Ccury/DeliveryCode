@@ -17,10 +17,12 @@ using json = nlohmann::json;
 // ============================================================
 //  handleMyPoint  (REQ_MY_POINT = 209)
 //
-//  요청: { "token": "..." }
-//  응답: { "status":2000, "points":1500, "history":[] }
+//  요청: {}
+//  응답: { "status":2000, "points":N,
+//           "history":[{"date":"...", "desc":"...", "amount":N}, ...] }
 //
-//  point_history 테이블이 없으면 history 는 빈 배열로 반환
+//  포인트 내역 = orders 테이블에서 DONE 상태 주문 (최근 20건)
+//  적립 포인트 = total_price * 1% (소수점 버림)
 // ============================================================
 void CustomerHandler::handleMyPoint(Session* session, const std::string& /*body*/)
 {
@@ -34,19 +36,50 @@ void CustomerHandler::handleMyPoint(Session* session, const std::string& /*body*
 
         auto& db = MariaDBManager::getInstance();
 
-        // 보유 포인트
-        auto rows = db.executeQuery(
+        // ── 1. 보유 포인트 ────────────────────────────────────
+        auto ptRows = db.executeQuery(
             "SELECT COALESCE(point,0) AS point "
             "FROM customer_profiles WHERE user_id=" + std::to_string(userId));
 
         int point = 0;
-        if (!rows.empty() && rows[0].count("point"))
-            try { point = std::stoi(rows[0].at("point")); } catch (...) {}
+        if (!ptRows.empty() && ptRows[0].count("point") && !ptRows[0].at("point").empty())
+            try { point = std::stoi(ptRows[0].at("point")); } catch (...) {}
+
+        // ── 2. 포인트 내역: 완료된 주문에서 생성 (최근 20건) ─
+        // 적립: DONE 주문 → total_price * 1%
+        // 사용: total_price > actual_paid 인 경우는 별도 컬럼 없으므로
+        //        현재는 적립 내역만 표시
+        auto histRows = db.executeQuery(
+            "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS d, "
+            "       r.name AS store_name, "
+            "       total_price "
+            "FROM orders o "
+            "JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
+            "WHERE o.customer_id=" + std::to_string(userId) +
+            "  AND o.status='DONE' "
+            "ORDER BY o.created_at DESC LIMIT 20");
+
+        json history = json::array();
+        for (const auto& row : histRows) {
+            int price = 0;
+            if (row.count("total_price") && !row.at("total_price").empty())
+                try { price = std::stoi(row.at("total_price")); } catch (...) {}
+
+            int earned = price / 100;  // 1% 적립
+            if (earned <= 0) continue;
+
+            json item;
+            item["date"]   = row.count("d")          ? row.at("d")          : "";
+            std::string storeName = row.count("store_name") && !row.at("store_name").empty() ? row.at("store_name") : "주문";
+            item["desc"]   = storeName + " 포인트 적립";
+            item["amount"] = earned;
+            history.push_back(item);
+        }
 
         json res;
-        res["status"] = Status::SUCCESS;
-        res["points"] = point;
-        res["history"] = json::array();   // 포인트 내역 테이블 없음 → 빈 배열
+        res["status"]  = Status::SUCCESS;
+        res["points"]  = point;
+        res["history"] = history;
 
         session->sendPacket(static_cast<uint8_t>(m_clientType),
                             CmdCustomer::REQ_MY_POINT, res.dump());
