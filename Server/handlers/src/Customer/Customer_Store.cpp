@@ -5,6 +5,8 @@
 
 #include "CommonDB.h"
 
+#include "CommonDB.h"
+
 using json = nlohmann::json;
 
 static double calcDistanceKm(double lat1, double lng1, double lat2, double lng2) {
@@ -47,6 +49,7 @@ void CustomerHandler::handleStoreList(Session* session, const std::string& body)
             "JOIN food_categories fc ON fc.category_id = r.category_id "
             "WHERE r.is_open = TRUE ";
         if (!category.empty() && category != "전체")
+            q += "AND fc.category_name='" + CommonDB::getInstance().escape(category) + "' ";
             q += "AND fc.category_name='" + CommonDB::getInstance().escape(category) + "' ";
         q += "ORDER BY r.rating_avg DESC";
 
@@ -127,6 +130,7 @@ void CustomerHandler::handleMenuList(Session* session, const std::string& body) 
             "FROM menus m JOIN menu_categories mc ON mc.menu_category_id = m.menu_category_id "
             "WHERE mc.restaurant_id=" + std::to_string(storeID);
         if (!subCat.empty() && subCat != "전체")
+            menuQ += " AND mc.category_name='" + CommonDB::getInstance().escape(subCat) + "'";
             menuQ += " AND mc.category_name='" + CommonDB::getInstance().escape(subCat) + "'";
         menuQ += " ORDER BY mc.sort_order, mc.menu_category_id, m.menu_id";
 
