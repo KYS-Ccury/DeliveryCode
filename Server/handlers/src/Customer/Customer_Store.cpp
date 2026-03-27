@@ -84,8 +84,14 @@ void CustomerHandler::handleStoreList(Session* session, const std::string& body)
                 "WHERE mc.restaurant_id=" + std::to_string(rid) +
                 "  AND m.image_url IS NOT NULL AND m.image_url != '' "
                 "ORDER BY m.menu_id LIMIT 1");
-            s["image_url"] = (!imgRows.empty() && imgRows[0].count("image_url"))
-                             ? imgRows[0].at("image_url") : "";
+            // ★ image_url이 없으면 placeholder_<restaurant_id> 사용
+            //   서버가 REQ_GET_IMAGE(217)로 요청받으면 컬러 PNG를 동적 생성
+            if (!imgRows.empty() && imgRows[0].count("image_url") &&
+                !imgRows[0].at("image_url").empty()) {
+                s["image_url"] = imgRows[0].at("image_url");
+            } else {
+                s["image_url"] = "placeholder_" + std::to_string(rid);
+            }
 
             stores.push_back(s);
         }
