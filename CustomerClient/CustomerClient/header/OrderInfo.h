@@ -22,12 +22,18 @@ enum DeliveryStatus {
 
 };
 
+// ★ 추가: 옵션 항목
+struct OrderOptionInfo {
+    std::string optionName;
+    int         extraPrice = 0;
+};
 
 // ── 주문 메뉴 항목 ────────────────────────────────────────────
 struct OrderItem {
     std::string menuName;   // 메뉴 이름
     int         quantity;   // 수량
     int         price;      // 단가 (원)
+    std::vector<OrderOptionInfo> options;  // ★ 추가
 
     OrderItem() : quantity(0), price(0) {}
 };
