@@ -5,6 +5,9 @@
 
 using json = nlohmann::json;
 
+
+AdminUserManage::AdminUserManage(BaseHandler& handler) : m_handler(handler) {}
+
 // ============================================================
 // 510: handleOrderMonitor — 대기 주문 목록을 조회한다.
 // orders 테이블에서 최근 100건을 가져와 응답한다.

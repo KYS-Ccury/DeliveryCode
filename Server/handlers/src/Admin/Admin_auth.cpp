@@ -5,6 +5,9 @@
 
 using json = nlohmann::json;
 
+
+AdminAuth::AdminAuth(BaseHandler& handler) : m_handler(handler) {}
+
 // ============================================================
 // adminLoginSuccess — 관리자 로그인 성공 후처리를 수행한다.
 // BaseHandler::handleLogin()이 DB 조회 후 성공 시 호출한다.
