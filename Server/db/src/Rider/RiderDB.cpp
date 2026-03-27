@@ -98,8 +98,9 @@ std::vector<RiderDB::DispatchOrder> RiderDB::queryDispatchList() {
         "       TIMESTAMPDIFF(SECOND, o.created_at, NOW()) AS elapsed_sec "
         "FROM orders o "
         "JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
-        "WHERE o.status='ACCEPTED' AND o.rider_id IS NULL "
+        "WHERE o.status IN ('PENDING','ACCEPTED') AND o.rider_id IS NULL "
         "  AND o.delivery_method='DELIVERY' "
+        "  AND o.total_price > 0 "
         "ORDER BY o.created_at ASC");
 
     std::vector<DispatchOrder> result;
@@ -125,11 +126,11 @@ RiderDB::AcceptResult RiderDB::acceptDispatch(int orderId, int riderId) {
     auto& db = MariaDBManager::getInstance();
 
     bool txOk = db.executeTransaction([&]() -> bool {
-        // 아직 배차 안 된 ACCEPTED 주문인지 확인
+        // 배차 가능한 주문인지 확인 (PENDING or ACCEPTED, 라이더 미배정)
         auto check = db.executeQuery(
             "SELECT order_id FROM orders "
             "WHERE order_id=" + std::to_string(orderId) +
-            "  AND status='ACCEPTED' AND rider_id IS NULL LIMIT 1");
+            "  AND status IN ('PENDING','ACCEPTED') AND rider_id IS NULL LIMIT 1");
         if (check.empty()) return false;
 
         // 라이더 배정 + 상태 DELIVERING
@@ -149,7 +150,7 @@ RiderDB::AcceptResult RiderDB::acceptDispatch(int orderId, int riderId) {
         db.executeUpdate(
             "INSERT INTO order_status_logs "
             "(order_id, from_status, to_status, changed_by) VALUES ("
-            + std::to_string(orderId) + ",'ACCEPTED','DELIVERING',"
+            + std::to_string(orderId) + ",'PENDING','DELIVERING',"
             + std::to_string(riderId) + ")");
 
         return true;
