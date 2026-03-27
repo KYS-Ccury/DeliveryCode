@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 #include "afxdialogex.h"
-
+#include "StoreInfo.h"
 
 // StoreDetailDlg 대화 상자
 
@@ -17,6 +17,8 @@ public:
 	CString m_strTime;
 	CString m_strOff;
 	CString m_strTel;
+
+	StoreInfo m_storeInfo;   // ★ 추가
 
 // 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME

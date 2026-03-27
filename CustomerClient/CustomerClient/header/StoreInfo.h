@@ -21,6 +21,7 @@ public:
     std::string storeImageUrl;      // 매장 대표 이미지 경로 (메뉴 이미지)
     std::string logoUrl;            // ★ 음식점 로고 이미지 경로
     std::string description;        // 가게 소개글
+    int         deliveryFee = 0;         // 배달비
 
     StoreInfo();
     void Clear();

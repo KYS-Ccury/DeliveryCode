@@ -31,6 +31,7 @@ public:
 #endif
 
     int     m_nStoreID     = 0;
+    int     m_storeID      = 0;   // ★ 추가 (StoreListDlg 호환용)
     CString m_strStoreName;
     bool    m_bCanWriteReview = false; // 이 가게에서 구매했으면 true
 
