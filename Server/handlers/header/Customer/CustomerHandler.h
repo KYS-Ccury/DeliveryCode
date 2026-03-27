@@ -1,10 +1,12 @@
 #pragma once
 // ============================================================
-//  CustomerHandler.h  (채팅 함수 추가 버전)
+//  CustomerHandler.h
 //
-//  변경 사항:
-//    handleChatCreateRoom / handleChatSendMsg / handleChatGetMsgs
-//    3개 함수 추가 (Customer_Chat.cpp 에 구현)
+//  [수정] 주소 관련 핸들러 4개 추가
+//    213  handleGetAddresses      — 주소 목록 조회
+//    214  handleSaveAddress       — 주소 추가
+//    215  handleDeleteAddress     — 주소 삭제
+//    216  handleSetDefaultAddress — 기본 주소 설정
 // ============================================================
 #include "Basehandler.h"
 
@@ -47,6 +49,12 @@ private:
     void handleMyPoint      (Session* s, const std::string& b); // 209
     void handleChangePassword(Session* s, const std::string& b); // 211
     void handleMyInfo       (Session* s, const std::string& b); // 212
+
+    // ★ 주소 관련 (CmdCustomer 213~216) — 신규
+    void handleGetAddresses     (Session* s, const std::string& b); // 213
+    void handleSaveAddress      (Session* s, const std::string& b); // 214
+    void handleDeleteAddress    (Session* s, const std::string& b); // 215
+    void handleSetDefaultAddress(Session* s, const std::string& b); // 216
 
     // ── 채팅 (CmdChat 600~602) ──────────────────────────────
     void handleChatCreateRoom(Session* s, const std::string& b); // 600

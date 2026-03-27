@@ -9,10 +9,7 @@ using json = nlohmann::json;
 // ============================================================
 //  process  —  고객 클라이언트 전용 프로토콜 라우터
 //
-//  변경 사항 (채팅 추가):
-//    600 REQ_CREATE_ROOM → handleChatCreateRoom
-//    601 REQ_SEND_MSG    → handleChatSendMsg
-//    602 REQ_GET_MSGS    → handleChatGetMsgs
+//  [수정] 213~216 주소 관련 케이스 추가
 // ============================================================
 void CustomerHandler::process(Session* session, uint16_t protocol, const std::string& body) {
 
@@ -25,7 +22,6 @@ void CustomerHandler::process(Session* session, uint16_t protocol, const std::st
             case CmdCommon::REQ_WITHDRAW: handleWithdraw(session, body); break;
 
             case CmdCommon::REQ_GET_PROFILE: {
-                // 카드 관련 요청은 onGetProfile 직접 호출
                 try {
                     json req = json::parse(body.empty() ? "{}" : body);
                     std::string reqType = req.value("request_type", "");
@@ -67,6 +63,11 @@ void CustomerHandler::process(Session* session, uint16_t protocol, const std::st
             case CmdCustomer::REQ_MY_POINT:        handleMyPoint       (session, body); break;
             case CmdCustomer::REQ_CHANGE_PASSWORD: handleChangePassword(session, body); break;
             case CmdCustomer::REQ_MY_INFO:         handleMyInfo        (session, body); break;
+            // ★ 주소 관련 (신규)
+            case CmdCustomer::REQ_GET_ADDRESSES:    handleGetAddresses     (session, body); break;
+            case CmdCustomer::REQ_SAVE_ADDRESS:     handleSaveAddress      (session, body); break;
+            case CmdCustomer::REQ_DELETE_ADDRESS:   handleDeleteAddress    (session, body); break;
+            case CmdCustomer::REQ_DEFAULT_ADDRESS:  handleSetDefaultAddress(session, body); break;
             default:
                 std::cerr << "[CustomerHandler] 알 수 없는 200번대 프로토콜: " << protocol << "\n";
                 sendError(session, protocol, Status::BAD_REQUEST, "Unknown protocol");
@@ -89,7 +90,6 @@ void CustomerHandler::process(Session* session, uint16_t protocol, const std::st
         return;
     }
 
-    // ── 그 외 ────────────────────────────────────────────────
     std::cerr << "[CustomerHandler] 미처리 프로토콜: " << protocol << "\n";
     sendError(session, protocol, Status::BAD_REQUEST, "Unknown protocol");
 }

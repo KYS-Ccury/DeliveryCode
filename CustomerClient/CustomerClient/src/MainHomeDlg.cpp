@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "CustomerClient.h"
 #include "afxdialogex.h"
 #include "MainHomeDlg.h"
@@ -20,7 +20,10 @@
 #include "ImageLoader.h"
 #include "common/header/Types.h"
 
-#define WM_STORE_LIST_RESPONSE (WM_USER + 110)
+#define WM_STORE_LIST_RESPONSE  (WM_USER + 110)
+// ★ 주소 관련 응답 메시지 (MainHomeDlg.h 와 일치해야 함)
+#define WM_ADDR_LIST_RESPONSE   (WM_USER + 115)
+#define WM_ADDR_SAVE_RESPONSE   (WM_USER + 116)
 
 // 가게 목록 썸네일 크기
 static const int STORE_THUMB_W = 60;
@@ -72,8 +75,8 @@ static std::vector<StoreInfo> ParseStoreArray(const std::string& json)
         si.openTime           = MHJStr(o,"open_time");
         si.phoneNumber        = MHJStr(o,"phone");
         si.holiday            = MHJStr(o,"holiday");
-        si.description        = MHJStr(o,"description");  // ★ 가게 소개
-        si.storeImageUrl      = MHJStr(o,"image_url");    // ★ 가게 이미지 경로
+        si.description        = MHJStr(o,"description");
+        si.storeImageUrl      = MHJStr(o,"image_url");
         si.minOrderAmount     = MHJInt(o,"min_order");
         si.distance           = MHJDouble(o,"distance");
         if (si.storeID > 0) stores.push_back(si);
@@ -103,6 +106,9 @@ BEGIN_MESSAGE_MAP(MainHomeDlg, CDialogEx)
     ON_WM_CTLCOLOR()
     ON_MESSAGE(WM_SCROLL_MENU_CLICKED,      &MainHomeDlg::OnScrollMenuClicked)
     ON_MESSAGE(WM_STORE_LIST_RESPONSE,      &MainHomeDlg::OnStoreListResponse)
+    // ★ 주소 응답 메시지 핸들러 등록
+    ON_MESSAGE(WM_ADDR_LIST_RESPONSE,       &MainHomeDlg::OnAddrListResponse)
+    ON_MESSAGE(WM_ADDR_SAVE_RESPONSE,       &MainHomeDlg::OnAddrSaveResponse)
     ON_BN_CLICKED(IDC_BUTTON1,              &MainHomeDlg::OnBnClickedButton1)
     ON_NOTIFY(NM_CLICK, IDC_LIST_STOR,      &MainHomeDlg::OnNMDblclkListStor)
     ON_BN_CLICKED(IDC_BTN_MY_MYPAGE,        &MainHomeDlg::OnBnClickedBtnMypage)
@@ -122,19 +128,16 @@ BOOL MainHomeDlg::OnInitDialog()
     m_brushBack.CreateSolidBrush(RGB(230, 245, 245));
     m_brushWhite.CreateSolidBrush(RGB(255, 255, 255));
 
-    // ── ImageList 초기화 ──────────────────────────────────────
-    // LVSIL_SMALL로 썸네일 표시 + 행 높이 강제 설정
     m_imgListStore.Create(STORE_THUMB_W, STORE_THUMB_H, ILC_COLOR32, 16, 8);
     m_listStore.SetImageList(&m_imgListStore, LVSIL_SMALL);
 
     m_listStore.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-    m_listStore.InsertColumn(0, _T("사진"),     LVCFMT_LEFT,   70);  // 이미지 컬럼
+    m_listStore.InsertColumn(0, _T("사진"),     LVCFMT_LEFT,   70);
     m_listStore.InsertColumn(1, _T("매장명"),   LVCFMT_LEFT,  140);
     m_listStore.InsertColumn(2, _T("배달시간"), LVCFMT_CENTER,  70);
     m_listStore.InsertColumn(3, _T("배달비"),   LVCFMT_CENTER,  70);
     m_listStore.InsertColumn(4, _T("최소주문"), LVCFMT_RIGHT,   85);
     m_listStore.InsertColumn(5, _T("가게소개"), LVCFMT_LEFT,   190);
-
 
     CWnd* pPH = GetDlgItem(IDC_STATIC_MENU_BAR);
     if (pPH) {
@@ -152,7 +155,14 @@ BOOL MainHomeDlg::OnInitDialog()
     UpdateConnStatusUI();
     SetTimer(TIMER_CONN_CHECK, 3000, nullptr);
 
+    // ★ 콜백 등록 (주소 응답 콜백 포함)
     RegisterNetworkCallback();
+
+    // ★ 로그인 직후 주소 레이블 초기 표시
+    //   RequestAddressesFromServer()는 LoginDlg에서 이미 호출됨
+    //   서버 응답이 오면 OnAddrListResponse → UpdateAddrLabel 갱신됨
+    UpdateAddrLabel();
+
     SendStoreListRequest(_T("전체"));
     return TRUE;
 }
@@ -232,14 +242,38 @@ HBRUSH MainHomeDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
     return CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
 }
 
+// ================================================================
+//  RegisterNetworkCallback
+//  ★ 주소 관련 콜백 2개 추가
+// ================================================================
 void MainHomeDlg::RegisterNetworkCallback()
 {
+    // 가게 목록 응답 콜백
     NetworkManager::GetInstance().RegisterCallback(CmdCustomer::REQ_STORE_LIST,
         [this](uint16_t, const std::string& body) {
             std::string* pBody = new std::string(body);
             PostMessage(WM_STORE_LIST_RESPONSE, 0, (LPARAM)pBody);
         });
+
+    // ★ 주소 목록 조회 응답 콜백 (213)
+    //   LoginDlg에서 RequestAddressesFromServer()를 호출하면
+    //   서버가 213으로 응답 → 여기서 수신 → OnAddrListResponse 처리
+    NetworkManager::GetInstance().RegisterCallback(CmdCustomer::REQ_GET_ADDRESSES,
+        [this](uint16_t, const std::string& body) {
+            std::string* pBody = new std::string(body);
+            PostMessage(WM_ADDR_LIST_RESPONSE, 0, (LPARAM)pBody);
+        });
+
+    // ★ 주소 저장 응답 콜백 (214)
+    //   AddressManager::AddAddress() 내부에서 패킷 전송 →
+    //   서버가 214로 address_id 포함 응답 → OnAddrSaveResponse 처리
+    NetworkManager::GetInstance().RegisterCallback(CmdCustomer::REQ_SAVE_ADDRESS,
+        [this](uint16_t, const std::string& body) {
+            std::string* pBody = new std::string(body);
+            PostMessage(WM_ADDR_SAVE_RESPONSE, 0, (LPARAM)pBody);
+        });
 }
+
 void MainHomeDlg::SendStoreListRequest(const CString& category)
 {
     auto& net = NetworkManager::GetInstance();
@@ -253,6 +287,7 @@ void MainHomeDlg::SendStoreListRequest(const CString& category)
     m_listStore.DeleteAllItems();
     m_listStore.InsertItem(0, _T("불러오는 중..."));
 }
+
 LRESULT MainHomeDlg::OnStoreListResponse(WPARAM, LPARAM lParam)
 {
     std::string* pBody = reinterpret_cast<std::string*>(lParam);
@@ -268,17 +303,69 @@ LRESULT MainHomeDlg::OnStoreListResponse(WPARAM, LPARAM lParam)
     delete pBody; return 0;
 }
 
+// ================================================================
+//  ★ OnAddrListResponse  —  REQ_GET_ADDRESSES (213) 응답 처리
+//
+//  서버 응답 예시:
+//  { "status":2000,
+//    "addresses":[
+//      {"address_id":1,"address":"광주시 북구 용봉동","label":"집","is_default":true},
+//      {"address_id":2,"address":"광주시 서구 치평동","label":"회사","is_default":false}
+//    ] }
+//
+//  처리 흐름:
+//    1. AddressManager::OnAddressListResponse() → m_list 재구성
+//    2. UpdateAddrLabel() → 상단 주소 버튼 텍스트 갱신
+// ================================================================
+LRESULT MainHomeDlg::OnAddrListResponse(WPARAM, LPARAM lParam)
+{
+    std::string* pBody = reinterpret_cast<std::string*>(lParam);
+    if (!pBody) return 0;
+
+    if (MHJInt(*pBody, "status") == (int)Status::SUCCESS) {
+        // AddressManager에 서버 주소 목록 반영
+        AddressManager::GetInstance().OnAddressListResponse(*pBody);
+        // 상단 주소 버튼 레이블 갱신
+        UpdateAddrLabel();
+    }
+
+    delete pBody;
+    return 0;
+}
+
+// ================================================================
+//  ★ OnAddrSaveResponse  —  REQ_SAVE_ADDRESS (214) 응답 처리
+//
+//  서버 응답 예시:
+//  { "status":2000, "address_id":5 }
+//
+//  처리 흐름:
+//    1. AddressManager::OnSaveAddressResponse() →
+//       addressId==0 인 항목(방금 추가된 것)에 서버 발급 ID 저장
+//    2. 이후 삭제/기본설정 시 address_id를 서버에 정확히 전달 가능
+// ================================================================
+LRESULT MainHomeDlg::OnAddrSaveResponse(WPARAM, LPARAM lParam)
+{
+    std::string* pBody = reinterpret_cast<std::string*>(lParam);
+    if (!pBody) return 0;
+
+    if (MHJInt(*pBody, "status") == (int)Status::SUCCESS) {
+        AddressManager::GetInstance().OnSaveAddressResponse(*pBody);
+    }
+
+    delete pBody;
+    return 0;
+}
+
 void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
 {
     m_listStore.DeleteAllItems();
 
-    // ImageList 초기화 (기존 이미지 모두 제거 후 재구성)
     if (m_imgListStore.GetSafeHandle())
         m_imgListStore.DeleteImageList();
     m_imgListStore.Create(STORE_THUMB_W, STORE_THUMB_H, ILC_COLOR32, (int)stores.size() + 1, 4);
     m_listStore.SetImageList(&m_imgListStore, LVSIL_SMALL);
 
-    // 기본 이미지 (이미지 없을 때 사용할 회색 사각형) — 화면DC 기반 32bpp
     HBITMAP hDefault = nullptr;
     {
         HDC hdcScreen = ::GetDC(nullptr);
@@ -293,20 +380,12 @@ void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
         ::DeleteDC(hdc);
         ::ReleaseDC(nullptr, hdcScreen);
     }
-    // Add(HBITMAP hbmImage, HBITMAP hbmMask) — nullptr mask
     int defImgIdx = m_imgListStore.Add(CBitmap::FromHandle(hDefault), (CBitmap*)nullptr);
     ::DeleteObject(hDefault);
 
     for (int i = 0; i < (int)stores.size(); ++i) {
-        // ── 이미지 로드 ───────────────────────────────────────
-        int imgIdx = defImgIdx; // 기본: 회색 박스
+        int imgIdx = defImgIdx;
         CString imgUrl = CA2T(stores[i].storeImageUrl.c_str(), CP_UTF8);
-        // 첫 번째 가게만 디버그 출력
-        if (i == 0) {
-            CString dbg;
-            dbg.Format(_T("storeImageUrl[0]='%s'"), (LPCTSTR)imgUrl);
-            ::MessageBoxW(nullptr, dbg, _T("URL 확인"), MB_OK);
-        }
         if (!imgUrl.IsEmpty()) {
             CString fullPath = ImageLoader::MakeServerPath(imgUrl);
             HBITMAP hBmp = ImageLoader::LoadResized(fullPath, STORE_THUMB_W, STORE_THUMB_H);
@@ -316,7 +395,6 @@ void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
             }
         }
 
-        // LVITEM으로 이미지 인덱스 직접 지정
         CString n = CA2T(stores[i].storeName.c_str(), CP_UTF8);
         LVITEM lvi = {};
         lvi.mask    = LVIF_TEXT | LVIF_IMAGE;
@@ -326,18 +404,13 @@ void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
         lvi.iImage  = imgIdx;
         int r = m_listStore.InsertItem(&lvi);
 
-        // 컬럼 1: 매장명
         m_listStore.SetItemText(r, 1, n);
-        // 컬럼 2: 배달시간
         CString t = CA2T(stores[i].deliveryTime.c_str(), CP_UTF8);
         m_listStore.SetItemText(r, 2, t.IsEmpty() ? _T("--") : t);
-        // 컬럼 3: 배달비
         CString f = CA2T(stores[i].deliveryPriceRange.c_str(), CP_UTF8);
         m_listStore.SetItemText(r, 3, f.IsEmpty() ? _T("--") : f);
-        // 컬럼 4: 최소주문
         CString a; a.Format(_T("%d원"), stores[i].minOrderAmount);
         m_listStore.SetItemText(r, 4, a);
-        // 컬럼 5: 가게소개
         CString desc = CA2T(stores[i].description.c_str(), CP_UTF8);
         m_listStore.SetItemText(r, 5, desc);
     }
@@ -351,6 +424,7 @@ void MainHomeDlg::UpdateStoreListUI(CString cat)
     auto stores = OrderManager::GetInstance().GetStoresByCategory(catStr);
     RebuildStoreListUI(stores); m_vecStoreCache = stores;
 }
+
 LRESULT MainHomeDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM)
 {
     int n = (UINT)wParam - SCROLL_MENU_BTN_ID;
@@ -358,6 +432,7 @@ LRESULT MainHomeDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM)
         SendStoreListRequest(m_vecCategories[n]);
     return 0;
 }
+
 void MainHomeDlg::OnNMDblclkListStor(NMHDR* pNMHDR, LRESULT* pResult)
 {
     int n = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR)->iItem;
@@ -370,6 +445,7 @@ void MainHomeDlg::OnNMDblclkListStor(NMHDR* pNMHDR, LRESULT* pResult)
     }
     *pResult = 0;
 }
+
 void MainHomeDlg::OnBnClickedButton1()
 {
     CartDlg dlg(this); dlg.DoModal();
@@ -393,8 +469,13 @@ void MainHomeDlg::OnBnClickedBtnOrderHistory() { OrderListDlg dlg(this); dlg.DoM
 void MainHomeDlg::OnCancel()
 {
     KillTimer(TIMER_CONN_CHECK);
+    // ★ 로그아웃 시 주소 콜백 해제 + 메모리 초기화
+    NetworkManager::GetInstance().UnregisterCallback(CmdCustomer::REQ_GET_ADDRESSES);
+    NetworkManager::GetInstance().UnregisterCallback(CmdCustomer::REQ_SAVE_ADDRESS);
+    AddressManager::GetInstance().Clear();
     CDialogEx::OnCancel();
 }
+
 BOOL MainHomeDlg::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 {
     if (m_wndScrollMenu.GetSafeHwnd()) {
@@ -424,6 +505,10 @@ LRESULT MainHomeDlg::OnMyMenuSelected(WPARAM wParam, LPARAM)
         CString msg; msg.Format(_T("로그인 계정: %s\n\n로그아웃 하시겠습니까?"), (LPCTSTR)strUserID);
         if (AfxMessageBox(msg, MB_YESNO | MB_ICONQUESTION) == IDYES) {
             KillTimer(TIMER_CONN_CHECK);
+            // ★ 로그아웃 시 주소 데이터 초기화 및 콜백 해제
+            NetworkManager::GetInstance().UnregisterCallback(CmdCustomer::REQ_GET_ADDRESSES);
+            NetworkManager::GetInstance().UnregisterCallback(CmdCustomer::REQ_SAVE_ADDRESS);
+            AddressManager::GetInstance().Clear();
             AuthManager::GetInstance().Logout();
             CDialogEx::OnCancel();
         }
@@ -439,7 +524,9 @@ LRESULT MainHomeDlg::OnMyMenuSelected(WPARAM wParam, LPARAM)
 void MainHomeDlg::OnBnClickedBtnAddr()
 {
     AddressDlg dlg(this);
-    dlg.DoModal();            // 선택/취소 무관하게 레이블 갱신
+    dlg.DoModal();
+    // ★ 다이얼로그 닫힌 후 레이블 갱신
+    //   (AddressDlg 내에서 주소 추가/삭제/선택이 일어났을 수 있음)
     UpdateAddrLabel();
 }
 

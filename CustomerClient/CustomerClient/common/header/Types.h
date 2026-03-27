@@ -63,6 +63,12 @@ namespace CmdCustomer {
     constexpr uint16_t NTF_ORDER_STATUS  = 210; // [알림] 주문 상태 변경 알림
     constexpr uint16_t REQ_CHANGE_PASSWORD = 211; // 개인정보 변경
     constexpr uint16_t REQ_MY_INFO       = 212; // 개인정보조회
+
+    // ★ 주소 관련 프로토콜 (신규)
+    constexpr uint16_t REQ_GET_ADDRESSES    = 213; // 주소 목록 조회
+    constexpr uint16_t REQ_SAVE_ADDRESS     = 214; // 주소 추가
+    constexpr uint16_t REQ_DELETE_ADDRESS   = 215; // 주소 삭제
+    constexpr uint16_t REQ_DEFAULT_ADDRESS  = 216; // 기본 주소 설정
 }
 
 // [300번대] 사장님용 (Owner)

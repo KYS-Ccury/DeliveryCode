@@ -1,4 +1,11 @@
-﻿#pragma once
+#pragma once
+// ================================================================
+//  MainHomeDlg.h
+//
+//  [수정] 주소 목록 서버 응답 처리 추가
+//    - WM_ADDR_LIST_RESPONSE 메시지 추가
+//    - OnAddrListResponse 핸들러 선언 추가
+// ================================================================
 #include "afxdialogex.h"
 #include "ScrollMenu.h"
 #include "StoreInfo.h"
@@ -13,6 +20,10 @@
 #define IDC_BTN_MY_DELIVERY         1962
 #define IDC_BTN_MY_ORDERHISTORY     1963
 #endif
+
+// ★ 주소 목록 응답 메시지
+#define WM_ADDR_LIST_RESPONSE   (WM_USER + 115)
+#define WM_ADDR_SAVE_RESPONSE   (WM_USER + 116)
 
 class MainHomeDlg : public CDialogEx
 {
@@ -43,6 +54,10 @@ protected:
     afx_msg HBRUSH  OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
     afx_msg LRESULT OnScrollMenuClicked(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnStoreListResponse(WPARAM wParam, LPARAM lParam);
+    // ★ 주소 목록 응답 핸들러
+    afx_msg LRESULT OnAddrListResponse(WPARAM wParam, LPARAM lParam);
+    afx_msg LRESULT OnAddrSaveResponse(WPARAM wParam, LPARAM lParam);
+
     afx_msg void    OnBnClickedButton1();                  // 장바구니
     afx_msg void    OnNMDblclkListStor(NMHDR* pNMHDR, LRESULT* pResult);
 
@@ -70,8 +85,6 @@ private:
     // 가게 목록 썸네일 ImageList
     CImageList  m_imgListStore;
 
-    // UNC 경로로 이미지 로드 (서버 공유 폴더)
-    // 예: \\10.10.10.122\images\음식사진\치킨\bbq.jpg
     HBITMAP LoadImageFromServer(const CString& relPath);
     void    ResizeBitmapTo(HBITMAP& hBmp, int w, int h);
 };
