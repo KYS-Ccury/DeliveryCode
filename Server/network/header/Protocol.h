@@ -56,9 +56,11 @@ namespace CmdCustomer {
     constexpr uint16_t REQ_PAYMENT       = 205; // 결제 요청
     constexpr uint16_t REQ_WRITE_REVIEW  = 206; // 리뷰 작성
     constexpr uint16_t REQ_REVIEW_LIST   = 207; // 리뷰 목록 조회
-    constexpr uint16_t REQ_CANCEL_ORDER  = 208; // 주문 취소
-    
-    constexpr uint16_t NTF_ORDER_STATUS  = 210; // [알림] 주문 상태 변경 알림
+    constexpr uint16_t REQ_CANCEL_ORDER      = 208; // 주문 취소
+    constexpr uint16_t REQ_MY_POINT          = 209; // 포인트 조회
+    constexpr uint16_t NTF_ORDER_STATUS      = 210; // [알림] 주문 상태 변경 알림
+    constexpr uint16_t REQ_CHANGE_PASSWORD   = 211; // 비밀번호 변경
+    constexpr uint16_t REQ_MY_INFO           = 212; // 내 정보 조회
 }
 
 // [300번대] 사장님용 (Owner)
