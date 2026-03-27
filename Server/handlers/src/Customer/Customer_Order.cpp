@@ -23,10 +23,10 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
         }
 
         // 해당 가게의 배달비 조회
-        auto storeRows = db.executeQuery("SELECT base_delivery_fee FROM restaurants WHERE store_id = " + std::to_string(storeID));
+        auto storeRows = db.executeQuery("SELECT base_delivery_fee FROM restaurants WHERE restaurant_id = " + std::to_string(storeID));
         int actualDeliveryFee = 0;
         if (!storeRows.empty()) {
-            actualDeliveryFee = std::stoi(storeRows[0].at("delivery_fee"));
+            actualDeliveryFee = std::stoi(storeRows[0].at("base_delivery_fee"));
         }
 
         int totalPrice = 0;
@@ -43,6 +43,7 @@ void CustomerHandler::handleCreateOrder(Session* session, const std::string& bod
         if (isDel) {
             totalPrice += actualDeliveryFee; 
         }
+        // std::cout << "조회된 배달비: " << actualDeliveryFee << std::endl;
 
         if (usePoint > 0) {
             auto pr = db.executeQuery("SELECT point FROM customer_profiles WHERE user_id=" + std::to_string(uid));
@@ -140,7 +141,8 @@ void CustomerHandler::handleOrderHistory(Session* session, const std::string&) {
         auto rows = db.executeQuery(
             "SELECT o.order_id, r.restaurant_name AS store_name, "
             "o.total_price, o.status, o.created_at AS order_time, "
-            "o.delivery_method, o.delivery_address, r.base_delivery_fee " // ★ r.base_delivery_fee 추가
+            "o.delivery_method, o.delivery_address, "
+            "r.base_delivery_fee AS delivery_fee " // ★ AS delivery_fee 추가!
             "FROM orders o "
             "JOIN restaurants r ON r.restaurant_id = o.restaurant_id "
             "WHERE o.customer_id=" + std::to_string(uid) +
