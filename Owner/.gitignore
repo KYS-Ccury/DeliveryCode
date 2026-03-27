@@ -1,0 +1,46 @@
+## [ Build Outputs ]
+# 컴파일러 결과물 및 실행 파일
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rm/
+[Aa]rm64/
+*.exe
+*.dll
+*.lib
+*.pdb
+*.exp
+*.ilk
+*.map
+
+## [ Intermediate Files ]
+# 빌드 시 생성되는 중간 파일들
+*.obj
+*.res
+*.pch
+*.tlog
+*.lastbuildstate
+*.idb
+*.recipe
+*.log
+*.aps
+
+## [ Visual Studio Project & Solution Files ]
+# 개인 설정 및 캐시 (공유할 필요 없음)
+.vs/
+*.user
+*.suo
+*.ncb
+*.opendb
+*.db
+*.ipch
+
+## [ MFC Specific ]
+# 리소스 편집 시 생기는 임시 파일
+resource.hm
+
+## [ Others ]
+# 운영체제 생성 파일
+Thumbs.db
+Desktop.ini
