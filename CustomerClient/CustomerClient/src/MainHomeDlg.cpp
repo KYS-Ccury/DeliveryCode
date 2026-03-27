@@ -354,24 +354,30 @@ void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
 void MainHomeDlg::RequestStoreImages(const std::vector<StoreInfo>& stores)
 {
     auto& net = NetworkManager::GetInstance();
-    if (!net.IsConnected()) return;
+    if (!net.IsConnected()) {
+        OutputDebugStringA("[IMG] 연결 안됨 - 전송 중단\n");
+        return;
+    }
 
     m_imageUrlToIndex.clear();
 
     std::string token = AuthManager::GetInstance().GetAccessToken();
 
+    OutputDebugStringA(("[IMG] 가게 수: " + std::to_string(stores.size()) + "\n").c_str());
+
     for (int i = 0; i < (int)stores.size(); ++i) {
+        OutputDebugStringA(("[IMG] storeImageUrl[" + std::to_string(i) + "]=" + stores[i].storeImageUrl + "\n").c_str());
+        
         if (stores[i].storeImageUrl.empty()) continue;
 
         const std::string& url = stores[i].storeImageUrl;
-        // ImageList 슬롯 인덱스 = i+1 (0은 기본 이미지)
         m_imageUrlToIndex[url] = i + 1;
 
-        // 서버에 이미지 요청 (REQ_GET_IMAGE = 217)
         std::string json = "{\"token\":\"" + token + "\","
                            "\"image_url\":\"" + url + "\"}";
-        net.SendPacket((uint8_t)ClientType::CUSTOMER,
+        bool ok = net.SendPacket((uint8_t)ClientType::CUSTOMER,
                        CmdCustomer::REQ_GET_IMAGE, json);
+        OutputDebugStringA(("[IMG] SendPacket 결과=" + std::to_string(ok) + " url=" + url + "\n").c_str());
     }
 }
 
