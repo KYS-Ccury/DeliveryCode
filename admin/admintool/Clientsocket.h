@@ -69,24 +69,19 @@ public:
     // --------------------------------------------------------
     // 유틸리티
     // --------------------------------------------------------
-    std::string GetLastErrorMsg() const;  // 마지막 에러 메시지
+    std::string GetLastErrorMsg() const;  // 선언만 있음
 
 private:
-    // 정확히 size바이트만큼 수신 (TCP 스트림 대응)
     bool RecvExact(char* buffer, int size);
-
-    // 정확히 size바이트만큼 송신
     bool SendExact(const char* buffer, int size);
-
-    // 패킷 직렬화: Header(7) + JSON → 바이트 배열
     std::vector<char> BuildPacket(uint8_t clientType, uint16_t protocol, const json& body);
 
-    bool InitWinsock();       // Winsock 초기화
-    void CleanupWinsock();    // Winsock 정리
+    bool InitWinsock();
+    void CleanupWinsock();
 
 private:
-    SOCKET      m_socket;       // 소켓 핸들
-    bool        m_connected;    // 연결 상태 플래그
-    bool        m_wsaInited;    // WSA 초기화 여부
-    std::string m_lastError;    // 마지막 에러 메시지
+    SOCKET      m_socket;
+    bool        m_connected;
+    bool        m_wsaInited;
+    std::string m_lastError;
 };

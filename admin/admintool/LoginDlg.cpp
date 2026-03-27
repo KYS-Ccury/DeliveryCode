@@ -16,6 +16,7 @@
 
  // ★ 서버 연결 정보 (서버 main.cpp 기준 포트 9000)
 static const char* SERVER_IP = "10.10.10.122";
+// static const char* SERVER_IP = "10.10.10.122";
 static const int   SERVER_PORT = 8080;
 
 CLoginDlg::CLoginDlg(CWnd* pParent)

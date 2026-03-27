@@ -1,32 +1,36 @@
-﻿#pragma once
+﻿/**
+ * admintool.h
+ * ============================================================
+ * ★ 수정사항: CClientSocket m_socket 멤버 추가
+ *   → LoginDlg / 모든 Page에서 GetSocket()으로 접근
+ * ============================================================
+ */
 
-#include "Basehandler.h"
+#pragma once
 
-class AdminHandler : public BaseHandler {
+#ifndef __AFXWIN_H__
+#error "pch.h를 먼저 포함해야 합니다."
+#endif
+
+#include "resource.h"
+#include "ClientSocket.h"   // ★ 추가
+
+class CAdminToolApp : public CWinAppEx
+{
 public:
-    static AdminHandler& getInstance();
+    CAdminToolApp();
+    virtual BOOL InitInstance();
 
-    // ── BaseHandler 순수 가상함수 override (4개) ──
-    void onSignup(Session* session, const nlohmann::json& reqBody) override;
-    void onLoginSuccess(Session* session, int userId, const nlohmann::json& reqBody) override;
-    void onLogout(Session* session, int userId) override;
-    void onGetProfile(Session* session, int userId, const nlohmann::json& reqBody) override;
+    // ★ 추가: 소켓 객체 접근자 (어디서든 사용 가능)
+    CClientSocket& GetSocket() { return m_socket; }
 
-    // ── Dispatcher 진입점 ──
-    void process(Session* session, uint16_t protocol, const std::string& jsonBody) override;
+    DECLARE_MESSAGE_MAP()
 
 private:
-    AdminHandler();
+    CClientSocket m_socket;   // ★ 추가: TCP 소켓 (프로그램 전체 공유)
+};
 
-    // ── 500번대: 관리자 기능 ──
-    void handleOrderMonitor(Session* session, const std::string& jsonBody);
-    void handleRiderStatus(Session* session, const std::string& jsonBody);
-    void handleForceDispatch(Session* session, const std::string& jsonBody);
-    void handleForceCancel(Session* session, const std::string& jsonBody);
-    void handleManageReview(Session* session, const std::string& jsonBody);
-
-    // ── 600번대: 채팅 ──
-    void handleSendMsg(Session* session, const std::string& jsonBody);
-    void handleGetMsgs(Session* session, const std::string& jsonBody);
-    void handleRoomList(Session* session, const std::string& jsonBody);
+// 기존 빈 클래스 (사용되지 않으나 호환성 유지)
+class admintool
+{
 };

@@ -197,3 +197,67 @@ namespace CmdDBChat {
     constexpr uint16_t REQ_DB_INSERT_MESSAGE      = 1602; // 메시지 저장 DB Insert
     constexpr uint16_t REQ_DB_QUERY_MESSAGES      = 1603; // 메시지 목록 조회 DB Select
 }
+
+
+// [1100번대] 공통 / 인증 DB 처리
+namespace CmdDBCommon {
+    constexpr uint16_t REQ_DB_SIGNUP        = 1100; // 회원가입 DB Insert
+    constexpr uint16_t REQ_DB_LOGIN         = 1101; // 로그인 계정 확인 DB Select
+    constexpr uint16_t REQ_DB_GET_PROFILE   = 1104; // 정보 조회 DB Select
+}
+
+// [1200번대] 고객 DB 처리 (Customer)
+namespace CmdDBCustomer {
+    constexpr uint16_t REQ_DB_STORE_LIST    = 1200; // 매장 목록 조회 DB Select
+    constexpr uint16_t REQ_DB_MENU_LIST     = 1201; // 메뉴 조회 DB Select
+    constexpr uint16_t REQ_DB_CREATE_ORDER  = 1202; // 주문 생성 DB Insert
+    constexpr uint16_t REQ_DB_ORDER_HISTORY = 1203; // 주문 내역 조회 DB Select
+    constexpr uint16_t REQ_DB_ORDER_DETAIL  = 1204; // 주문 상세 조회 DB Select
+    constexpr uint16_t REQ_DB_PAYMENT       = 1205; // 결제 정보 DB Insert/Update
+    constexpr uint16_t REQ_DB_WRITE_REVIEW  = 1206; // 리뷰 작성 DB Insert
+    constexpr uint16_t REQ_DB_REVIEW_LIST   = 1207; // 리뷰 목록 조회 DB Select
+    constexpr uint16_t REQ_DB_CANCEL_ORDER  = 1208; // 주문 취소 상태 DB Update
+}
+
+// [1300번대] 사장님 DB 처리 (Owner)
+namespace CmdDBOwner {
+    constexpr uint16_t REQ_DB_STORE_INFO    = 1300; // 매장 정보 조회 DB Select
+    constexpr uint16_t REQ_DB_UPDATE_STORE  = 1301; // 매장 정보 수정 DB Update
+    constexpr uint16_t REQ_DB_ADD_MENU      = 1302; // 메뉴 등록 DB Insert
+    constexpr uint16_t REQ_DB_UPDATE_MENU   = 1303; // 메뉴 수정 DB Update
+    constexpr uint16_t REQ_DB_ORDER_LIST    = 1304; // 접수 대기/진행 주문 목록 DB Select
+    constexpr uint16_t REQ_DB_ACCEPT_ORDER  = 1305; // 주문 수락 상태 DB Update
+    constexpr uint16_t REQ_DB_REJECT_ORDER  = 1306; // 주문 거절 상태 DB Update
+    constexpr uint16_t REQ_DB_COOKING_DONE  = 1307; // 조리 완료 상태 DB Update
+    constexpr uint16_t REQ_DB_SALES_STATS   = 1308; // 매출 통계 조회 DB Select (Group By 등)
+    constexpr uint16_t REQ_DB_CHANGE_STATUS = 1309; // 영업 상태(오픈/마감) DB Update
+}
+
+// [1400번대] 라이더 DB 처리
+namespace CmdDBRider {
+    constexpr uint16_t REQ_DB_DISPATCH_LIST   = 1400; // 배차 리스트 조회 DB Select
+    constexpr uint16_t REQ_DB_ACCEPT_DISPATCH = 1401; // 배차 수락 DB Update
+    constexpr uint16_t REQ_DB_REJECT_DISPATCH = 1402; // 배차 거절 DB Update/Delete
+    constexpr uint16_t REQ_DB_PICKUP_DONE     = 1403; // 픽업 완료 DB Update
+    constexpr uint16_t REQ_DB_DELIVERY_DONE   = 1404; // 배달 완료 DB Update
+    constexpr uint16_t REQ_DB_WORK_STATUS     = 1406; // 출퇴근 상태 DB Update
+    constexpr uint16_t REQ_DB_SEND_GPS        = 1407; // 위치 정보 DB Update/Insert
+    // ★ 인증/프로필 훅(Hook)용 프로토콜 추가
+    constexpr uint16_t REQ_DB_CREATE_PROFILE    = 1410; 
+    constexpr uint16_t REQ_DB_LOGIN_HOOK        = 1411; 
+    constexpr uint16_t REQ_DB_LOGOUT_HOOK       = 1412; 
+    constexpr uint16_t REQ_DB_GET_RIDER_PROFILE = 1413;
+    constexpr uint16_t REQ_DB_MY_DISPATCHES = 1414;
+}
+
+// [1500번대] 관리자 DB 처리 (Admin)
+namespace CmdDBAdmin {
+    constexpr uint16_t REQ_DB_SETTLEMENT_LIST = 1500; // 정산 목록 조회 DB Select
+    constexpr uint16_t REQ_DB_SETTLEMENT_DET  = 1501; // 정산 상세 조회 DB Select
+    constexpr uint16_t REQ_DB_SETTLEMENT_CONF = 1502; // 정산 확정 처리 DB Update
+    constexpr uint16_t REQ_DB_MONITOR_ORDERS  = 1510; // 전체 대기/지연 주문 모니터링 DB Select
+    constexpr uint16_t REQ_DB_RIDER_STATUS    = 1511; // 전체 라이더 위치/상태 DB Select
+    constexpr uint16_t REQ_DB_FORCE_DISPATCH  = 1512; // 강제 배차 지정 DB Update
+    constexpr uint16_t REQ_DB_FORCE_CANCEL    = 1513; // 배차 강제 취소 DB Update
+    constexpr uint16_t REQ_DB_MANAGE_REVIEW   = 1520; // 악성 리뷰 블라인드/삭제 DB Update/Delete
+}
