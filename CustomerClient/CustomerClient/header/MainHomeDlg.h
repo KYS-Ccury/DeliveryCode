@@ -36,6 +36,7 @@ protected:
     void RebuildStoreListUI(const std::vector<StoreInfo>& stores);
     void UpdateStoreListUI(CString categoryName);
     void UpdateConnStatusUI();
+    void UpdateAddrLabel();
 
     afx_msg void    OnTimer(UINT_PTR nIDEvent);
     afx_msg BOOL    OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
@@ -51,6 +52,7 @@ protected:
     afx_msg void    OnBnClickedBtnPayment();      // 💳 결제수단
     afx_msg void    OnBnClickedBtnDelivery();     // 🛵 배달현황
     afx_msg void    OnBnClickedBtnOrderHistory(); // 📋 주문내역
+    afx_msg void    OnBnClickedBtnAddr();         // 📍 주소 관리
 
     DECLARE_MESSAGE_MAP()
 

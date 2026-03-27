@@ -1,4 +1,4 @@
-//{{NO_DEPENDENCIES}}
+﻿//{{NO_DEPENDENCIES}}
 // Microsoft Visual C++���� ������ ���� �����Դϴ�.
 // CustomerClient.rc���� ���ǰ� �ֽ��ϴ�.
 //
@@ -168,6 +168,17 @@
 #define IDC_EDIT_MI_PHONE               2302
 #define IDC_EDIT_MI_ADDR                2303
 #define IDC_EDIT_MI_GRADE               2304
+#define IDC_BTN_ADDR_LABEL              2500
+#define IDC_BTN_ADDR_CHANGE             2501
+
+// IDD_ADDRESS_DLG 관련
+#define IDD_ADDRESS_DLG                 2400
+#define IDC_ADDR_LIST                   2401
+#define IDC_ADDR_EDIT                   2402
+#define IDC_ADDR_ADD                    2403
+#define IDC_ADDR_DELETE                 2404
+#define IDC_ADDR_DEFAULT                2405
+#define IDC_ADDR_SELECT                 2406
 
 // Next default values for new objects
 // 

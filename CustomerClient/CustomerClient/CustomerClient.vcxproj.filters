@@ -126,6 +126,9 @@
     <ClInclude Include="header\EditInfoDlg.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="header\MyInfoDlg.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\AuthManager.cpp">
@@ -214,6 +217,15 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="src\EditInfoDlg.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\MyInfoDlg.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\AddressDlg.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\AddressManager.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

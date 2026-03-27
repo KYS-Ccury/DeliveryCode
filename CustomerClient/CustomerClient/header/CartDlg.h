@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <vector>
 #include <atomic>
 #include "afxdialogex.h"
@@ -46,6 +46,7 @@ protected:
     afx_msg void    OnBnClickedRadioDelivery();
     afx_msg void    OnBnClickedRadioPickup();
     afx_msg LRESULT OnOrderResponse(WPARAM wParam, LPARAM lParam);
+    afx_msg void OnBnClickedBtnAddrChange();
     DECLARE_MESSAGE_MAP()
 
 private:

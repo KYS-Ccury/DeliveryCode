@@ -1,4 +1,4 @@
-// ================================================================
+﻿// ================================================================
 //  LoginDlg.cpp  ─  로그인 + 서버 연결 + 회원가입 전환 (완성판)
 //
 //  [변경사항]
@@ -27,6 +27,7 @@
 #include "LoginDlg.h"
 #include "SignupDlg.h"
 #include "AuthManager.h"
+#include "AddressManager.h"
 #include "NetworkManager.h"
 #include "OrderManager.h"
 #include "common/header/Types.h"
@@ -115,6 +116,7 @@ BOOL LoginDlg::OnInitDialog()
             if (status == (int)Status::SUCCESS) {
                 m_strToken        = LJStr(body, "token");
                 m_strServerUserID = LJStr(body, "login_id");
+                m_strLoginAddress = LJStr(body, "address");  // ★ 주소 저장
                 // ★ 포인트 파싱 후 저장 (응답에 포함된 경우)
                 int point = LJInt(body, "point");
                 if (point >= 0)
@@ -301,6 +303,7 @@ LRESULT LoginDlg::OnLoginResponse(WPARAM, LPARAM lParam)
         std::string id = CT2A(strID, CP_UTF8);
 
         AuthManager::GetInstance().Login(id, "", m_strToken, m_strServerUserID);
+        AddressManager::GetInstance().InitFromLogin(m_strLoginAddress);  // ★
         SetLoginError(_T(""));
         CDialogEx::OnOK();
 

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "afxdialogex.h"
 #include <atomic>
 #include <string>
@@ -46,6 +46,7 @@ private:
 
     // ── 서버 응답 임시 저장 ───────────────────────────────────
     std::string m_strToken;
+    std::string m_strLoginAddress;  // 로그인 응답에서 받은 주소
     std::string m_strServerUserID;
 
     // ── 내부 헬퍼 ────────────────────────────────────────────

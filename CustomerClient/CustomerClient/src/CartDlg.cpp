@@ -30,6 +30,8 @@
 #include "CustomerClient.h"
 #include "afxdialogex.h"
 #include "CartDlg.h"
+#include "AddressDlg.h"
+#include "AddressManager.h"
 #include "DeliveryOkDlg.h"
 #include "OptionChangeDlg.h"
 #include "OrderManager.h"
@@ -152,6 +154,7 @@ void CartDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CartDlg, CDialogEx)
     ON_BN_CLICKED(IDOK,                &CartDlg::OnBnClickedOk)
+    ON_BN_CLICKED(IDC_BTN_ADDR_CHANGE, &CartDlg::OnBnClickedBtnAddrChange)
     ON_BN_CLICKED(IDC_BTN_BACK,        &CartDlg::OnBnClickedBtnBack)
     ON_BN_CLICKED(IDC_BTN_EDIT_OPTION, &CartDlg::OnBnClickedBtnEditOption)
     ON_BN_CLICKED(IDC_RADIO_DELIVERY,  &CartDlg::OnBnClickedRadioDelivery)
@@ -181,15 +184,20 @@ BOOL CartDlg::OnInitDialog()
     // AuthManager에 GetCurrentAddress() 가 없으면
     // REQ_GET_PROFILE 응답에서 받은 address 사용
     // (일단 빈 칸으로 두고, 사용자가 직접 입력)
+    // ── 배달 주소: AddressManager 기본 주소 자동 입력 ──────
     CWnd* pAddr = this->GetDlgItem(IDC_EDIT_DELIVERY_ADDR);
     if (pAddr) {
-        // 서버에서 프로필 조회 시 저장해 둔 주소가 있으면 자동 입력
-        // (현재 AuthManager는 주소를 별도 저장하지 않으므로 빈 값)
-        pAddr->SetWindowText(_T(""));
-        // 힌트 텍스트
-        ::SendMessage(pAddr->GetSafeHwnd(), EM_SETCUEBANNER, TRUE,
-                      (LPARAM)_T("배달 받을 주소를 입력하세요"));
+        std::string defAddr = AddressManager::GetInstance().GetDefaultAddress();
+        if (!defAddr.empty()) {
+            pAddr->SetWindowText(CA2T(defAddr.c_str(), CP_UTF8));
+        } else {
+            pAddr->SetWindowText(_T(""));
+            ::SendMessage(pAddr->GetSafeHwnd(), EM_SETCUEBANNER, TRUE,
+                          (LPARAM)_T("배달 받을 주소를 입력하세요"));
+        }
     }
+    // ── 주소 옆에 "변경" 버튼 역할: 주소 클릭 시 AddressDlg 열기 ─
+    // IDC_STATIC_ADDR_LABEL 클릭 시 주소 선택 다이얼로그
 
     // ── 요청사항 힌트 텍스트 ─────────────────────────────────
     CWnd* pReq = this->GetDlgItem(IDC_EDIT_DELIVERY_REQUEST);
@@ -736,4 +744,17 @@ void CartDlg::LoadPaymentCards()
         }
     }
     pCombo->SetCurSel(0);
+}
+
+// ================================================================
+//  IDC_BTN_ADDR_CHANGE — 배달주소 변경 (주소 관리 다이얼로그)
+// ================================================================
+void CartDlg::OnBnClickedBtnAddrChange()
+{
+    AddressDlg dlg(this);
+    if (dlg.DoModal() == IDOK && !dlg.m_strSelectedAddr.IsEmpty()) {
+        // 선택한 주소를 배달주소 입력란에 자동 입력
+        CWnd* pAddr = GetDlgItem(IDC_EDIT_DELIVERY_ADDR);
+        if (pAddr) pAddr->SetWindowText(dlg.m_strSelectedAddr);
+    }
 }

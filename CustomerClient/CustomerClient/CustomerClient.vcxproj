@@ -233,6 +233,8 @@
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\AddressDlg.cpp" />
+    <ClCompile Include="src\AddressManager.cpp" />
     <ClCompile Include="src\AuthManager.cpp" />
     <ClCompile Include="src\CartDlg.cpp" />
     <ClCompile Include="src\CartItem.cpp" />

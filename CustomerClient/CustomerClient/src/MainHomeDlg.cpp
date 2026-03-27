@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "CustomerClient.h"
 #include "afxdialogex.h"
 #include "MainHomeDlg.h"
@@ -13,6 +13,8 @@
 #include "EditInfoDlg.h"
 #include "MyInfoDlg.h"
 #include "ChatDlg.h"
+#include "AddressDlg.h"
+#include "AddressManager.h"
 #include "AuthManager.h"
 #include "NetworkManager.h"
 #include "ImageLoader.h"
@@ -107,6 +109,7 @@ BEGIN_MESSAGE_MAP(MainHomeDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_MY_PAYMENT,       &MainHomeDlg::OnBnClickedBtnPayment)
     ON_BN_CLICKED(IDC_BTN_MY_DELIVERY,      &MainHomeDlg::OnBnClickedBtnDelivery)
     ON_BN_CLICKED(IDC_BTN_MY_ORDERHISTORY,  &MainHomeDlg::OnBnClickedBtnOrderHistory)
+    ON_BN_CLICKED(IDC_BTN_ADDR_LABEL,       &MainHomeDlg::OnBnClickedBtnAddr)
     ON_MESSAGE(WM_MYMENU_SELECTED, &MainHomeDlg::OnMyMenuSelected)
 END_MESSAGE_MAP()
 
@@ -428,4 +431,30 @@ LRESULT MainHomeDlg::OnMyMenuSelected(WPARAM wParam, LPARAM)
     }
     }
     return 0;
+}
+
+// ================================================================
+//  IDC_BTN_ADDR_LABEL 클릭 — 주소 관리 다이얼로그 열기
+// ================================================================
+void MainHomeDlg::OnBnClickedBtnAddr()
+{
+    AddressDlg dlg(this);
+    dlg.DoModal();            // 선택/취소 무관하게 레이블 갱신
+    UpdateAddrLabel();
+}
+
+// ── 기본 주소를 상단 버튼에 반영 ─────────────────────────────
+void MainHomeDlg::UpdateAddrLabel()
+{
+    std::string def = AddressManager::GetInstance().GetDefaultAddress();
+    CString label;
+    if (def.empty()) {
+        label = _T("📍 내 주소");
+    } else {
+        CString strDef = CA2T(def.c_str(), CP_UTF8);
+        label = _T("📍 ") + strDef;
+    }
+
+    CWnd* pBtn = GetDlgItem(IDC_BTN_ADDR_LABEL);
+    if (pBtn) pBtn->SetWindowText(label);
 }
