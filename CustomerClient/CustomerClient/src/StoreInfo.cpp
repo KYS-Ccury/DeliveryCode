@@ -41,8 +41,7 @@ void StoreInfo::Clear()
     deliveryTime = "";
 
     storeImageUrl = "";
+    logoUrl = "";
     description = "";
-
-    deliveryFee = 0;
 
 }

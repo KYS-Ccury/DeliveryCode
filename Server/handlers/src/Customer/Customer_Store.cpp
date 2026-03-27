@@ -92,9 +92,9 @@ void CustomerHandler::handleStoreList(Session* session, const std::string& body)
             } else {
                 s["image_url"] = "placeholder_" + std::to_string(rid);
             }
-            // ★ 디버그 로그 — 빌드 확인 후 제거 가능
-            std::cout << "[Store] id=" << rid
-                      << " image_url=" << s["image_url"].get<std::string>() << "\n";
+            // ★ 로고 URL (restaurants.logo_url)
+            s["logo_url"] = (r.count("logo_url") && !r.at("logo_url").empty())
+                            ? r.at("logo_url") : "";
 
             stores.push_back(s);
         }

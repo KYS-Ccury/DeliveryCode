@@ -18,9 +18,9 @@ public:
     double distance;                // 사용자로부터의 거리 (km)
     std::string deliveryPriceRange; // 배달 가격 범위
     std::string deliveryTime;       // 예상 배달 시간
-    std::string storeImageUrl;      // 매장 대표 이미지 경로
+    std::string storeImageUrl;      // 매장 대표 이미지 경로 (메뉴 이미지)
+    std::string logoUrl;            // ★ 음식점 로고 이미지 경로
     std::string description;        // 가게 소개글
-    int deliveryFee;                // 배달비
 
     StoreInfo();
     void Clear();
