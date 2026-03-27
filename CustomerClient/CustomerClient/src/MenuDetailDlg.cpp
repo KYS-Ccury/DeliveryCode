@@ -223,13 +223,18 @@ void MenuDetailDlg::OnLvnItemchangedOptions(NMHDR* pNMHDR, LRESULT* pResult)
 // ── 장바구니 담기 ─────────────────────────────────────────────
 void MenuDetailDlg::OnBnClickedBtnCart()
 {
+    // 1. 장바구니에 담을 아이템 정보 구성
     CartItem newItem;
-    newItem.menuID    = m_menuInfo.menuID;
-    newItem.menuName  = CT2A(m_strMenuName, CP_UTF8);
-    newItem.basePrice = m_menuInfo.price;   // ★ 기본가만 저장, 옵션가 더하지 않음
-    newItem.quantity  = m_nQuantity;
-    newItem.storeID   = OrderManager::GetInstance().GetCurrentStoreID();
-    newItem.optionGroups = m_menuInfo.optionGroups;  // ★ 전체 옵션 그룹 보관
+    newItem.menuID = m_menuInfo.menuID;
+    newItem.menuName = CT2A(m_strMenuName, CP_UTF8);
+    newItem.basePrice = m_menuInfo.price;
+    newItem.quantity = m_nQuantity;
+
+    // ★ 수정: OrderManager에서 가져오지 않고, 현재 메뉴 정보에 박힌 storeID를 사용합니다.
+    int currentStoreID = m_menuInfo.storeID;
+    newItem.storeID = currentStoreID;
+
+    newItem.optionGroups = m_menuInfo.optionGroups;
 
     // 체크된 옵션 수집 (그룹 구분 행 건너뜀)
     int row = 0;
@@ -243,27 +248,53 @@ void MenuDetailDlg::OnBnClickedBtnCart()
             row++;
         }
     }
+
+    // 최종 가격 계산 (기본가 + 옵션가) * 수량
     newItem.CalculateTotalPrice();
 
-    int storeID = OrderManager::GetInstance().GetCurrentStoreID();
-    bool added  = OrderManager::GetInstance().AddToCart(storeID, newItem);
+    // 3. 장바구니 추가 시도
+    bool added = OrderManager::GetInstance().AddToCart(currentStoreID, newItem);
 
     if (!added) {
-        // ── 다른 가게 메뉴가 이미 장바구니에 있는 경우 ────────
+        // 다른 가게 메뉴가 이미 있는 경우
         int ret = AfxMessageBox(
             _T("장바구니에 다른 가게의 메뉴가 있습니다.\n")
             _T("현재 장바구니를 비우고 이 메뉴를 담으시겠습니까?"),
             MB_YESNO | MB_ICONQUESTION);
+
         if (ret == IDYES) {
             OrderManager::GetInstance().ClearCart();
-            OrderManager::GetInstance().AddToCart(storeID, newItem);
-        } else {
-            return; // 취소 → 창 유지
+            // 비운 후 다시 추가 (이때는 무조건 성공함)
+            OrderManager::GetInstance().AddToCart(currentStoreID, newItem);
+            AfxMessageBox(_T("장바구니가 교체되었습니다."));
+            EndDialog(IDOK);
         }
     }
-
-    CDialogEx::OnOK();
+    else {
+        AfxMessageBox(_T("장바구니에 담겼습니다."));
+        EndDialog(IDOK);
+    }
 }
+
+//    int storeID = OrderManager::GetInstance().GetCurrentStoreID();
+//    bool added  = OrderManager::GetInstance().AddToCart(storeID, newItem);
+//
+//    if (!added) {
+//        // ── 다른 가게 메뉴가 이미 장바구니에 있는 경우 ────────
+//        int ret = AfxMessageBox(
+//            _T("장바구니에 다른 가게의 메뉴가 있습니다.\n")
+//            _T("현재 장바구니를 비우고 이 메뉴를 담으시겠습니까?"),
+//            MB_YESNO | MB_ICONQUESTION);
+//        if (ret == IDYES) {
+//            OrderManager::GetInstance().ClearCart();
+//            OrderManager::GetInstance().AddToCart(storeID, newItem);
+//        } else {
+//            return; // 취소 → 창 유지
+//        }
+//    }
+//
+//    CDialogEx::OnOK();
+//}
 
 void MenuDetailDlg::OnBnClickedBtnBack() { CDialogEx::OnCancel(); }
 void MenuDetailDlg::OnOK()               { OnBnClickedBtnCart(); }

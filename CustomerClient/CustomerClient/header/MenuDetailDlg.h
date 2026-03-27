@@ -26,6 +26,8 @@ public:
     CString  m_strMenuName;
     MenuInfo m_menuInfo;
 
+    int m_nStoreId; // 이 다이얼로그가 열릴 때 어떤 가게인지 저장할 변수
+
 protected:
     virtual void DoDataExchange(CDataExchange* pDX);
     virtual BOOL OnInitDialog();

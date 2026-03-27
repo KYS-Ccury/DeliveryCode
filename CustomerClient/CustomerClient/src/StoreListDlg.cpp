@@ -291,6 +291,7 @@ void StoreListDlg::OnNMClickListMenuItems(NMHDR* pNMHDR, LRESULT* pResult)
             MenuDetailDlg dlg(this);
             dlg.m_strMenuName = sel;
             dlg.m_menuInfo    = m;
+            dlg.m_menuInfo.storeID = m_storeInfo.storeID;
             dlg.DoModal(); break;
         }
     }

@@ -326,7 +326,7 @@ void OrderListDlg::PopulateDetailPanel(int index)
     }
 
     // ★ 추가: 배달비 출력
-    if (o.deliveryFee > 0) {
+    if (o.isDelivery && o.deliveryFee > 0) {
         m_listItems.AddString(_T("------------------------------------------"));
         CString strFee;
         strFee.Format(_T("배달비 (+%d원)"), o.deliveryFee);

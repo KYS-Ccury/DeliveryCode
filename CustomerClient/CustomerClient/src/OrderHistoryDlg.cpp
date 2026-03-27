@@ -330,7 +330,8 @@ void OrderHistoryDlg::PopulateOrderInfo(const OrderInfo& info)
         }
 
         // ★ 추가: 배달비 출력
-        if (info.deliveryFee > 0) {
+        //if (info.deliveryFee > 0) {
+        if (info.isDelivery && info.deliveryFee > 0) {
             pLB->AddString(_T("------------------------------------------"));
             CString strFee;
             strFee.Format(_T("배달비  +%d원"), info.deliveryFee);
