@@ -77,26 +77,36 @@ static std::vector<std::string> OLExtractObjects(const std::string& json,
 }
 
 // JSON → OrderInfo 파싱
+// OrderListDlg.cpp 내의 함수 수정
 static OrderInfo ParseOLOrderObj(const std::string& obj)
 {
     OrderInfo info;
     info.orderID = OLJStr(obj, "order_id");
     info.storeID = OLJInt(obj, "store_id");
     info.storeName = OLJStr(obj, "store_name");
-    info.orderDateTime = OLJStr(obj, "order_datetime");
-    info.totalPayment = OLJInt(obj, "total_payment");
+
+    // ★ 서버 코드와 Key 이름 매칭 (order_datetime -> order_time)
+    info.orderDateTime = OLJStr(obj, "order_time");
+
+    // ★ 서버 코드와 Key 이름 매칭 (total_payment -> total_price)
+    info.totalPayment = OLJInt(obj, "total_price");
+
     info.deliveryStatus = OLJInt(obj, "status");
+
     std::string dm = OLJStr(obj, "delivery_method");
-    info.isDelivery = (dm != "포장");
+    info.isDelivery = (dm != "PICKUP"); // 보통 서버는 영문 대문자로 보냅니다.
     info.deliveryAddress = OLJStr(obj, "delivery_address");
 
-    // items 배열 파싱 → storeName 필드 재활용해 저장 (OrderInfo 구조에 따라 조정)
+    // 메뉴 아이템 파싱 (서버는 "items"라는 키로 보냄)
     auto itemObjs = OLExtractObjects(obj, "items");
     for (const auto& item : itemObjs) {
         OrderItem oi;
         oi.menuName = OLJStr(item, "menu_name");
         oi.quantity = OLJInt(item, "quantity");
+
+        // ★ 서버에서 메뉴 가격 키는 "price"입니다.
         oi.price = OLJInt(item, "price");
+
         info.items.push_back(oi);
     }
     return info;

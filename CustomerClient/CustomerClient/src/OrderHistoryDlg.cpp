@@ -102,6 +102,7 @@ static OrderInfo ParseOrderObj(const std::string& obj)
     info.storeName = OHJStr(obj, "store_name");
     info.orderDateTime = OHJStr(obj, "order_time");
     info.totalPayment = OHJInt(obj, "total_price");
+
     info.deliveryStatus = OHJInt(obj, "status");
     std::string dm = OHJStr(obj, "delivery_method");
     info.isDelivery = (dm != "PICKUP");   // ★ 서버가 "DELIVERY"/"PICKUP"으로 보냄
