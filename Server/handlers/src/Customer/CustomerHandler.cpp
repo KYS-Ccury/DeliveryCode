@@ -68,6 +68,7 @@ void CustomerHandler::process(Session* session, uint16_t protocol, const std::st
             case CmdCustomer::REQ_SAVE_ADDRESS:     handleSaveAddress      (session, body); break;
             case CmdCustomer::REQ_DELETE_ADDRESS:   handleDeleteAddress    (session, body); break;
             case CmdCustomer::REQ_DEFAULT_ADDRESS:  handleSetDefaultAddress(session, body); break;
+            case CmdCustomer::REQ_GET_IMAGE:        handleGetImage         (session, body); break; // 217
             default:
                 std::cerr << "[CustomerHandler] 알 수 없는 200번대 프로토콜: " << protocol << "\n";
                 sendError(session, protocol, Status::BAD_REQUEST, "Unknown protocol");

@@ -18,6 +18,10 @@ constexpr size_t FILE_CHUNK_SIZE = 65536;
 // 클라이언트가 파일을 보낼 때 사용할 특수 프로토콜 번호 (예: 9999)
 constexpr uint16_t PROTOCOL_FILE_UPLOAD = 9999;
 
+// ★ 이미지 저장 디렉터리 (Customer_Image.cpp의 IMAGE_BASE_DIR과 동일하게 맞출 것)
+// 서버 실행 디렉터리 기준. 절대경로 권장: e.g. "/home/lms/bemin/images/"
+static const std::string IMAGE_SAVE_DIR = "";  // 빈 문자열 = 실행 디렉터리
+
 Session::Session(int fd) 
     : client_fd(fd), state(State::READING_HEADER), 
       headerBytesRead(0), bodyBytesRead(0) {
@@ -103,7 +107,7 @@ bool Session::readFromSocket(ThreadPool* pool) {
                 // ========================================================
                 if (currentHeader.protocol == PROTOCOL_FILE_UPLOAD) {
                     // 고유 파일명 생성 (예: user_5_167890123.jpg)
-                    m_currentFileName = "upload_" + std::to_string(m_userID) + "_" + std::to_string(time(nullptr)) + ".jpg";
+                    m_currentFileName = IMAGE_SAVE_DIR + "upload_" + std::to_string(m_userID) + "_" + std::to_string(time(nullptr)) + ".jpg";
                     
                     // 파일을 추가 쓰기 모드로 연다! (RAM에는 데이터를 담지 않음)
                     m_fileStream.open(m_currentFileName, std::ios::binary | std::ios::app);

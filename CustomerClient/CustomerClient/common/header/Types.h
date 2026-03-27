@@ -69,6 +69,9 @@ namespace CmdCustomer {
     constexpr uint16_t REQ_SAVE_ADDRESS     = 214; // 주소 추가
     constexpr uint16_t REQ_DELETE_ADDRESS   = 215; // 주소 삭제
     constexpr uint16_t REQ_DEFAULT_ADDRESS  = 216; // 기본 주소 설정
+
+    // ★ 이미지 요청 프로토콜 (신규)
+    constexpr uint16_t REQ_GET_IMAGE        = 217; // 이미지 파일 요청 (base64 응답)
 }
 
 // [300번대] 사장님용 (Owner)

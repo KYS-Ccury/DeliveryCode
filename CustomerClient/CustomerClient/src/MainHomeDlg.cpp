@@ -1,3 +1,13 @@
+// ================================================================
+//  MainHomeDlg.cpp  — 이미지 TCP 수신 방식으로 수정
+//
+//  [변경 사항]
+//  1. RebuildStoreListUI: UNC 경로 접근 제거 → 기본 이미지로만 먼저 그림
+//  2. RegisterNetworkCallback: REQ_GET_IMAGE(217) 콜백 추가
+//  3. RequestStoreImages: 가게 목록 수신 후 이미지 개별 요청
+//  4. OnImageResponse: base64 수신 → BitmapFromBytes → ImageList 갱신
+//  5. 디버그 MessageBox 제거
+// ================================================================
 #include "pch.h"
 #include "CustomerClient.h"
 #include "afxdialogex.h"
@@ -21,18 +31,15 @@
 #include "common/header/Types.h"
 
 #define WM_STORE_LIST_RESPONSE  (WM_USER + 110)
-// ★ 주소 관련 응답 메시지 (MainHomeDlg.h 와 일치해야 함)
 #define WM_ADDR_LIST_RESPONSE   (WM_USER + 115)
 #define WM_ADDR_SAVE_RESPONSE   (WM_USER + 116)
+// ★ 이미지 응답 메시지
+#define WM_IMAGE_RESPONSE       (WM_USER + 117)
 
-// 가게 목록 썸네일 크기
 static const int STORE_THUMB_W = 60;
 static const int STORE_THUMB_H = 60;
 
-// 서버 이미지 공유 경로 루트 (UNC)
-static const TCHAR* SERVER_IMAGE_ROOT = _T("\\\\10.10.10.122\\images\\");
-
-// ── 간이 JSON 파싱 ────────────────────────────────────────────
+// ── 간이 JSON 파싱 ─────────────────────────────────────────────
 static std::string MHJStr(const std::string& j, const std::string& k)
 {
     std::string t = "\"" + k + "\":\"";
@@ -106,9 +113,10 @@ BEGIN_MESSAGE_MAP(MainHomeDlg, CDialogEx)
     ON_WM_CTLCOLOR()
     ON_MESSAGE(WM_SCROLL_MENU_CLICKED,      &MainHomeDlg::OnScrollMenuClicked)
     ON_MESSAGE(WM_STORE_LIST_RESPONSE,      &MainHomeDlg::OnStoreListResponse)
-    // ★ 주소 응답 메시지 핸들러 등록
     ON_MESSAGE(WM_ADDR_LIST_RESPONSE,       &MainHomeDlg::OnAddrListResponse)
     ON_MESSAGE(WM_ADDR_SAVE_RESPONSE,       &MainHomeDlg::OnAddrSaveResponse)
+    // ★ 이미지 응답 핸들러
+    ON_MESSAGE(WM_IMAGE_RESPONSE,           &MainHomeDlg::OnImageResponse)
     ON_BN_CLICKED(IDC_BUTTON1,              &MainHomeDlg::OnBnClickedButton1)
     ON_NOTIFY(NM_CLICK, IDC_LIST_STOR,      &MainHomeDlg::OnNMDblclkListStor)
     ON_BN_CLICKED(IDC_BTN_MY_MYPAGE,        &MainHomeDlg::OnBnClickedBtnMypage)
@@ -116,7 +124,7 @@ BEGIN_MESSAGE_MAP(MainHomeDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_MY_DELIVERY,      &MainHomeDlg::OnBnClickedBtnDelivery)
     ON_BN_CLICKED(IDC_BTN_MY_ORDERHISTORY,  &MainHomeDlg::OnBnClickedBtnOrderHistory)
     ON_BN_CLICKED(IDC_BTN_ADDR_LABEL,       &MainHomeDlg::OnBnClickedBtnAddr)
-    ON_MESSAGE(WM_MYMENU_SELECTED, &MainHomeDlg::OnMyMenuSelected)
+    ON_MESSAGE(WM_MYMENU_SELECTED,          &MainHomeDlg::OnMyMenuSelected)
 END_MESSAGE_MAP()
 
 BOOL MainHomeDlg::OnInitDialog()
@@ -155,51 +163,12 @@ BOOL MainHomeDlg::OnInitDialog()
     UpdateConnStatusUI();
     SetTimer(TIMER_CONN_CHECK, 3000, nullptr);
 
-    // ★ 콜백 등록 (주소 응답 콜백 포함)
     RegisterNetworkCallback();
-
-    // ★ 로그인 직후 주소 레이블 초기 표시
-    //   RequestAddressesFromServer()는 LoginDlg에서 이미 호출됨
-    //   서버 응답이 오면 OnAddrListResponse → UpdateAddrLabel 갱신됨
     UpdateAddrLabel();
-
     SendStoreListRequest(_T("전체"));
     return TRUE;
 }
 
-// ── 서버 UNC 경로로 이미지 로드 ──────────────────────────────
-HBITMAP MainHomeDlg::LoadImageFromServer(const CString& relPath)
-{
-    CString fullPath = ImageLoader::MakeServerPath(relPath);
-    return ImageLoader::Load(fullPath);
-}
-
-void MainHomeDlg::ResizeBitmapTo(HBITMAP& hBmp, int w, int h)
-{
-    if (!hBmp) return;
-    BITMAP bm = {};
-    ::GetObject(hBmp, sizeof(bm), &bm);
-    if (bm.bmWidth == w && bm.bmHeight == h) return;
-
-    HDC hdcSrc = ::CreateCompatibleDC(nullptr);
-    HDC hdcDst = ::CreateCompatibleDC(nullptr);
-    HBITMAP hNew = ::CreateCompatibleBitmap(hdcSrc, w, h);
-
-    HGDIOBJ hOldSrc = ::SelectObject(hdcSrc, hBmp);
-    HGDIOBJ hOldDst = ::SelectObject(hdcDst, hNew);
-
-    ::SetStretchBltMode(hdcDst, HALFTONE);
-    ::StretchBlt(hdcDst, 0, 0, w, h, hdcSrc, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
-
-    ::SelectObject(hdcSrc, hOldSrc);
-    ::SelectObject(hdcDst, hOldDst);
-    ::DeleteDC(hdcSrc);
-    ::DeleteDC(hdcDst);
-    ::DeleteObject(hBmp);
-    hBmp = hNew;
-}
-
-// ── 연결 상태 UI ─────────────────────────────────────────────
 void MainHomeDlg::UpdateConnStatusUI()
 {
     CWnd* pLabel = this->GetDlgItem(IDC_STATIC_CONN_STATUS);
@@ -243,34 +212,33 @@ HBRUSH MainHomeDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 }
 
 // ================================================================
-//  RegisterNetworkCallback
-//  ★ 주소 관련 콜백 2개 추가
+//  RegisterNetworkCallback — ★ 이미지 응답 콜백 추가
 // ================================================================
 void MainHomeDlg::RegisterNetworkCallback()
 {
-    // 가게 목록 응답 콜백
     NetworkManager::GetInstance().RegisterCallback(CmdCustomer::REQ_STORE_LIST,
         [this](uint16_t, const std::string& body) {
-            std::string* pBody = new std::string(body);
-            PostMessage(WM_STORE_LIST_RESPONSE, 0, (LPARAM)pBody);
+            std::string* p = new std::string(body);
+            PostMessage(WM_STORE_LIST_RESPONSE, 0, (LPARAM)p);
         });
 
-    // ★ 주소 목록 조회 응답 콜백 (213)
-    //   LoginDlg에서 RequestAddressesFromServer()를 호출하면
-    //   서버가 213으로 응답 → 여기서 수신 → OnAddrListResponse 처리
     NetworkManager::GetInstance().RegisterCallback(CmdCustomer::REQ_GET_ADDRESSES,
         [this](uint16_t, const std::string& body) {
-            std::string* pBody = new std::string(body);
-            PostMessage(WM_ADDR_LIST_RESPONSE, 0, (LPARAM)pBody);
+            std::string* p = new std::string(body);
+            PostMessage(WM_ADDR_LIST_RESPONSE, 0, (LPARAM)p);
         });
 
-    // ★ 주소 저장 응답 콜백 (214)
-    //   AddressManager::AddAddress() 내부에서 패킷 전송 →
-    //   서버가 214로 address_id 포함 응답 → OnAddrSaveResponse 처리
     NetworkManager::GetInstance().RegisterCallback(CmdCustomer::REQ_SAVE_ADDRESS,
         [this](uint16_t, const std::string& body) {
-            std::string* pBody = new std::string(body);
-            PostMessage(WM_ADDR_SAVE_RESPONSE, 0, (LPARAM)pBody);
+            std::string* p = new std::string(body);
+            PostMessage(WM_ADDR_SAVE_RESPONSE, 0, (LPARAM)p);
+        });
+
+    // ★ 이미지 응답 콜백
+    NetworkManager::GetInstance().RegisterCallback(CmdCustomer::REQ_GET_IMAGE,
+        [this](uint16_t, const std::string& body) {
+            std::string* p = new std::string(body);
+            PostMessage(WM_IMAGE_RESPONSE, 0, (LPARAM)p);
         });
 }
 
@@ -295,7 +263,10 @@ LRESULT MainHomeDlg::OnStoreListResponse(WPARAM, LPARAM lParam)
     if (MHJInt(*pBody,"status") == (int)Status::SUCCESS) {
         m_vecStoreCache = ParseStoreArray(*pBody);
         OrderManager::GetInstance().UpdateStoreCache(m_vecStoreCache);
+        // ★ 1단계: 기본 이미지로 먼저 리스트 표시
         RebuildStoreListUI(m_vecStoreCache);
+        // ★ 2단계: 이미지 비동기 요청
+        RequestStoreImages(m_vecStoreCache);
     } else {
         m_listStore.DeleteAllItems();
         m_listStore.InsertItem(0, _T("가게 정보를 가져오지 못했습니다."));
@@ -304,74 +275,26 @@ LRESULT MainHomeDlg::OnStoreListResponse(WPARAM, LPARAM lParam)
 }
 
 // ================================================================
-//  ★ OnAddrListResponse  —  REQ_GET_ADDRESSES (213) 응답 처리
-//
-//  서버 응답 예시:
-//  { "status":2000,
-//    "addresses":[
-//      {"address_id":1,"address":"광주시 북구 용봉동","label":"집","is_default":true},
-//      {"address_id":2,"address":"광주시 서구 치평동","label":"회사","is_default":false}
-//    ] }
-//
-//  처리 흐름:
-//    1. AddressManager::OnAddressListResponse() → m_list 재구성
-//    2. UpdateAddrLabel() → 상단 주소 버튼 텍스트 갱신
+//  RebuildStoreListUI
+//  ★ UNC 경로 접근 제거 — 기본 회색 이미지로만 먼저 그림
+//  ★ 디버그 MessageBox 제거
 // ================================================================
-LRESULT MainHomeDlg::OnAddrListResponse(WPARAM, LPARAM lParam)
-{
-    std::string* pBody = reinterpret_cast<std::string*>(lParam);
-    if (!pBody) return 0;
-
-    if (MHJInt(*pBody, "status") == (int)Status::SUCCESS) {
-        // AddressManager에 서버 주소 목록 반영
-        AddressManager::GetInstance().OnAddressListResponse(*pBody);
-        // 상단 주소 버튼 레이블 갱신
-        UpdateAddrLabel();
-    }
-
-    delete pBody;
-    return 0;
-}
-
-// ================================================================
-//  ★ OnAddrSaveResponse  —  REQ_SAVE_ADDRESS (214) 응답 처리
-//
-//  서버 응답 예시:
-//  { "status":2000, "address_id":5 }
-//
-//  처리 흐름:
-//    1. AddressManager::OnSaveAddressResponse() →
-//       addressId==0 인 항목(방금 추가된 것)에 서버 발급 ID 저장
-//    2. 이후 삭제/기본설정 시 address_id를 서버에 정확히 전달 가능
-// ================================================================
-LRESULT MainHomeDlg::OnAddrSaveResponse(WPARAM, LPARAM lParam)
-{
-    std::string* pBody = reinterpret_cast<std::string*>(lParam);
-    if (!pBody) return 0;
-
-    if (MHJInt(*pBody, "status") == (int)Status::SUCCESS) {
-        AddressManager::GetInstance().OnSaveAddressResponse(*pBody);
-    }
-
-    delete pBody;
-    return 0;
-}
-
 void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
 {
     m_listStore.DeleteAllItems();
 
     if (m_imgListStore.GetSafeHandle())
         m_imgListStore.DeleteImageList();
-    m_imgListStore.Create(STORE_THUMB_W, STORE_THUMB_H, ILC_COLOR32, (int)stores.size() + 1, 4);
+    m_imgListStore.Create(STORE_THUMB_W, STORE_THUMB_H, ILC_COLOR32,
+                          (int)stores.size() + 1, 4);
     m_listStore.SetImageList(&m_imgListStore, LVSIL_SMALL);
 
-    HBITMAP hDefault = nullptr;
+    // 기본 이미지 (회색 박스) — index 0
     {
         HDC hdcScreen = ::GetDC(nullptr);
         HDC hdc = ::CreateCompatibleDC(hdcScreen);
-        hDefault = ::CreateCompatibleBitmap(hdcScreen, STORE_THUMB_W, STORE_THUMB_H);
-        HGDIOBJ hOld = ::SelectObject(hdc, hDefault);
+        HBITMAP hDef = ::CreateCompatibleBitmap(hdcScreen, STORE_THUMB_W, STORE_THUMB_H);
+        HGDIOBJ hOld = ::SelectObject(hdc, hDef);
         RECT rc = {0, 0, STORE_THUMB_W, STORE_THUMB_H};
         HBRUSH hBr = ::CreateSolidBrush(RGB(210, 210, 210));
         ::FillRect(hdc, &rc, hBr);
@@ -379,31 +302,36 @@ void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
         ::SelectObject(hdc, hOld);
         ::DeleteDC(hdc);
         ::ReleaseDC(nullptr, hdcScreen);
+        m_imgListStore.Add(CBitmap::FromHandle(hDef), (CBitmap*)nullptr);
+        ::DeleteObject(hDef);
     }
-    int defImgIdx = m_imgListStore.Add(CBitmap::FromHandle(hDefault), (CBitmap*)nullptr);
-    ::DeleteObject(hDefault);
-
+    // index 1 ~ N: 각 가게 슬롯 (기본 이미지로 채움, 나중에 OnImageResponse에서 교체)
     for (int i = 0; i < (int)stores.size(); ++i) {
-        int imgIdx = defImgIdx;
-        CString imgUrl = CA2T(stores[i].storeImageUrl.c_str(), CP_UTF8);
-        if (!imgUrl.IsEmpty()) {
-            CString fullPath = ImageLoader::MakeServerPath(imgUrl);
-            HBITMAP hBmp = ImageLoader::LoadResized(fullPath, STORE_THUMB_W, STORE_THUMB_H);
-            if (hBmp) {
-                imgIdx = m_imgListStore.Add(CBitmap::FromHandle(hBmp), (CBitmap*)nullptr);
-                ::DeleteObject(hBmp);
-            }
-        }
+        // 빈 슬롯 추가 (기본 이미지 복사)
+        HDC hdcScreen = ::GetDC(nullptr);
+        HDC hdc = ::CreateCompatibleDC(hdcScreen);
+        HBITMAP hSlot = ::CreateCompatibleBitmap(hdcScreen, STORE_THUMB_W, STORE_THUMB_H);
+        HGDIOBJ hOld = ::SelectObject(hdc, hSlot);
+        RECT rc = {0, 0, STORE_THUMB_W, STORE_THUMB_H};
+        HBRUSH hBr = ::CreateSolidBrush(RGB(210, 210, 210));
+        ::FillRect(hdc, &rc, hBr);
+        ::DeleteObject(hBr);
+        ::SelectObject(hdc, hOld);
+        ::DeleteDC(hdc);
+        ::ReleaseDC(nullptr, hdcScreen);
+        m_imgListStore.Add(CBitmap::FromHandle(hSlot), (CBitmap*)nullptr);
+        ::DeleteObject(hSlot);
 
-        CString n = CA2T(stores[i].storeName.c_str(), CP_UTF8);
+        // 리스트 아이템 삽입 (이미지 인덱스 = i+1)
         LVITEM lvi = {};
-        lvi.mask    = LVIF_TEXT | LVIF_IMAGE;
-        lvi.iItem   = i;
-        lvi.iSubItem= 0;
-        lvi.pszText = (LPTSTR)(LPCTSTR)_T("");
-        lvi.iImage  = imgIdx;
+        lvi.mask     = LVIF_TEXT | LVIF_IMAGE;
+        lvi.iItem    = i;
+        lvi.iSubItem = 0;
+        lvi.pszText  = (LPTSTR)(LPCTSTR)_T("");
+        lvi.iImage   = i + 1; // 각 가게 전용 슬롯
         int r = m_listStore.InsertItem(&lvi);
 
+        CString n = CA2T(stores[i].storeName.c_str(), CP_UTF8);
         m_listStore.SetItemText(r, 1, n);
         CString t = CA2T(stores[i].deliveryTime.c_str(), CP_UTF8);
         m_listStore.SetItemText(r, 2, t.IsEmpty() ? _T("--") : t);
@@ -414,7 +342,107 @@ void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
         CString desc = CA2T(stores[i].description.c_str(), CP_UTF8);
         m_listStore.SetItemText(r, 5, desc);
     }
-    if (stores.empty()) m_listStore.InsertItem(0,_T("해당 카테고리의 가게가 없습니다."));
+    if (stores.empty())
+        m_listStore.InsertItem(0, _T("해당 카테고리의 가게가 없습니다."));
+}
+
+// ================================================================
+//  RequestStoreImages  ★ 신규
+//  가게 목록 표시 후 image_url이 있는 가게의 이미지를 순차 요청
+//  m_imageUrlToIndex: image_url → ImageList 슬롯 인덱스 맵핑
+// ================================================================
+void MainHomeDlg::RequestStoreImages(const std::vector<StoreInfo>& stores)
+{
+    auto& net = NetworkManager::GetInstance();
+    if (!net.IsConnected()) return;
+
+    m_imageUrlToIndex.clear();
+
+    std::string token = AuthManager::GetInstance().GetAccessToken();
+
+    for (int i = 0; i < (int)stores.size(); ++i) {
+        if (stores[i].storeImageUrl.empty()) continue;
+
+        const std::string& url = stores[i].storeImageUrl;
+        // ImageList 슬롯 인덱스 = i+1 (0은 기본 이미지)
+        m_imageUrlToIndex[url] = i + 1;
+
+        // 서버에 이미지 요청 (REQ_GET_IMAGE = 217)
+        std::string json = "{\"token\":\"" + token + "\","
+                           "\"image_url\":\"" + url + "\"}";
+        net.SendPacket((uint8_t)ClientType::CUSTOMER,
+                       CmdCustomer::REQ_GET_IMAGE, json);
+    }
+}
+
+// ================================================================
+//  OnImageResponse  ★ 신규  (WM_IMAGE_RESPONSE)
+//  서버 응답: { "status":2000, "image_url":"...", "data":"<base64>" }
+//  → base64 디코딩 → BitmapFromBytes → ImageList 슬롯 교체 → 행 갱신
+// ================================================================
+LRESULT MainHomeDlg::OnImageResponse(WPARAM, LPARAM lParam)
+{
+    std::string* pBody = reinterpret_cast<std::string*>(lParam);
+    if (!pBody) return 0;
+
+    int status = MHJInt(*pBody, "status");
+    std::string imageUrl = MHJStr(*pBody, "image_url");
+    std::string b64Data  = MHJStr(*pBody, "data");
+
+    delete pBody;
+
+    if (status != (int)Status::SUCCESS || b64Data.empty() || imageUrl.empty())
+        return 0;
+
+    // image_url → ImageList 슬롯 인덱스 조회
+    auto it = m_imageUrlToIndex.find(imageUrl);
+    if (it == m_imageUrlToIndex.end()) return 0;
+    int imgSlot = it->second;
+
+    // base64 → 바이트 → HBITMAP
+    auto bytes = ImageLoader::DecodeBase64(b64Data);
+    HBITMAP hBmp = ImageLoader::BitmapFromBytes(bytes, STORE_THUMB_W, STORE_THUMB_H);
+    if (!hBmp) return 0;
+
+    // ImageList 슬롯 교체
+    m_imgListStore.Replace(imgSlot, CBitmap::FromHandle(hBmp), (CBitmap*)nullptr);
+    ::DeleteObject(hBmp);
+
+    // 해당 슬롯을 사용하는 행 찾아서 갱신 (RedrawItems)
+    int count = m_listStore.GetItemCount();
+    for (int i = 0; i < count; ++i) {
+        LVITEM lvi = {};
+        lvi.mask    = LVIF_IMAGE;
+        lvi.iItem   = i;
+        lvi.iSubItem = 0;
+        m_listStore.GetItem(&lvi);
+        if (lvi.iImage == imgSlot) {
+            m_listStore.RedrawItems(i, i);
+            break;
+        }
+    }
+    m_listStore.UpdateWindow();
+    return 0;
+}
+
+LRESULT MainHomeDlg::OnAddrListResponse(WPARAM, LPARAM lParam)
+{
+    std::string* pBody = reinterpret_cast<std::string*>(lParam);
+    if (!pBody) return 0;
+    if (MHJInt(*pBody, "status") == (int)Status::SUCCESS) {
+        AddressManager::GetInstance().OnAddressListResponse(*pBody);
+        UpdateAddrLabel();
+    }
+    delete pBody; return 0;
+}
+
+LRESULT MainHomeDlg::OnAddrSaveResponse(WPARAM, LPARAM lParam)
+{
+    std::string* pBody = reinterpret_cast<std::string*>(lParam);
+    if (!pBody) return 0;
+    if (MHJInt(*pBody, "status") == (int)Status::SUCCESS)
+        AddressManager::GetInstance().OnSaveAddressResponse(*pBody);
+    delete pBody; return 0;
 }
 
 void MainHomeDlg::UpdateStoreListUI(CString cat)
@@ -446,33 +474,29 @@ void MainHomeDlg::OnNMDblclkListStor(NMHDR* pNMHDR, LRESULT* pResult)
     *pResult = 0;
 }
 
-void MainHomeDlg::OnBnClickedButton1()
-{
-    CartDlg dlg(this); dlg.DoModal();
-}
+void MainHomeDlg::OnBnClickedButton1() { CartDlg dlg(this); dlg.DoModal(); }
 
-// ── 하단 4버튼 핸들러 ─────────────────────────────────────────
 void MainHomeDlg::OnBnClickedBtnMypage()
 {
     CWnd* pBtn = GetDlgItem(IDC_BTN_MY_MYPAGE);
     if (!pBtn) return;
     CRect rcBtn; pBtn->GetWindowRect(&rcBtn);
-    CPoint ptPopup(rcBtn.left, rcBtn.top);
     if (m_pMyMenuPopup && ::IsWindow(m_pMyMenuPopup->GetSafeHwnd())) return;
     m_pMyMenuPopup = new MyMenuPopup(this);
-    m_pMyMenuPopup->ShowAt(ptPopup);
+    m_pMyMenuPopup->ShowAt(CPoint(rcBtn.left, rcBtn.top));
 }
-void MainHomeDlg::OnBnClickedBtnPayment()  { PaymentDlg dlg(this); dlg.DoModal(); }
-void MainHomeDlg::OnBnClickedBtnDelivery() { OrderHistoryDlg dlg(this); dlg.DoModal(); }
+void MainHomeDlg::OnBnClickedBtnPayment()      { PaymentDlg dlg(this); dlg.DoModal(); }
+void MainHomeDlg::OnBnClickedBtnDelivery()     { OrderHistoryDlg dlg(this); dlg.DoModal(); }
 void MainHomeDlg::OnBnClickedBtnOrderHistory() { OrderListDlg dlg(this); dlg.DoModal(); }
 
 void MainHomeDlg::OnCancel()
 {
     KillTimer(TIMER_CONN_CHECK);
-    // ★ 로그아웃 시 주소 콜백 해제 + 메모리 초기화
     NetworkManager::GetInstance().UnregisterCallback(CmdCustomer::REQ_GET_ADDRESSES);
     NetworkManager::GetInstance().UnregisterCallback(CmdCustomer::REQ_SAVE_ADDRESS);
+    NetworkManager::GetInstance().UnregisterCallback(CmdCustomer::REQ_GET_IMAGE);
     AddressManager::GetInstance().Clear();
+    m_imageUrlToIndex.clear();
     CDialogEx::OnCancel();
 }
 
@@ -505,10 +529,11 @@ LRESULT MainHomeDlg::OnMyMenuSelected(WPARAM wParam, LPARAM)
         CString msg; msg.Format(_T("로그인 계정: %s\n\n로그아웃 하시겠습니까?"), (LPCTSTR)strUserID);
         if (AfxMessageBox(msg, MB_YESNO | MB_ICONQUESTION) == IDYES) {
             KillTimer(TIMER_CONN_CHECK);
-            // ★ 로그아웃 시 주소 데이터 초기화 및 콜백 해제
             NetworkManager::GetInstance().UnregisterCallback(CmdCustomer::REQ_GET_ADDRESSES);
             NetworkManager::GetInstance().UnregisterCallback(CmdCustomer::REQ_SAVE_ADDRESS);
+            NetworkManager::GetInstance().UnregisterCallback(CmdCustomer::REQ_GET_IMAGE);
             AddressManager::GetInstance().Clear();
+            m_imageUrlToIndex.clear();
             AuthManager::GetInstance().Logout();
             CDialogEx::OnCancel();
         }
@@ -518,30 +543,38 @@ LRESULT MainHomeDlg::OnMyMenuSelected(WPARAM wParam, LPARAM)
     return 0;
 }
 
-// ================================================================
-//  IDC_BTN_ADDR_LABEL 클릭 — 주소 관리 다이얼로그 열기
-// ================================================================
 void MainHomeDlg::OnBnClickedBtnAddr()
 {
     AddressDlg dlg(this);
     dlg.DoModal();
-    // ★ 다이얼로그 닫힌 후 레이블 갱신
-    //   (AddressDlg 내에서 주소 추가/삭제/선택이 일어났을 수 있음)
     UpdateAddrLabel();
 }
 
-// ── 기본 주소를 상단 버튼에 반영 ─────────────────────────────
 void MainHomeDlg::UpdateAddrLabel()
 {
     std::string def = AddressManager::GetInstance().GetDefaultAddress();
-    CString label;
-    if (def.empty()) {
-        label = _T("📍 내 주소");
-    } else {
-        CString strDef = CA2T(def.c_str(), CP_UTF8);
-        label = _T("📍 ") + strDef;
-    }
-
+    CString label = def.empty() ? _T("📍 내 주소")
+                                : (_T("📍 ") + CString(CA2T(def.c_str(), CP_UTF8)));
     CWnd* pBtn = GetDlgItem(IDC_BTN_ADDR_LABEL);
     if (pBtn) pBtn->SetWindowText(label);
+}
+
+// LoadImageFromServer, ResizeBitmapTo — 하위 호환용 (더 이상 사용 안 함)
+HBITMAP MainHomeDlg::LoadImageFromServer(const CString& relPath)
+{
+    CString fullPath = ImageLoader::MakeServerPath(relPath);
+    return ImageLoader::Load(fullPath);
+}
+void MainHomeDlg::ResizeBitmapTo(HBITMAP& hBmp, int w, int h)
+{
+    if (!hBmp) return;
+    BITMAP bm = {}; ::GetObject(hBmp, sizeof(bm), &bm);
+    if (bm.bmWidth == w && bm.bmHeight == h) return;
+    HDC s = ::CreateCompatibleDC(nullptr), d = ::CreateCompatibleDC(nullptr);
+    HBITMAP hN = ::CreateCompatibleBitmap(s, w, h);
+    auto os = ::SelectObject(s, hBmp), od = ::SelectObject(d, hN);
+    ::SetStretchBltMode(d, HALFTONE);
+    ::StretchBlt(d, 0, 0, w, h, s, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
+    ::SelectObject(s, os); ::SelectObject(d, od);
+    ::DeleteDC(s); ::DeleteDC(d); ::DeleteObject(hBmp); hBmp = hN;
 }

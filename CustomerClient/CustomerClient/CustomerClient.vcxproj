@@ -195,6 +195,8 @@
     <Image Include="res\CustomerClient.ico" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="header\AddressDlg.h" />
+    <ClInclude Include="header\AddressManager.h" />
     <ClInclude Include="header\AuthManager.h" />
     <ClInclude Include="header\CartDlg.h" />
     <ClInclude Include="header\CartItem.h" />
@@ -214,6 +216,7 @@
     <ClInclude Include="header\MenuDetailDlg.h" />
     <ClInclude Include="header\MenuInfo.h" />
     <ClInclude Include="header\MenuInfo_final.h" />
+    <ClInclude Include="header\ImageLoader.h" />
     <ClInclude Include="header\NetworkManager.h" />
     <ClInclude Include="header\OptionChangeDlg.h" />
     <ClInclude Include="header\OrderHistoryDlg.h" />
@@ -243,6 +246,7 @@
     <ClCompile Include="src\CustomerClient.cpp" />
     <ClCompile Include="src\DeliveryOkDlg.cpp" />
     <ClCompile Include="src\EditInfoDlg.cpp" />
+    <ClCompile Include="src\ImageLoader.cpp" />
     <ClCompile Include="src\LoginDlg.cpp" />
     <ClCompile Include="src\MyInfoDlg.cpp" />
     <ClCompile Include="src\MyMenuPopup.cpp" />

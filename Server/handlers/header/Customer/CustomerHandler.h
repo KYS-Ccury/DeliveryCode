@@ -55,6 +55,7 @@ private:
     void handleSaveAddress      (Session* s, const std::string& b); // 214
     void handleDeleteAddress    (Session* s, const std::string& b); // 215
     void handleSetDefaultAddress(Session* s, const std::string& b); // 216
+    void handleGetImage         (Session* s, const std::string& b); // 217
 
     // ── 채팅 (CmdChat 600~602) ──────────────────────────────
     void handleChatCreateRoom(Session* s, const std::string& b); // 600
