@@ -36,85 +36,6 @@ using json = nlohmann::json;
 //static constexpr int STATUS_COMPLETE = 3;
 //static constexpr int STATUS_CANCELED = 4;
 
-// ─── 간이 JSON 파싱 ──────────────────────────────────────────
-//static std::string OLJStr(const std::string& json, const std::string& key)
-//{
-//    std::string token = "\"" + key + "\":\"";
-//    auto pos = json.find(token);
-//    if (pos == std::string::npos) return "";
-//    pos += token.size();
-//    auto end = json.find('"', pos);
-//    return (end == std::string::npos) ? "" : json.substr(pos, end - pos);
-//}
-//
-//static int OLJInt(const std::string& json, const std::string& key)
-//{
-//    std::string token = "\"" + key + "\":";
-//    auto pos = json.find(token);
-//    if (pos == std::string::npos) return -1;
-//    try { return std::stoi(json.substr(pos + token.size())); }
-//    catch (...) { return -1; }
-//}
-//
-//// JSON 배열에서 객체 추출
-//static std::vector<std::string> OLExtractObjects(const std::string& json,
-//    const std::string& arrayKey)
-//{
-//    std::vector<std::string> result;
-//    std::string token = "\"" + arrayKey + "\":[";
-//    auto arrPos = json.find(token);
-//    if (arrPos == std::string::npos) return result;
-//    size_t i = arrPos + token.size();
-//    while (i < json.size()) {
-//        auto objStart = json.find('{', i);
-//        if (objStart == std::string::npos) break;
-//        int depth = 0; size_t objEnd = objStart;
-//        for (; objEnd < json.size(); ++objEnd) {
-//            if (json[objEnd] == '{')      ++depth;
-//            else if (json[objEnd] == '}') { if (--depth == 0) break; }
-//        }
-//        result.push_back(json.substr(objStart, objEnd - objStart + 1));
-//        i = objEnd + 1;
-//    }
-//    return result;
-//}
-//
-//// JSON → OrderInfo 파싱
-//// OrderListDlg.cpp 내의 함수 수정
-//static OrderInfo ParseOLOrderObj(const std::string& obj)
-//{
-//    OrderInfo info;
-//    info.orderID = OLJStr(obj, "order_id");
-//    info.storeID = OLJInt(obj, "store_id");
-//    info.storeName = OLJStr(obj, "store_name");
-//
-//    // ★ 서버 코드와 Key 이름 매칭 (order_datetime -> order_time)
-//    info.orderDateTime = OLJStr(obj, "order_time");
-//
-//    // ★ 서버 코드와 Key 이름 매칭 (total_payment -> total_price)
-//    info.totalPayment = OLJInt(obj, "total_price");
-//
-//    info.deliveryStatus = OLJInt(obj, "status");
-//
-//    std::string dm = OLJStr(obj, "delivery_method");
-//    info.isDelivery = (dm != "PICKUP"); // 보통 서버는 영문 대문자로 보냅니다.
-//    info.deliveryAddress = OLJStr(obj, "delivery_address");
-//
-//    // 메뉴 아이템 파싱 (서버는 "items"라는 키로 보냄)
-//    auto itemObjs = OLExtractObjects(obj, "items");
-//    for (const auto& item : itemObjs) {
-//        OrderItem oi;
-//        oi.menuName = OLJStr(item, "menu_name");
-//        oi.quantity = OLJInt(item, "quantity");
-//
-//        // ★ 서버에서 메뉴 가격 키는 "price"입니다.
-//        oi.price = OLJInt(item, "price");
-//
-//        info.items.push_back(oi);
-//    }
-//    return info;
-//}
-
 // JSON -> OrderInfo 파싱 (nlohmann/json 버전)
 static OrderInfo ParseOLOrderObj(const json& j)
 {
@@ -133,6 +54,15 @@ static OrderInfo ParseOLOrderObj(const json& j)
         info.orderDateTime = j.value("order_time", "");
         info.totalPayment = j.value("total_price", 0);
         info.deliveryStatus = (DeliveryStatus)j.value("status", 0);
+
+        // 서버에서 보내주는 "DELIVERY" 또는 "PICKUP" 문자열을 bool 값으로 변환
+        std::string dm = j.value("delivery_method", "");
+        if (dm == "DELIVERY") {
+            info.isDelivery = true;  // 배달
+        }
+        else {
+            info.isDelivery = false; // 포장(PICKUP)
+        }
 
         // 2. 메뉴 및 옵션 파싱 (이 부분이 핵심입니다)
         if (j.contains("items") && j["items"].is_array()) {
@@ -370,8 +300,7 @@ void OrderListDlg::PopulateDetailPanel(int index)
 
     // 수령 방법
     CString strMethod = o.isDelivery ? _T("배달") : _T("포장(픽업)");
-    SetDlgItemText(IDC_STATIC_OL_METHOD,
-        _T("수령방법 : ") + strMethod);
+    SetDlgItemText(IDC_STATIC_OL_METHOD, _T("수령방법 : ") + strMethod);
 
     // 상태
     SetDlgItemText(IDC_STATIC_OL_STATUS, GetStatusText(o.deliveryStatus));
