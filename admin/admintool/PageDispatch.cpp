@@ -1,9 +1,10 @@
 ﻿/**
  * PageDispatch.cpp
  * ============================================================
- * ★ 수정:
- *   1) UTF-8 → CString 변환 (Utf8ToCString) 적용 → 한글 깨짐 해결
- *   2) 상태 변경 시 서버에 패킷 송신 추가
+ * ★ 수정사항:
+ *   1) UTF-8 → CString 변환 (Utf8ToCString) 적용
+ *   2) 상태 변경 시 서버에 패킷 송신
+ *   3) ★ 소켓 Lock/Unlock 추가 (폴링 스레드와 경합 방지)
  * ============================================================
  */
 
@@ -11,7 +12,7 @@
 #include "PageDispatch.h"
 #include "admintool.h"
 #include "PacketDef.h"
-#include "PageInquiry.h"    // ★ Utf8ToCString, CStringToUtf8 헬퍼
+#include "PageInquiry.h"    // Utf8ToCString, CStringToUtf8 헬퍼
 
 IMPLEMENT_DYNAMIC(PageDispatch, PageBase)
 
@@ -90,17 +91,26 @@ void PageDispatch::RepositionList()
 }
 
 // ============================================================
-// ★ 서버에서 주문 모니터링 데이터 로드 (UTF-8 변환 적용)
+// ★ 서버에서 주문 모니터링 데이터 로드 (Lock/Unlock 추가)
 // ============================================================
 void PageDispatch::LoadDataFromServer()
 {
     CClientSocket& sock = GetSocket();
     if (!sock.IsConnected()) return;
 
+    sock.Lock();  // ★
+
     json reqBody;
-    if (!sock.SendAdminPacket(CMD_ORDER_MONITOR, reqBody)) return;
+    if (!sock.SendAdminPacket(CMD_ORDER_MONITOR, reqBody))
+    {
+        sock.Unlock();
+        return;
+    }
 
     RecvResult res = sock.RecvPacket();
+
+    sock.Unlock();  // ★
+
     if (!res.success) return;
 
     m_listDispatch.DeleteAllItems();
@@ -110,7 +120,6 @@ void PageDispatch::LoadDataFromServer()
         int nRow = 0;
         for (auto& order : res.body["orders"])
         {
-            // ★ UTF-8 → CString 변환
             CString strOrderId = Utf8ToCString(order.value("order_id", ""));
             CString strRiderName = Utf8ToCString(order.value("rider_name", ""));
             CString strStatus = Utf8ToCString(order.value("status", ""));
@@ -128,17 +137,23 @@ void PageDispatch::RequestForceDispatch(int orderId, int riderId)
     CClientSocket& sock = GetSocket();
     if (!sock.IsConnected()) return;
 
+    sock.Lock();  // ★
+
     json reqBody;
     reqBody["order_id"] = orderId;
     reqBody["rider_id"] = riderId;
 
     if (!sock.SendAdminPacket(CMD_FORCE_DISPATCH, reqBody))
     {
+        sock.Unlock();
         AfxMessageBox(_T("강제 배차 요청 실패"));
         return;
     }
 
     RecvResult res = sock.RecvPacket();
+
+    sock.Unlock();  // ★
+
     if (res.success && res.body.contains("status")
         && res.body["status"].get<int>() == STATUS_SUCCESS)
     {
@@ -156,16 +171,22 @@ void PageDispatch::RequestForceCancel(int orderId)
     CClientSocket& sock = GetSocket();
     if (!sock.IsConnected()) return;
 
+    sock.Lock();  // ★
+
     json reqBody;
     reqBody["order_id"] = orderId;
 
     if (!sock.SendAdminPacket(CMD_FORCE_CANCEL, reqBody))
     {
+        sock.Unlock();
         AfxMessageBox(_T("배차 취소 요청 실패"));
         return;
     }
 
     RecvResult res = sock.RecvPacket();
+
+    sock.Unlock();  // ★
+
     if (res.success && res.body.contains("status")
         && res.body["status"].get<int>() == STATUS_SUCCESS)
     {
@@ -179,7 +200,7 @@ void PageDispatch::RequestForceCancel(int orderId)
 }
 
 // ============================================================
-// ★ 상태 변경을 서버에 전송
+// ★ 상태 변경을 서버에 전송 (Lock/Unlock 추가)
 // ============================================================
 void PageDispatch::RequestStatusChange(int nItemIndex, const CString& strNewStatus)
 {
@@ -192,17 +213,23 @@ void PageDispatch::RequestStatusChange(int nItemIndex, const CString& strNewStat
         return;
     }
 
+    sock.Lock();  // ★
+
     json reqBody;
-    reqBody["order_id"] = CStringToUtf8(strOrderId);   // ★ UTF-8 변환
-    reqBody["status"] = CStringToUtf8(strNewStatus);  // ★ UTF-8 변환
+    reqBody["order_id"] = CStringToUtf8(strOrderId);
+    reqBody["status"] = CStringToUtf8(strNewStatus);
 
     if (!sock.SendAdminPacket(CMD_FORCE_DISPATCH, reqBody))
     {
+        sock.Unlock();
         AfxMessageBox(_T("상태 변경 요청 실패"));
         return;
     }
 
     RecvResult res = sock.RecvPacket();
+
+    sock.Unlock();  // ★
+
     if (!res.success || !res.body.contains("status")
         || res.body["status"].get<int>() != STATUS_SUCCESS)
     {
@@ -240,7 +267,6 @@ void PageDispatch::OnBtnDispatchDel()
     RequestForceCancel(orderId);
 }
 
-// ★ 상태 컬럼 클릭 → 서버에도 전송
 void PageDispatch::OnListItemClick(NMHDR* pNMHDR, LRESULT* pResult)
 {
     LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
@@ -271,7 +297,6 @@ void PageDispatch::OnListItemClick(NMHDR* pNMHDR, LRESULT* pResult)
     m_listDispatch.SetItemText(pNMLV->iItem, 2, s);
     m_listDispatch.Invalidate();
 
-    // ★ 서버에도 상태 변경 전송
     RequestStatusChange(pNMLV->iItem, s);
 }
 

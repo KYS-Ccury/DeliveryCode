@@ -1,11 +1,18 @@
+/**
+ * AdminHandler.cpp
+ * ============================================================
+ * ★ 수정사항:
+ *   1) 600번대 채팅 switch 주석 해제
+ *   2) 하트비트(200/201) 응답 핸들러 추가
+ * ============================================================
+ */
+
 #include "AdminHandler.h"
 #include "Protocol.h"
 #include <iostream>
 
-// using json = nlohmann::json;
-
 // ============================================================
-// 싱글톤 생성자 — BaseHandler에 ADMIN 타입과 역할명을 전달한다.
+// 싱글톤 생성자
 // ============================================================
 AdminHandler::AdminHandler()
     : BaseHandler(ClientType::ADMIN, "ADMIN")
@@ -44,6 +51,13 @@ void AdminHandler::process(Session* session, uint16_t protocol, const std::strin
     case CmdCommon::REQ_GET_PROFILE: handleGetProfile(session, jsonBody); return;
     }
 
+    // ── ★ 하트비트 응답 (클라이언트 폴링용) ──
+    if (protocol == 200)
+    {
+        handleHeartbeat(session, jsonBody);
+        return;
+    }
+
     // ── 500번대: 관리자 전용 기능 ──
     switch (protocol)
     {
@@ -54,15 +68,12 @@ void AdminHandler::process(Session* session, uint16_t protocol, const std::strin
     case CmdAdmin::REQ_MANAGE_REVIEW:  handleManageReview (session, jsonBody); return;
     }
 
-    // ── 600번대: 채팅 ──
-    // 관리자는 CUSTOMER_ADMIN / RIDER_ADMIN 방에만 입장 가능.
-    // CUSTOMER_OWNER(사장님↔고객) 방 진입은 handleSendMsg/handleGetMsgs 내부에서 차단.
+    // ── ★ 600번대: 채팅 (주석 해제) ──
     switch (protocol)
     {
-    case CmdChat::REQ_CREATE_ROOM: handleJoinRoom (session, jsonBody); return;
-    case CmdChat::REQ_SEND_MSG:    handleSendMsg  (session, jsonBody); return;
-    case CmdChat::REQ_GET_MSGS:    handleGetMsgs  (session, jsonBody); return;
-    case CmdChat::REQ_ROOM_LIST:   handleRoomList (session, jsonBody); return;
+    case CmdChat::REQ_SEND_MSG:   handleSendMsg (session, jsonBody); return;
+    case CmdChat::REQ_GET_MSGS:   handleGetMsgs (session, jsonBody); return;
+    case CmdChat::REQ_ROOM_LIST:  handleRoomList(session, jsonBody); return;
     }
 
     // 미처리 프로토콜 로그를 출력한다.
@@ -71,6 +82,18 @@ void AdminHandler::process(Session* session, uint16_t protocol, const std::strin
     std::cout << "오류 : 미처리 프로토콜 " << protocol << std::endl;
     std::cout << "-------------------------" << std::endl;
     sendError(session, protocol, Status::BAD_REQUEST, "알 수 없는 요청");
+}
+
+// ============================================================
+// ★ handleHeartbeat — 클라이언트 폴링 하트비트에 응답한다.
+//    요청: protocol=200, body={}
+//    응답: protocol=201, body={"status":2000}
+// ============================================================
+void AdminHandler::handleHeartbeat(Session* session, const std::string& jsonBody)
+{
+    nlohmann::json res;
+    res["status"] = Status::SUCCESS;
+    sendResponse(session, 201, res);
 }
 
 // ============================================================

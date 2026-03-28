@@ -5,13 +5,14 @@
  *   1) CChatRoomList 중복 정의 제거 → ChatRoomList.h include (크래시 해결)
  *   2) 비동기 수신 스레드 제거 (소켓 경합 → 크래시 원인)
  *   3) UTF-8 → CString 변환 헬퍼 추가 (한글 깨짐 해결)
+ *   4) ★ OnPollRefreshChat() 추가 (폴링으로 새 메시지 수신 시 호출)
  * ============================================================
  */
 
 #pragma once
 
 #include "PageBase.h"
-#include "ChatRoomList.h"    // ★ 핵심: CChatRoomList, ChatRoomItem은 여기서 가져옴
+#include "ChatRoomList.h"
 #include <vector>
 #include <string>
 #include <functional>
@@ -49,8 +50,8 @@ inline std::string CStringToUtf8(const CString& str)
 // ============================================================
 struct ChatMessage
 {
-    CString text;       // 메시지 내용
-    bool    isAdmin;    // true = 관리자(오른쪽), false = 고객(왼쪽)
+    CString text;
+    bool    isAdmin;
 };
 
 // ============================================================
@@ -90,8 +91,6 @@ private:
     static const int MSG_MAX_WIDTH = 320;
 };
 
-// ★ CChatRoomList 는 ChatRoomList.h 에서 가져오므로 여기서 재정의하지 않음
-
 // ============================================================
 // PageInquiry - 1:1 문의 페이지
 // ============================================================
@@ -109,6 +108,9 @@ public:
 
     virtual BOOL PreTranslateMessage(MSG* pMsg) override;
 
+    // ★ 폴링에서 새 메시지 도착 시 MainDialog가 호출
+    void OnPollRefreshChat();
+
 protected:
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
@@ -123,15 +125,12 @@ private:
     void InitChatArea();
     void UpdateLayout();
 
-    // 서버 연동 (동기 방식 — 소켓 경합 없음)
     void LoadChatRoomsFromServer();
     void RefreshChatFromServer(const CString& strRoomId);
     void SendMessageToServer(const CString& strRoomId, const CString& strMsg);
 
-    // 현재 선택된 채팅방 ID
     CString m_strCurrentRoomId;
 
-    // UI 컨트롤
     CChatRoomList m_roomList;
     CChatPanel    m_chatPanel;
     CEdit         m_editChatInput;
