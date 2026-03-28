@@ -8,7 +8,7 @@
 
 CString g_strOwnerID; // 전역 변수로 저장
 CString g_strOwnerPW;
-int g_nOwnerId = 0;
+//int g_nOwnerId = 0;
 
 using json = nlohmann::json;
 
@@ -48,7 +48,7 @@ void CLoginDlg::OnBnClickedBtnLogin() {
     // CmdCommon::REQ_LOGIN (101) 사용
     if (CNetClient::SendRequest(CmdCommon::REQ_LOGIN, req, res)) {
         if (res.contains("status") && res["status"] == Status::SUCCESS) {
-            g_nOwnerId = res.value("user_id", -1);
+            //g_nOwnerId = res.value("user_id", -1);
             g_strOwnerID = strID;
             g_strOwnerPW = strPW;
             EndDialog(IDOK); // 로그인 성공 -> 메인 화면 진입

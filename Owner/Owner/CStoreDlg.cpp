@@ -10,7 +10,7 @@
 using json = nlohmann::json;
 
 // 🚨 [추가] 진짜 사장님 ID 연동
-extern int g_nOwnerId;
+//extern int 1;
 
 IMPLEMENT_DYNAMIC(CStoreDlg, CDialogEx)
 
@@ -61,7 +61,7 @@ BOOL CStoreDlg::OnInitDialog()
 
 		json req, res;
 		req["client_type"] = (int)ClientType::OWNER;
-		req["owner_id"] = g_nOwnerId; // 🚨 [수정] 1 대신 내 진짜 아이디!
+		req["owner_id"] = 1; // 🚨 [수정] 1 대신 내 진짜 아이디!
 
 		if (CNetClient::SendRequest(CmdOwner::REQ_MENU_LIST, req, res)) {
 			if (res["status"] == Status::SUCCESS && res.contains("menus")) {
@@ -132,7 +132,7 @@ void CStoreDlg::OnBnClickedBtnAddMenu()
 
 	json req, res;
 	req["client_type"] = (int)ClientType::OWNER;
-	req["owner_id"] = g_nOwnerId;
+	req["owner_id"] = 1;
 	req["category"] = std::string(CT2CA(strCategory, CP_UTF8));
 	req["name"] = std::string(CT2CA(strMenuName, CP_UTF8));
 	req["price"] = _ttoi(strPrice);

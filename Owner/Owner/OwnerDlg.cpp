@@ -16,7 +16,7 @@
 #define WM_USER_NEW_ORDER (WM_USER + 100)
 #define TIMER_POLLING_ORDER 1
 
-extern int g_nOwnerId;
+//extern int g_nOwnerId;
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -174,7 +174,7 @@ void COwnerDlg::OnBnClickedBtnOrderMgr()
 		// 리스트 비우기
 		pList->DeleteAllItems();
 
-		int currentOwnerId = g_nOwnerId;
+		int currentOwnerId = 1;
 
 		// 서버와 통신하여 주문 데이터 가져오기 (대기 시간 발생)
 		std::vector<OrderInfo> data = OrderManager::FetchOrdersFromServer(currentOwnerId);
@@ -229,7 +229,7 @@ void COwnerDlg::OnBnClickedBtnStatus()
 {
 	// 현재 상태의 "반대" 상태로 변경 시도
 	bool bNextStatus = !m_bIsOpen;
-	int currentOwnerId = g_nOwnerId;
+	int currentOwnerId = 1;
 
 	// StoreManager를 통해 백그라운드 서버 통신
 	if (StoreManager::UpdateStoreStatus(currentOwnerId, bNextStatus)) {
@@ -399,7 +399,7 @@ void COwnerDlg::RefreshOrderListSilently()
 	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_ORDER);
 	if (!pList || !m_bIsListOpen) return;
 
-	int currentOwnerId = g_nOwnerId;
+	int currentOwnerId = 1;
 	std::vector<OrderInfo> data = OrderManager::FetchOrdersFromServer(currentOwnerId);
 
 	if ((int)data.size() > m_nLastOrderCount) {

@@ -3,7 +3,7 @@
 #include "json.hpp"
 #include "Struct.h"
 #define Server_port 8080
-#define Server_ip _T("127.0.0.1")
+#define Server_ip _T("10.10.10.122")
 
 using json = nlohmann::json;
 
