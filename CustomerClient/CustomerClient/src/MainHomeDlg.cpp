@@ -158,7 +158,7 @@ BOOL MainHomeDlg::OnInitDialog()
     }
     //m_vecCategories = { _T("전체"),_T("족발/보쌈"),_T("찜/탕"),_T("일식"),
     //                    _T("치킨"),_T("피자"),_T("중식"),_T("양식") };
-    m_vecCategories = { _T("전체"), _T("치킨"), _T("피자") };
+    m_vecCategories = { _T("전체"), _T("치킨"), _T("피자"), _T("패스트푸드") };
     if (m_wndScrollMenu.GetSafeHwnd())
         m_wndScrollMenu.SetMenuItems(m_vecCategories);
 

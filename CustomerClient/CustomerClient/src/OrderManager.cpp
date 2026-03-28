@@ -143,8 +143,9 @@ OrderManager::OrderManager()
     , m_isDelivery(true)
     , m_myPoints(0)
 {
-    m_categoryList = { "전체", "족발/보쌈", "찜/탕", "일식",
-                       "치킨", "피자", "중식", "양식" };
+    //m_categoryList = { "전체", "족발/보쌈", "찜/탕", "일식",
+    //                   "치킨", "피자", "중식", "양식" };
+    m_categoryList = { "전체", "치킨", "피자", "패스트푸드" };
 }
 
 std::vector<std::string> OrderManager::GetCategoryList() {
