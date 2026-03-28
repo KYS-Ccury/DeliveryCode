@@ -7,6 +7,7 @@
 //  3. RequestStoreImages: 가게 목록 수신 후 이미지 개별 요청
 //  4. OnImageResponse: base64 수신 → BitmapFromBytes → ImageList 갱신
 //  5. 디버그 MessageBox 제거
+//  6. 간이 파서 → nlohmann::json 교체 (부분 파싱 버그 수정)
 // ================================================================
 #include "pch.h"
 #include "CustomerClient.h"
@@ -29,6 +30,9 @@
 #include "NetworkManager.h"
 #include "ImageLoader.h"
 #include "common/header/Types.h"
+#include "json.hpp"
+
+using njson = nlohmann::json;
 
 #define WM_STORE_LIST_RESPONSE  (WM_USER + 110)
 #define WM_ADDR_LIST_RESPONSE   (WM_USER + 115)
@@ -39,7 +43,7 @@
 static const int STORE_THUMB_W = 60;
 static const int STORE_THUMB_H = 60;
 
-// ── 간이 JSON 파싱 ─────────────────────────────────────────────
+// ── 간이 JSON 파싱 (주소 응답 등 단순 값 파싱용 — 하위 호환) ──
 static std::string MHJStr(const std::string& j, const std::string& k)
 {
     std::string t = "\"" + k + "\":\"";
@@ -53,43 +57,40 @@ static int MHJInt(const std::string& j, const std::string& k)
     auto p = j.find(t); if (p == std::string::npos) return 0;
     try { return std::stoi(j.substr(p + t.size())); } catch (...) { return 0; }
 }
-static double MHJDouble(const std::string& j, const std::string& k)
-{
-    std::string t = "\"" + k + "\":";
-    auto p = j.find(t); if (p == std::string::npos) return 0.0;
-    try { return std::stod(j.substr(p + t.size())); } catch (...) { return 0.0; }
-}
-static std::vector<StoreInfo> ParseStoreArray(const std::string& json)
+
+// ── nlohmann::json 기반 가게 목록 파싱 ────────────────────────
+// 간이 파서는 description/address 안에 특수문자·따옴표가 있으면
+// 파싱이 깨져서 storeName 이 비어있는 행이 생깁니다.
+// nlohmann::json 으로 교체해 안정성을 확보합니다.
+static std::vector<StoreInfo> ParseStoreArray(const std::string& body)
 {
     std::vector<StoreInfo> stores;
-    auto arrPos = json.find("\"stores\":[");
-    if (arrPos == std::string::npos) return stores;
-    size_t i = arrPos + 10;
-    while (i < json.size()) {
-        auto s = json.find('{', i); if (s == std::string::npos) break;
-        int d = 0; size_t e = s;
-        for (; e < json.size(); ++e) {
-            if (json[e]=='{') ++d; else if (json[e]=='}') { if(--d==0) break; }
+    try {
+        njson j = njson::parse(body);
+        if (!j.contains("stores") || !j["stores"].is_array()) return stores;
+
+        for (const auto& s : j["stores"]) {
+            StoreInfo si;
+            si.storeID            = s.value("id",               0);
+            si.storeName          = s.value("name",             "");
+            si.category           = s.value("category",         "");
+            si.deliveryTime       = s.value("delivery_time",    "");
+            si.deliveryPriceRange = s.value("delivery_fee_str", "");
+            si.address            = s.value("address",          "");
+            si.openTime           = s.value("open_time",        "");
+            si.phoneNumber        = s.value("phone",            "");
+            si.holiday            = s.value("holiday",          "");
+            si.description        = s.value("description",      "");
+            si.storeImageUrl      = s.value("image_url",        "");
+            si.logoUrl            = s.value("logo_url",         "");
+            si.minOrderAmount     = s.value("min_order",        0);
+            si.deliveryFee        = s.value("delivery_fee",     0);
+            si.distance           = s.value("distance",         0.0);
+
+            if (si.storeID > 0) stores.push_back(si);
         }
-        std::string o = json.substr(s, e - s + 1);
-        StoreInfo si;
-        si.storeID            = MHJInt(o,"id");
-        si.storeName          = MHJStr(o,"name");
-        si.category           = MHJStr(o,"category");
-        si.deliveryTime       = MHJStr(o,"delivery_time");
-        si.deliveryPriceRange = MHJStr(o,"delivery_fee_str");
-        si.address            = MHJStr(o,"address");
-        si.openTime           = MHJStr(o,"open_time");
-        si.phoneNumber        = MHJStr(o,"phone");
-        si.holiday            = MHJStr(o,"holiday");
-        si.description        = MHJStr(o,"description");
-        si.storeImageUrl      = MHJStr(o,"image_url");
-        si.logoUrl            = MHJStr(o,"logo_url");  // ★ 로고
-        si.minOrderAmount     = MHJInt(o,"min_order");
-        si.deliveryFee        = MHJInt(o, "delivery_fee");
-        si.distance           = MHJDouble(o,"distance");
-        if (si.storeID > 0) stores.push_back(si);
-        i = e + 1;
+    } catch (...) {
+        // 파싱 실패 시 빈 목록 반환
     }
     return stores;
 }
@@ -266,12 +267,28 @@ LRESULT MainHomeDlg::OnStoreListResponse(WPARAM, LPARAM lParam)
 {
     std::string* pBody = reinterpret_cast<std::string*>(lParam);
     if (!pBody) return 0;
-    if (MHJInt(*pBody,"status") == (int)Status::SUCCESS) {
+
+    bool ok = false;
+    int  storeCount = 0;
+    try {
+        njson j = njson::parse(*pBody);
+        ok = (j.value("status", 0) == (int)Status::SUCCESS);
+        if (j.contains("stores") && j["stores"].is_array())
+            storeCount = (int)j["stores"].size();
+    } catch (...) {
+        // JSON 파싱 자체 실패 — 응답 앞 200바이트를 로그로 출력
+        std::string preview = pBody->size() > 200 ? pBody->substr(0, 200) : *pBody;
+        TRACE("[StoreList] JSON 파싱 실패. body preview: %s\n", preview.c_str());
+    }
+
+    TRACE("[StoreList] ok=%d storeCount=%d bodyLen=%zu\n",
+          (int)ok, storeCount, pBody->size());
+
+    if (ok) {
         m_vecStoreCache = ParseStoreArray(*pBody);
+        TRACE("[StoreList] ParseStoreArray 결과: %zu\n", m_vecStoreCache.size());
         OrderManager::GetInstance().UpdateStoreCache(m_vecStoreCache);
-        // ★ 1단계: 기본 이미지로 먼저 리스트 표시
         RebuildStoreListUI(m_vecStoreCache);
-        // ★ 2단계: 이미지 비동기 요청
         RequestStoreImages(m_vecStoreCache);
     } else {
         m_listStore.DeleteAllItems();
@@ -396,9 +413,16 @@ LRESULT MainHomeDlg::OnImageResponse(WPARAM, LPARAM lParam)
     std::string* pBody = reinterpret_cast<std::string*>(lParam);
     if (!pBody) return 0;
 
-    int status = MHJInt(*pBody, "status");
-    std::string imageUrl = MHJStr(*pBody, "image_url");
-    std::string b64Data  = MHJStr(*pBody, "data");
+    int         status   = 0;
+    std::string imageUrl;
+    std::string b64Data;
+
+    try {
+        njson j  = njson::parse(*pBody);
+        status   = j.value("status",    0);
+        imageUrl = j.value("image_url", "");
+        b64Data  = j.value("data",      "");
+    } catch (...) {}
 
     delete pBody;
 

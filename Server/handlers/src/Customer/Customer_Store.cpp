@@ -1,10 +1,7 @@
-﻿#include "CustomerHandler.h"
+#include "CustomerHandler.h"
 #include "MariaDBManager.h"
 #include "Protocol.h"
 #include <cmath>
-
-#include "CommonDB.h"
-
 #include "CommonDB.h"
 
 using json = nlohmann::json;
@@ -27,11 +24,22 @@ static std::string formatFee(int fee) {
     if (s.size() > 3) s.insert(s.size()-3, ",");
     return s + "원";
 }
+static double safeStod(const std::string& s) {
+    if (s.empty()) return 0.0;
+    try { return std::stod(s); } catch (...) { return 0.0; }
+}
+static int safeStoi(const std::string& s) {
+    if (s.empty()) return 0;
+    try { return std::stoi(s); } catch (...) { return 0; }
+}
 
 void CustomerHandler::handleStoreList(Session* session, const std::string& body) {
     try {
         int uid = getUserIdByFd(session->getFd());
-        if (uid <= 0) { sendError(session, CmdCustomer::REQ_STORE_LIST, Status::UNAUTHORIZED, "로그인 필요"); return; }
+        if (uid <= 0) {
+            sendError(session, CmdCustomer::REQ_STORE_LIST, Status::UNAUTHORIZED, "로그인 필요");
+            return;
+        }
 
         auto& db = MariaDBManager::getInstance();
         json req = json::parse(body.empty() ? "{}" : body);
@@ -39,85 +47,105 @@ void CustomerHandler::handleStoreList(Session* session, const std::string& body)
         double userLat = req.value("user_lat", 35.1468);
         double userLng = req.value("user_lng", 126.9227);
 
-        // std::string q =
-        //     "SELECT r.restaurant_id AS id, r.restaurant_name AS name, "
-        //     "fc.category_name AS category, r.base_delivery_fee AS delivery_fee, "
-        //     "r.min_order_amt, r.rating_avg AS rating, r.address, r.phone, "
-        //     "r.notice AS description, r.latitude, r.longitude, r.logo_url, "
-        //     "r.business_hours AS open_time, r.holiday "
-        //     "FROM restaurants r "
-        //     "JOIN food_categories fc ON fc.category_id = r.category_id "
-        //     "WHERE r.is_open = TRUE ";
-        // if (!category.empty() && category != "전체")
-        // q += "ORDER BY r.rating_avg DESC";
-
+        // ── 변경 포인트 ────────────────────────────────────────
+        // 1. is_open 조건 제거 → 사장님이 is_open=TRUE 설정 안 해도 목록 표시
+        // 2. INNER JOIN → LEFT JOIN → food_categories 없어도 가게 표시
+        // 3. COALESCE로 NULL 값 → 기본값 치환 (stod/stoi 예외 방지)
+        // ──────────────────────────────────────────────────────
         std::string q =
             "SELECT r.restaurant_id AS id, r.restaurant_name AS name, "
-            "fc.category_name AS category, r.base_delivery_fee AS delivery_fee, "
-            "r.min_order_amt, r.rating_avg AS rating, r.address, r.phone, "
-            "r.notice AS description, r.latitude, r.longitude, r.logo_url, "
-            "r.business_hours AS open_time, r.holiday "
+            "COALESCE(fc.category_name, '기타')    AS category, "
+            "COALESCE(r.base_delivery_fee, 0)      AS delivery_fee, "
+            "COALESCE(r.min_order_amt, 0)          AS min_order_amt, "
+            "COALESCE(r.rating_avg, 0)             AS rating, "
+            "COALESCE(r.address, '')               AS address, "
+            "COALESCE(r.phone, '')                 AS phone, "
+            "COALESCE(r.notice, '')                AS description, "
+            "COALESCE(r.latitude, 0)               AS latitude, "
+            "COALESCE(r.longitude, 0)              AS longitude, "
+            "COALESCE(r.logo_url, '')              AS logo_url, "
+            "COALESCE(r.business_hours, '')        AS open_time, "
+            "COALESCE(r.holiday, '')               AS holiday "
             "FROM restaurants r "
-            "JOIN food_categories fc ON fc.category_id = r.category_id "
-            "WHERE r.is_open = TRUE ";
+            "LEFT JOIN food_categories fc ON fc.category_id = r.category_id ";
 
-        // ✅ 수정: 카테고리 필터 조건 추가
+        // 카테고리 필터 (전체/빈 문자열이면 필터 없음)
         if (!category.empty() && category != "전체")
-            q += "AND fc.category_name = '" + category + "' ";
+            q += "WHERE fc.category_name = '" +
+                 CommonDB::getInstance().escape(category) + "' ";
 
         q += "ORDER BY r.rating_avg DESC";
 
         auto rows = db.executeQuery(q);
+
+        std::cout << "[StoreList] uid=" << uid
+                  << " category='" << category << "'"
+                  << " 조회 가게수=" << rows.size() << std::endl;
+
         json stores = json::array();
         for (auto& r : rows) {
-            json s;
-            s["id"]       = std::stoi(r.at("id"));
-            s["name"]     = r.at("name");
-            s["category"] = r.count("category") ? r.at("category") : "";
-            s["address"]  = r.count("address")  ? r.at("address")  : "";
-            s["phone"]    = r.count("phone")     ? r.at("phone")    : "";
-            s["description"] = r.count("description") ? r.at("description") : "";
-            s["open_time"]   = r.count("open_time") && !r.at("open_time").empty() ? r.at("open_time") : "";
-            s["holiday"]     = r.count("holiday")   && !r.at("holiday").empty()   ? r.at("holiday")   : "";
+            try {
+                int rid = safeStoi(r.count("id") ? r.at("id") : "0");
+                if (rid <= 0) continue;
 
-            int fee = r.count("delivery_fee") && !r.at("delivery_fee").empty() ? std::stoi(r.at("delivery_fee")) : 0;
-            s["delivery_fee"]     = fee;
-            s["delivery_fee_str"] = formatFee(fee);
+                json s;
+                s["id"]          = rid;
+                s["name"]        = r.count("name")        ? r.at("name")        : "";
+                s["category"]    = r.count("category")    ? r.at("category")    : "";
+                s["address"]     = r.count("address")     ? r.at("address")     : "";
+                s["phone"]       = r.count("phone")       ? r.at("phone")       : "";
+                s["description"] = r.count("description") ? r.at("description") : "";
+                s["open_time"]   = r.count("open_time")   ? r.at("open_time")   : "";
+                s["holiday"]     = r.count("holiday")     ? r.at("holiday")     : "";
 
-            s["min_order"] = r.count("min_order_amt") && !r.at("min_order_amt").empty() ? std::stoi(r.at("min_order_amt")) : 0;
-            s["rating"]    = r.count("rating") && !r.at("rating").empty() ? std::stod(r.at("rating")) : 0.0;
+                int fee = safeStoi(r.count("delivery_fee") ? r.at("delivery_fee") : "0");
+                s["delivery_fee"]     = fee;
+                s["delivery_fee_str"] = formatFee(fee);
+                s["min_order"] = safeStoi(r.count("min_order_amt") ? r.at("min_order_amt") : "0");
+                s["rating"]    = safeStod(r.count("rating")   ? r.at("rating")   : "0");
 
-            double sLat = r.count("latitude")  && !r.at("latitude").empty()  ? std::stod(r.at("latitude"))  : 0.0;
-            double sLng = r.count("longitude") && !r.at("longitude").empty() ? std::stod(r.at("longitude")) : 0.0;
-            double km = (sLat!=0.0 && sLng!=0.0) ? std::round(calcDistanceKm(userLat,userLng,sLat,sLng)*10)/10.0 : 0.0;
-            s["distance"]      = km;
-            s["delivery_time"] = (km > 0.0) ? estimateDeliveryTime(km) : "20~30분";
+                double sLat = safeStod(r.count("latitude")  ? r.at("latitude")  : "0");
+                double sLng = safeStod(r.count("longitude") ? r.at("longitude") : "0");
+                double km   = (sLat != 0.0 && sLng != 0.0)
+                              ? std::round(calcDistanceKm(userLat, userLng, sLat, sLng) * 10) / 10.0
+                              : 0.0;
+                s["distance"]      = km;
+                s["delivery_time"] = (km > 0.0) ? estimateDeliveryTime(km) : "20~30분";
 
-            // 가게 대표 이미지: 해당 가게의 첫 번째 메뉴 이미지 사용
-            int rid = s["id"].get<int>();
-            auto imgRows = db.executeQuery(
-                "SELECT m.image_url FROM menus m "
-                "JOIN menu_categories mc ON mc.menu_category_id = m.menu_category_id "
-                "WHERE mc.restaurant_id=" + std::to_string(rid) +
-                "  AND m.image_url IS NOT NULL AND m.image_url != '' "
-                "ORDER BY m.menu_id LIMIT 1");
-            // ★ image_url이 없으면 placeholder_<restaurant_id> 사용
-            //   서버가 REQ_GET_IMAGE(217)로 요청받으면 컬러 PNG를 동적 생성
-            if (!imgRows.empty() && imgRows[0].count("image_url") &&
-                !imgRows[0].at("image_url").empty()) {
-                s["image_url"] = imgRows[0].at("image_url");
-            } else {
-                s["image_url"] = "placeholder_" + std::to_string(rid);
+                // 메뉴 이미지 조회
+                auto imgRows = db.executeQuery(
+                    "SELECT m.image_url FROM menus m "
+                    "JOIN menu_categories mc ON mc.menu_category_id = m.menu_category_id "
+                    "WHERE mc.restaurant_id=" + std::to_string(rid) +
+                    "  AND m.image_url IS NOT NULL AND m.image_url != '' "
+                    "ORDER BY m.menu_id LIMIT 1");
+
+                s["image_url"] = (!imgRows.empty() && imgRows[0].count("image_url") &&
+                                  !imgRows[0].at("image_url").empty())
+                                 ? imgRows[0].at("image_url")
+                                 : "placeholder_" + std::to_string(rid);
+
+                s["logo_url"] = (r.count("logo_url") && !r.at("logo_url").empty())
+                                ? r.at("logo_url") : "";
+
+                stores.push_back(s);
+
+            } catch (const std::exception& e) {
+                std::cerr << "[StoreList] 가게 파싱 오류(건너뜀): " << e.what() << std::endl;
+                continue;
             }
-            // ★ 로고 URL (restaurants.logo_url)
-            s["logo_url"] = (r.count("logo_url") && !r.at("logo_url").empty())
-                            ? r.at("logo_url") : "";
-
-            stores.push_back(s);
         }
-        json res; res["status"] = Status::SUCCESS; res["stores"] = stores;
-        session->sendPacket(static_cast<uint8_t>(m_clientType), CmdCustomer::REQ_STORE_LIST, res.dump());
+
+        std::cout << "[StoreList] 응답 stores=" << stores.size() << std::endl;
+
+        json res;
+        res["status"] = Status::SUCCESS;
+        res["stores"] = stores;
+        session->sendPacket(static_cast<uint8_t>(m_clientType),
+                            CmdCustomer::REQ_STORE_LIST, res.dump());
+
     } catch (const std::exception& e) {
+        std::cerr << "[StoreList] 치명적 오류: " << e.what() << std::endl;
         sendError(session, CmdCustomer::REQ_STORE_LIST, Status::SERVER_ERROR, e.what());
     }
 }
@@ -150,45 +178,51 @@ void CustomerHandler::handleMenuList(Session* session, const std::string& body) 
         auto menuRows = db.executeQuery(menuQ);
         json menus = json::array();
         for (auto& mr : menuRows) {
-            int menuID = std::stoi(mr.at("menu_id"));
-            json m;
-            m["id"]          = menuID;
-            m["name"]        = mr.at("menu_name");
-            m["desc"]        = mr.count("description") ? mr.at("description") : "";
-            m["price"]       = std::stoi(mr.at("price"));
-            m["image_url"]   = mr.count("image_url")   ? mr.at("image_url")   : "";
-            m["is_sold_out"] = (mr.count("is_sold_out") && mr.at("is_sold_out") == "1");
-            m["sub_category"]= mr.at("sub_category");
+            try {
+                int menuID = safeStoi(mr.at("menu_id"));
+                json m;
+                m["id"]          = menuID;
+                m["name"]        = mr.at("menu_name");
+                m["desc"]        = mr.count("description") ? mr.at("description") : "";
+                m["price"]       = safeStoi(mr.at("price"));
+                m["image_url"]   = mr.count("image_url")   ? mr.at("image_url")   : "";
+                m["is_sold_out"] = (mr.count("is_sold_out") && mr.at("is_sold_out") == "1");
+                m["sub_category"]= mr.at("sub_category");
 
-            auto ogRows = db.executeQuery(
-                "SELECT og.option_group_id, og.group_name, og.is_essential, og.max_select "
-                "FROM option_groups og WHERE og.menu_id=" + std::to_string(menuID) +
-                " ORDER BY og.option_group_id");
+                auto ogRows = db.executeQuery(
+                    "SELECT og.option_group_id, og.group_name, og.is_essential, og.max_select "
+                    "FROM option_groups og WHERE og.menu_id=" + std::to_string(menuID) +
+                    " ORDER BY og.option_group_id");
 
-            json optGroups = json::array();
-            for (auto& og : ogRows) {
-                int ogID = std::stoi(og.at("option_group_id"));
-                json grp;
-                grp["group_id"]   = ogID;
-                grp["group_name"] = og.at("group_name");
-                grp["is_required"]= (og.count("is_essential") && og.at("is_essential") == "1");
-                grp["max_select"] = std::stoi(og.at("max_select"));
-                auto oiRows = db.executeQuery(
-                    "SELECT option_item_id, option_name, extra_price FROM option_items "
-                    "WHERE option_group_id=" + std::to_string(ogID) + " ORDER BY option_item_id");
-                json items = json::array();
-                for (auto& oi : oiRows) {
-                    json opt;
-                    opt["option_id"] = std::stoi(oi.at("option_item_id"));
-                    opt["name"]      = oi.at("option_name");
-                    opt["price"]     = std::stoi(oi.at("extra_price"));
-                    items.push_back(opt);
+                json optGroups = json::array();
+                for (auto& og : ogRows) {
+                    try {
+                        int ogID = safeStoi(og.at("option_group_id"));
+                        json grp;
+                        grp["group_id"]    = ogID;
+                        grp["group_name"]  = og.at("group_name");
+                        grp["is_required"] = (og.count("is_essential") && og.at("is_essential") == "1");
+                        grp["max_select"]  = safeStoi(og.at("max_select"));
+                        auto oiRows = db.executeQuery(
+                            "SELECT option_item_id, option_name, extra_price FROM option_items "
+                            "WHERE option_group_id=" + std::to_string(ogID) + " ORDER BY option_item_id");
+                        json items = json::array();
+                        for (auto& oi : oiRows) {
+                            try {
+                                json opt;
+                                opt["option_id"] = safeStoi(oi.at("option_item_id"));
+                                opt["name"]      = oi.at("option_name");
+                                opt["price"]     = safeStoi(oi.at("extra_price"));
+                                items.push_back(opt);
+                            } catch (...) { continue; }
+                        }
+                        grp["options"] = items;
+                        optGroups.push_back(grp);
+                    } catch (...) { continue; }
                 }
-                grp["options"] = items;
-                optGroups.push_back(grp);
-            }
-            m["option_groups"] = optGroups;
-            menus.push_back(m);
+                m["option_groups"] = optGroups;
+                menus.push_back(m);
+            } catch (...) { continue; }
         }
 
         json subCats = json::array();
@@ -196,8 +230,11 @@ void CustomerHandler::handleMenuList(Session* session, const std::string& body) 
         for (auto& cr : catRows) subCats.push_back(cr.at("category_name"));
 
         json res;
-        res["status"] = Status::SUCCESS; res["menus"] = menus; res["sub_categories"] = subCats;
-        session->sendPacket(static_cast<uint8_t>(m_clientType), CmdCustomer::REQ_MENU_LIST, res.dump());
+        res["status"] = Status::SUCCESS;
+        res["menus"]  = menus;
+        res["sub_categories"] = subCats;
+        session->sendPacket(static_cast<uint8_t>(m_clientType),
+                            CmdCustomer::REQ_MENU_LIST, res.dump());
     } catch (const std::exception& e) {
         sendError(session, CmdCustomer::REQ_MENU_LIST, Status::SERVER_ERROR, e.what());
     }
