@@ -54,13 +54,16 @@ void AdminHandler::process(Session* session, uint16_t protocol, const std::strin
     case CmdAdmin::REQ_MANAGE_REVIEW:  handleManageReview (session, jsonBody); return;
     }
 
-//     // ── 600번대: 채팅 ──
-//     switch (protocol)
-//     {
-//     case CmdChat::REQ_SEND_MSG:   handleSendMsg (session, jsonBody); return;
-//     case CmdChat::REQ_GET_MSGS:   handleGetMsgs (session, jsonBody); return;
-//     case CmdChat::REQ_ROOM_LIST:  handleRoomList(session, jsonBody); return;
-//     }
+    // ── 600번대: 채팅 ──
+    // 관리자는 CUSTOMER_ADMIN / RIDER_ADMIN 방에만 입장 가능.
+    // CUSTOMER_OWNER(사장님↔고객) 방 진입은 handleSendMsg/handleGetMsgs 내부에서 차단.
+    switch (protocol)
+    {
+    case CmdChat::REQ_CREATE_ROOM: handleJoinRoom (session, jsonBody); return;
+    case CmdChat::REQ_SEND_MSG:    handleSendMsg  (session, jsonBody); return;
+    case CmdChat::REQ_GET_MSGS:    handleGetMsgs  (session, jsonBody); return;
+    case CmdChat::REQ_ROOM_LIST:   handleRoomList (session, jsonBody); return;
+    }
 
     // 미처리 프로토콜 로그를 출력한다.
     std::cout << "-------------------------" << std::endl;

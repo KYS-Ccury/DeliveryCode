@@ -1,4 +1,6 @@
 #include "AdminHandler.h"
+#include "ChatDB.h"
+#include "ChatRoomManager.h"
 #include "MariaDBManager.h"
 #include "MariaDB_AcceptManager.h"
 #include "Protocol.h"
@@ -7,7 +9,108 @@
 using json = nlohmann::json;
 
 // ★ AdminChat 생성자
-AdminChat::AdminChat(BaseHandler& handler) : m_handler(handler) {}// ============================================================
+AdminChat::AdminChat(BaseHandler& handler) : m_handler(handler) {}
+
+// ============================================================
+// 600: handleJoinRoom — 관리자가 기존 채팅방에 입장한다.
+//
+// 요청 JSON:
+//   { "room_id": 7 }   ← 고객/라이더가 미리 만든 방의 ID
+//
+// 규칙:
+//   - CUSTOMER_OWNER(사장님↔고객) 방은 FORBIDDEN — 절대 입장 불가
+//   - CUSTOMER_ADMIN / RIDER_ADMIN 방만 허용
+//   - 입장 성공 시 ChatRoomManager::joinRoom 으로 fd 등록 → 실시간 수신 가능
+//   - 과거 메시지 100건 함께 응답
+//
+// 응답 JSON:
+//   { "status":2000, "room_id":7, "messages":[...] }
+// ============================================================
+void AdminHandler::handleJoinRoom(Session* session,
+                                   const std::string& jsonBody)
+{
+    std::cout << "-------------------------" << std::endl;
+    std::cout << "관리자" << std::endl;
+    std::cout << "요청 : 채팅방 입장 (600)" << std::endl;
+    std::cout << "-------------------------" << std::endl;
+
+    try {
+        json req = jsonBody.empty() ? json::object() : json::parse(jsonBody);
+
+        int adminId = getUserIdByFd(session->getFd());
+        if (adminId <= 0) {
+            sendError(session, CmdChat::REQ_CREATE_ROOM,
+                      Status::UNAUTHORIZED, "로그인이 필요합니다.");
+            return;
+        }
+
+        int roomId = req.value("room_id", 0);
+        if (roomId <= 0) {
+            sendError(session, CmdChat::REQ_CREATE_ROOM,
+                      Status::BAD_REQUEST, "room_id 가 필요합니다.");
+            return;
+        }
+
+        // ── room_type 검증 ────────────────────────────────────
+        auto& db   = MariaDBManager::getInstance();
+        auto  rows = db.executeQuery(
+            "SELECT room_type FROM chat_rooms "
+            "WHERE room_id=" + std::to_string(roomId) +
+            "  AND is_active=TRUE LIMIT 1");
+
+        if (rows.empty()) {
+            sendError(session, CmdChat::REQ_CREATE_ROOM,
+                      Status::NOT_FOUND, "존재하지 않는 채팅방입니다.");
+            return;
+        }
+
+        std::string roomType = rows[0].at("room_type");
+
+        // 사장님↔고객 전용 방 — 관리자 진입 금지
+        if (roomType == "CUSTOMER_OWNER") {
+            sendError(session, CmdChat::REQ_CREATE_ROOM,
+                      Status::FORBIDDEN,
+                      "사장님↔고객 채팅방에는 관리자가 입장할 수 없습니다.");
+            return;
+        }
+
+        if (roomType != "CUSTOMER_ADMIN" && roomType != "RIDER_ADMIN") {
+            sendError(session, CmdChat::REQ_CREATE_ROOM,
+                      Status::FORBIDDEN, "알 수 없는 채팅방 유형입니다.");
+            return;
+        }
+
+        // ── ChatRoomManager 에 관리자 fd 등록 ────────────────
+        ChatRoomManager::getInstance().joinRoom(
+            roomId, session->getFd(), ClientType::ADMIN);
+
+        std::cout << "[AdminChat] 관리자 입장 adminId=" << adminId
+                  << " roomId=" << roomId
+                  << " roomType=" << roomType << std::endl;
+
+        // ── 과거 메시지 100건 함께 응답 ──────────────────────
+        auto messages = ChatDB::getInstance().queryMessages(roomId, 100);
+
+        json res;
+        res["status"]   = Status::SUCCESS;
+        res["room_id"]  = roomId;
+        res["messages"] = json::array();
+        for (const auto& m : messages) {
+            json item;
+            item["message_id"]  = m.messageId;
+            item["sender_role"] = m.senderRole;
+            item["content"]     = m.content;
+            item["sent_at"]     = m.sentAt;
+            res["messages"].push_back(item);
+        }
+        sendResponse(session, CmdChat::REQ_CREATE_ROOM, res);
+
+    } catch (const std::exception& e) {
+        std::cerr << "[AdminChat] handleJoinRoom 예외: " << e.what() << std::endl;
+        sendError(session, CmdChat::REQ_CREATE_ROOM,
+                  Status::SERVER_ERROR, "서버 오류");
+    }
+}// ============================================================
 // 601: handleSendMsg — 관리자가 메시지를 전송한다.
 // chat_messages 테이블에 INSERT하고 성공 응답을 보낸다.
 // ============================================================

@@ -36,6 +36,7 @@ public:
     void handleManageReview (Session* session, const std::string& jsonBody); // 520
 
     // ── 채팅 기능 (Admin_chat.cpp) ───────────────────────────
+    void handleJoinRoom(Session* session, const std::string& jsonBody); // 600 (방 입장 + room_type 검증)
     void handleSendMsg (Session* session, const std::string& jsonBody); // 601
     void handleGetMsgs (Session* session, const std::string& jsonBody); // 602
     void handleRoomList(Session* session, const std::string& jsonBody); // 603

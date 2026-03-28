@@ -81,17 +81,19 @@ void CustomerHandler::handleChatCreateRoom(Session* session,
                              .findOrCreateRoom(customerId, "CUSTOMER_ADMIN");
 
         } else if (targetType == "owner") {
-            // 고객-사장님: customer_id 컬럼 기준 (order_id 없어도 생성 가능)
-            // order_id 가 있으면 order_id 기준, 없으면 customer_id 기준
+            // 고객-사장님: order_id 기준으로 채팅방을 구분한다.
+            // order_id 가 다르면 다른 채팅방 → 가게별 내역 분리 보장.
+            // order_id 없이 방을 만들면 어느 가게 채팅인지 알 수 없으므로 거부.
             int orderId = req.value("order_id", 0);
-            if (orderId > 0) {
-                roomResult = ChatDB::getInstance()
-                                 .findOrCreateRoom(orderId, "CUSTOMER_OWNER");
-            } else {
-                // order_id 없는 경우: customerId 기반으로 CUSTOMER_OWNER 방 생성
-                roomResult = ChatDB::getInstance()
-                                 .findOrCreateRoom(customerId, "CUSTOMER_OWNER");
+            if (orderId <= 0) {
+                ChatUtil::sendErr(session, CmdChat::REQ_CREATE_ROOM,
+                                  Status::BAD_REQUEST,
+                                  "owner 채팅에는 order_id 가 필요합니다.",
+                                  ClientType::CUSTOMER);
+                return;
             }
+            roomResult = ChatDB::getInstance()
+                             .findOrCreateRoom(orderId, "CUSTOMER_OWNER");
 
         } else {
             ChatUtil::sendErr(session, CmdChat::REQ_CREATE_ROOM,

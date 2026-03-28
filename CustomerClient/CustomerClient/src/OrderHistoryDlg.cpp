@@ -342,9 +342,18 @@ void OrderHistoryDlg::PopulateOrderInfo(const OrderInfo& info)
             pLB->AddString(_T("주문 내역을 불러오는 중..."));
     }
 
-    m_strOrderNum = strOrderID;
-    m_strShopName = strStore;
+    m_strOrderNum  = strOrderID;
+    m_strShopName  = strStore;
     m_nTotalAmount = info.totalPayment;
+
+    // 채팅용 — 현재 표시 중인 주문의 store_id / order_id 저장
+    // orderId 는 숫자형 order_id (info.orderID 가 문자열일 수도 있으므로 stoi 시도)
+    m_nCurrentStoreId = info.storeID;
+    try {
+        m_nCurrentOrderId = info.orderID.empty() ? 0 : std::stoi(info.orderID);
+    } catch (...) {
+        m_nCurrentOrderId = 0;
+    }
 }
 
 // ── 진행 상태 바 갱신 ────────────────────────────────────────
@@ -388,10 +397,25 @@ LRESULT OrderHistoryDlg::OnOrderStatusPush(WPARAM, LPARAM lParam)
 // ── 1:1 채팅 버튼 ────────────────────────────────────────────
 void OrderHistoryDlg::OnBnClickedBtnChat()
 {
+    // 사장님 1:1 채팅 — order_id 기준으로 채팅방을 구분하므로
+    // 반드시 현재 주문의 order_id 를 넘겨야 한다.
+    // order_id 가 없으면(0) store_id 를 fallback 으로 사용한다.
+    int chatOrderId = (m_nCurrentOrderId > 0)
+                      ? m_nCurrentOrderId
+                      : m_nCurrentStoreId;
+
+    if (chatOrderId <= 0) {
+        AfxMessageBox(_T("채팅을 시작하려면 주문 정보가 필요합니다."),
+                      MB_ICONWARNING);
+        return;
+    }
+
     ChatDlg dlg(this);
-    dlg.m_strTargetName = m_strShopName.IsEmpty() ? _T("가게 문의") : m_strShopName + _T(" 문의");
-    dlg.m_strTargetType = _T("owner");
-    dlg.m_nOrderId      = 0;
+    dlg.m_strTargetName = m_strShopName.IsEmpty()
+                          ? _T("가게 문의")
+                          : m_strShopName + _T(" 문의");
+    dlg.m_strTargetType = _T("owner");   // 관리자가 아닌 사장님 전용
+    dlg.m_nOrderId      = chatOrderId;
     dlg.DoModal();
 }
 

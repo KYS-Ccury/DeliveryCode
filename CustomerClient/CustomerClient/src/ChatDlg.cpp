@@ -51,6 +51,16 @@ BOOL ChatDlg::OnInitDialog()
         std::string t = std::string(CT2A(m_strTargetType, CP_UTF8));
         if (t == "owner" || t == "store") targetType = "owner";
     }
+
+    // owner 채팅인데 orderId 가 없으면 채팅방을 가게별로 구분할 수 없다.
+    // → 사용자에게 안내하고 다이얼로그를 닫는다.
+    if (targetType == "owner" && m_nOrderId <= 0) {
+        AfxMessageBox(_T("가게 채팅을 시작하려면 주문 정보가 필요합니다.\n주문 내역에서 다시 시도해 주세요."),
+                      MB_ICONWARNING);
+        PostMessage(WM_CLOSE);
+        return TRUE;
+    }
+
     cm.CreateOrGetRoom(targetType, m_nOrderId);
 
     // 연결 중 안내 (WM_CHAT_ROOM_READY 수신 시 제거됨)

@@ -29,6 +29,10 @@ public:
     CString m_strShopName;
     int     m_nTotalAmount = 0;
 
+    // 채팅용 — 현재 표시 중인 주문의 store_id / order_id (int)
+    int     m_nCurrentStoreId = 0;
+    int     m_nCurrentOrderId = 0;
+
 protected:
     virtual void DoDataExchange(CDataExchange* pDX);
     virtual BOOL OnInitDialog();
