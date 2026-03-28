@@ -2,7 +2,7 @@
 #include "CustomerHandler.h" 
 #include "RiderHandler.h"
 #include "OwnerHandler.h"
-// #include "AdminHandler.h"
+#include "AdminHandler.h"
 #include "ChatRoomManager.h"
 #include <iostream>
 #include "Session.h"
@@ -133,7 +133,7 @@ void EpollServer::closeConnection(int client_fd) {
     CustomerHandler::getInstance().unregisterSession(client_fd);  
     OwnerHandler::getInstance().unregisterSession(client_fd); 
     RiderHandler::getInstance().unregisterSession(client_fd);
-    // AdminHandler::getInstance().unregisterSession(client_fd);
+    AdminHandler::getInstance().unregisterSession(client_fd);
     std::lock_guard<std::mutex> lock(session_mutex);
     epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);
     sessions.erase(client_fd);

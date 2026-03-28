@@ -73,18 +73,18 @@ void CustomerHandler::process(Session* session, uint16_t protocol, const std::st
     }
 
     // ── 600번대: 채팅 프로토콜 ───────────────────────────────
-    // if (protocol >= 600 && protocol <= 699) {
-    //     switch (protocol) {
-    //         case CmdChat::REQ_CREATE_ROOM: handleChatCreateRoom(session, body); break;
-    //         case CmdChat::REQ_SEND_MSG:    handleChatSendMsg   (session, body); break;
-    //         case CmdChat::REQ_GET_MSGS:    handleChatGetMsgs   (session, body); break;
-    //         default:
-    //             std::cerr << "[CustomerHandler] 알 수 없는 600번대 프로토콜: " << protocol << "\n";
-    //             sendError(session, protocol, Status::BAD_REQUEST, "Unknown chat protocol");
-    //             break;
-    //     }
-    //     return;
-    // }
+    if (protocol >= 600 && protocol <= 699) {
+        switch (protocol) {
+            case CmdChat::REQ_CREATE_ROOM: handleChatCreateRoom(session, body); break;
+            case CmdChat::REQ_SEND_MSG:    handleChatSendMsg   (session, body); break;
+            case CmdChat::REQ_GET_MSGS:    handleChatGetMsgs   (session, body); break;
+            default:
+                std::cerr << "[CustomerHandler] 알 수 없는 600번대 프로토콜: " << protocol << "\n";
+                sendError(session, protocol, Status::BAD_REQUEST, "Unknown chat protocol");
+                break;
+        }
+        return;
+    }
 
     std::cerr << "[CustomerHandler] 미처리 프로토콜: " << protocol << "\n";
     sendError(session, protocol, Status::BAD_REQUEST, "Unknown protocol");

@@ -19,7 +19,7 @@ json MiddleHandler::processDBRequest(uint16_t dbProtocol, const json& reqJson) {
     } 
     // else if (dbProtocol >= 1200 && dbProtocol < 1300) {
     //     // [1200번대] 고객 DB 처리
-    //     // return CustomerDBHandler::process(dbProtocol, reqJson);
+    //     return CustomerDBHandler::process(dbProtocol, reqJson);
     // } 
     else if (dbProtocol >= 1300 && dbProtocol < 1400) {
         // [1300번대] 사장님 DB 처리
@@ -29,10 +29,10 @@ json MiddleHandler::processDBRequest(uint16_t dbProtocol, const json& reqJson) {
         //// [1400번대] 라이더 DB 처리
         return RiderDBHandler::process(dbProtocol, reqJson);
     } 
-    // else if (dbProtocol >= 1500 && dbProtocol < 1600) {
-        //// [1500번대] 관리자 DB 처리
-        // return AdminDBHandler::process(dbProtocol, reqJson);
-    // }
+    else if (dbProtocol >= 1500 && dbProtocol < 1600) {
+        // [1500번대] 관리자 DB 처리
+        return AdminDBHandler::process(dbProtocol, reqJson);
+    }
 
     // 매칭되는 프로토콜이 없을 경우
     std::cerr << "[MiddleHandler] Unknown DB Protocol: " << dbProtocol << std::endl;
