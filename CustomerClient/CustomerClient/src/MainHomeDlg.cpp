@@ -156,8 +156,9 @@ BOOL MainHomeDlg::OnInitDialog()
         m_wndScrollMenu.Create(_T(""), WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_NOTIFY,
                                rect, this, IDC_STATIC_MENU_BAR);
     }
-    m_vecCategories = { _T("전체"),_T("족발/보쌈"),_T("찜/탕"),_T("일식"),
-                        _T("치킨"),_T("피자"),_T("중식"),_T("양식") };
+    //m_vecCategories = { _T("전체"),_T("족발/보쌈"),_T("찜/탕"),_T("일식"),
+    //                    _T("치킨"),_T("피자"),_T("중식"),_T("양식") };
+    m_vecCategories = { _T("전체"), _T("치킨"), _T("피자") };
     if (m_wndScrollMenu.GetSafeHwnd())
         m_wndScrollMenu.SetMenuItems(m_vecCategories);
 
@@ -166,8 +167,6 @@ BOOL MainHomeDlg::OnInitDialog()
     SetTimer(TIMER_CONN_CHECK, 3000, nullptr);
 
     RegisterNetworkCallback();
-    // 로그인 직후 서버에서 주소 목록을 받아 기본 주소를 버튼에 표시
-    AddressManager::GetInstance().RequestAddressesFromServer();
     UpdateAddrLabel();
     SendStoreListRequest(_T("전체"));
     return TRUE;
@@ -285,6 +284,9 @@ LRESULT MainHomeDlg::OnStoreListResponse(WPARAM, LPARAM lParam)
 // ================================================================
 void MainHomeDlg::RebuildStoreListUI(const std::vector<StoreInfo>& stores)
 {
+    // ✅ 추가: 이전 이미지 맵 초기화 (카테고리 전환 시 오래된 응답 무시)
+    m_imageUrlToIndex.clear();
+
     m_listStore.DeleteAllItems();
 
     if (m_imgListStore.GetSafeHandle())
@@ -459,11 +461,37 @@ void MainHomeDlg::UpdateStoreListUI(CString cat)
     RebuildStoreListUI(stores); m_vecStoreCache = stores;
 }
 
+//LRESULT MainHomeDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM)
+//{
+//    int n = (UINT)wParam - SCROLL_MENU_BTN_ID;
+//    if (n >= 0 && n < (int)m_vecCategories.size())
+//        SendStoreListRequest(m_vecCategories[n]);
+//    return 0;
+//}
+
 LRESULT MainHomeDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM)
 {
     int n = (UINT)wParam - SCROLL_MENU_BTN_ID;
-    if (n >= 0 && n < (int)m_vecCategories.size())
-        SendStoreListRequest(m_vecCategories[n]);
+    if (n < 0 || n >= (int)m_vecCategories.size()) return 0;
+
+    CString filter = m_vecCategories[n];
+
+    if (filter == _T("전체")) {
+        // 전체는 캐시 그대로 표시
+        RebuildStoreListUI(m_vecStoreCache);
+        RequestStoreImages(m_vecStoreCache);
+    }
+    else {
+        // 클라이언트에서 필터링
+        std::vector<StoreInfo> filtered;
+        std::string filterStr = CT2A(filter, CP_UTF8);
+        for (const auto& s : m_vecStoreCache) {
+            if (s.category == filterStr)
+                filtered.push_back(s);
+        }
+        RebuildStoreListUI(filtered);
+        RequestStoreImages(filtered);
+    }
     return 0;
 }
 

@@ -91,7 +91,7 @@ protected:
 
     // 위치 및 간격 설정값
 
-    int     m_nTargetX = 40;           // 애니메이션 목표 지점
+    int     m_nTargetX = 0;           // 애니메이션 목표 지점
 
     int     m_nBtnWidth = 180;         // 버튼 너비
 

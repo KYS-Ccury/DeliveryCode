@@ -436,7 +436,16 @@ void CScrollMenu::StartSnapAnimation() {
 
     int endMargin = rectClient.right - m_nLeftMargin; // 오른쪽 끝 한계선 (너비 - 40)
 
-
+    // ✅ 추가: 버튼 전체 너비가 메뉴바보다 짧으면 왼쪽 정렬로 고정
+    int totalWidth = (int)(m_vButtons.size() - 1) * m_nUnitSize + m_nBtnWidth;
+    if (totalWidth <= rectClient.Width()) {
+        // 버튼이 이미 왼쪽 시작점에 있으면 아무것도 안 함
+        if (rFirst.left != startMargin) {
+            m_nTargetX = startMargin;
+            SetTimer(1, 10, NULL);
+        }
+        return;
+    }
 
     bool bNeedAnimation = false; // 애니메이션을 틀어서 제자리로 돌려보내야 하는가? 를 결정하는 스위치
 
