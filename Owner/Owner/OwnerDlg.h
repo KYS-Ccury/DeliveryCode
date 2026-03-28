@@ -30,6 +30,8 @@ protected:
 	afx_msg void OnCustomdrawListOrder(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg LRESULT OnNewOrderReceived(WPARAM wParam, LPARAM lParam);
 	afx_msg void OnTimer(UINT_PTR nIDEvent); // 🚨 [추가] 타이머 메시지 처리기
+	afx_msg void OnBnClickedBtnPrintReceipt();
+	afx_msg void OnBnClickedBtnPrintDelivery();
 
 	DECLARE_MESSAGE_MAP()
 public:

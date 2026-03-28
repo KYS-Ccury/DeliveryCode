@@ -8,6 +8,7 @@
 
 CString g_strOwnerID; // 전역 변수로 저장
 CString g_strOwnerPW;
+int g_nOwnerId = 0;
 
 using json = nlohmann::json;
 
@@ -47,6 +48,7 @@ void CLoginDlg::OnBnClickedBtnLogin() {
     // CmdCommon::REQ_LOGIN (101) 사용
     if (CNetClient::SendRequest(CmdCommon::REQ_LOGIN, req, res)) {
         if (res.contains("status") && res["status"] == Status::SUCCESS) {
+            g_nOwnerId = res.value("user_id", -1);
             g_strOwnerID = strID;
             g_strOwnerPW = strPW;
             EndDialog(IDOK); // 로그인 성공 -> 메인 화면 진입
@@ -72,8 +74,11 @@ BEGIN_MESSAGE_MAP(CSignUpDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_DO_SIGNUP, &CSignUpDlg::OnBnClickedBtnDoSignup)
 END_MESSAGE_MAP()
 
-void CSignUpDlg::OnBnClickedBtnDoSignup() {
+void CSignUpDlg::OnBnClickedBtnDoSignup()
+{
     CString strID, strPW, strPWConf, strName, strPhone, strAddr, strStore;
+
+    // 🚨 1. 누락되었던 아이디 읽어오기 코드 추가!
     GetDlgItemText(IDC_EDIT_SIGN_ID, strID);
     GetDlgItemText(IDC_EDIT_SIGN_PW, strPW);
     GetDlgItemText(IDC_EDIT_SIGN_PW_CONFIRM, strPWConf);
@@ -82,36 +87,42 @@ void CSignUpDlg::OnBnClickedBtnDoSignup() {
     GetDlgItemText(IDC_EDIT_SIGN_ADDR, strAddr);
     GetDlgItemText(IDC_EDIT_SIGN_STORE, strStore);
 
+    // 필수 값 검사
     if (strID.IsEmpty() || strPW.IsEmpty() || strName.IsEmpty()) {
         MessageBox(_T("필수 정보를 입력하세요."), _T("안내"), MB_ICONWARNING);
         return;
     }
+
+    // 비밀번호 확인 검사
     if (strPW != strPWConf) {
         MessageBox(_T("비밀번호가 일치하지 않습니다."), _T("경고"), MB_ICONERROR);
         return;
     }
 
+    // 🚨 2. 서버로 보낼 JSON 셋팅 (한글 깨짐 방지 CP_UTF8 일괄 적용)
     json req;
-    req["id"] = std::string(CT2CA(strID));
-    req["pw"] = std::string(CT2CA(strPW));
-    req["name"] = std::string(CT2CA(strName));
-    req["phone"] = std::string(CT2CA(strPhone));
-    req["address"] = std::string(CT2CA(strAddr));
-    req["store_name"] = std::string(CT2CA(strStore));
-    req["client_type"] = (int)ClientType::OWNER; // 🚨 [추가] 사장님 가입임을 명시
+    req["id"] = std::string(CT2CA(strID, CP_UTF8));
+    req["pw"] = std::string(CT2CA(strPW, CP_UTF8));
+    req["name"] = std::string(CT2CA(strName, CP_UTF8));
+    req["phone"] = std::string(CT2CA(strPhone, CP_UTF8));
+    req["address"] = std::string(CT2CA(strAddr, CP_UTF8));
+    req["store_name"] = std::string(CT2CA(strStore, CP_UTF8));
+    req["client_type"] = (int)ClientType::OWNER;
 
+    // 서버로 회원가입 요청 쏘기 (CmdCommon::REQ_SIGNUP 프로토콜)
     json res;
-    // CmdCommon::REQ_SIGNUP (100) 사용
     if (CNetClient::SendRequest(CmdCommon::REQ_SIGNUP, req, res)) {
-        if (res.contains("status") && res["status"] == Status::SUCCESS) {
-            MessageBox(_T("가입되었습니다!"), _T("성공"), MB_ICONINFORMATION);
-            EndDialog(IDOK);
+        if (res["status"] == Status::SUCCESS) {
+            MessageBox(_T("회원가입이 완료되었습니다! 로그인해주세요."), _T("가입 성공"), MB_ICONINFORMATION);
+            EndDialog(IDOK); // 가입 성공 시 창 닫기
         }
         else {
-            MessageBox(_T("가입 실패 사유: ") + CString(res["message"].get<std::string>().c_str()));
+            // 서버에서 보낸 에러 메시지 (예: 아이디 중복 등) 띄우기
+            CString errMsg = CA2T(res.value("message", "가입 실패").c_str(), CP_UTF8);
+            MessageBox(errMsg, _T("가입 실패"), MB_ICONERROR);
         }
     }
     else {
-        MessageBox(_T("서버 전송 실패"), _T("에러"), MB_ICONERROR);
+        MessageBox(_T("서버와의 통신에 실패했습니다. 서버가 켜져 있는지 확인해주세요."), _T("통신 에러"), MB_ICONERROR);
     }
 }

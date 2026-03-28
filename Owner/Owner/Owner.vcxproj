@@ -201,10 +201,10 @@
     <ClInclude Include="OwnerDlg.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Protocol.h" />
-    <ClInclude Include="Resource.h" />
     <ClInclude Include="StoreManager.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="Struct.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CAuthDlg.cpp" />

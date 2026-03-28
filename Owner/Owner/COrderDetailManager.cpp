@@ -28,28 +28,37 @@ void COrderDetailManager::InitArea(CWnd* pParent, CFont& font)
 
 void COrderDetailManager::UpdateList(CWnd* pParent, CString strMenuName)
 {
+    if (!pParent) return;
+
     CListCtrl* pDetailList = (CListCtrl*)pParent->GetDlgItem(IDC_LIST_ORDER_MENU);
     if (!pDetailList) return;
 
     pDetailList->DeleteAllItems();
 
-    // 1. 메뉴명에 '치킨'이 포함된 경우
-    if (!strMenuName.IsEmpty() && strMenuName.Find(_T("치킨")) != -1)
-    {
-        int nIdx = pDetailList->InsertItem(0, _T("황금 올리브 (기본)"));
+    // ========================================================
+    // 1. 선택된 메뉴에 따라 "표(List)" 데이터 변경
+    // ========================================================
+    if (strMenuName == _T("후라이드 치킨")) {
+        int nIdx = pDetailList->InsertItem(0, _T("후라이드 치킨"));
         pDetailList->SetItemText(nIdx, 1, _T("1"));
         pDetailList->SetItemText(nIdx, 2, _T("20,000원"));
 
         nIdx = pDetailList->InsertItem(1, _T("치킨무 추가"));
         pDetailList->SetItemText(nIdx, 1, _T("1"));
         pDetailList->SetItemText(nIdx, 2, _T("500원"));
+        
+        // 🚨 2. [추가] 우측 하단 "주문 정보 및 요청사항"도 같이 변경!!
+        pParent->SetDlgItemText(IDC_STATIC_REQ_SHOP, _T("리뷰 이벤트 참여합니다! 치즈볼 주세요."));
+        pParent->SetDlgItemText(IDC_STATIC_REQ_DELIVERY, _T("문 앞에 두고 벨 눌러주세요."));
     }
-    // 2. 초기 상태이거나 다른 메뉴인 경우
-    else
-    {
+    else {
         int nIdx = pDetailList->InsertItem(0, _T("선택된 주문이 없습니다"));
         pDetailList->SetItemText(nIdx, 1, _T("-"));
         pDetailList->SetItemText(nIdx, 2, _T("0원"));
+
+        // 🚨 2. [추가] 빈 주문일 때 텍스트 초기화
+        pParent->SetDlgItemText(IDC_STATIC_REQ_SHOP, _T("없음"));
+        pParent->SetDlgItemText(IDC_STATIC_REQ_DELIVERY, _T("없음"));
     }
 }
 
@@ -82,4 +91,47 @@ void COrderDetailManager::AdjustCookTime(CWnd* pParent, int nDelta) {
 
     strTime.Format(_T("%d분"), nTime);
     pParent->SetDlgItemText(IDC_STATIC_COOK_TIME, strTime);
+}
+
+void COrderDetailManager::ShowPrintReceipt(CWnd* pParent)
+{
+    if (!pParent) return;
+
+    CString strSummary, strReqShop;
+    pParent->GetDlgItemText(IDC_STATIC_DETAIL_SUMMARY, strSummary);
+    pParent->GetDlgItemText(IDC_STATIC_REQ_SHOP, strReqShop);
+
+    // 실제 영수증처럼 보이도록 문자열 예쁘게 꾸미기
+    CString strReceipt;
+    strReceipt.Format(
+        _T("=============== [ 주문 전표 ] ===============\n\n")
+        _T(" [주문 내역]\n  %s\n\n")
+        _T("---------------------------------------------\n")
+        _T(" [가게 요청사항]\n  %s\n\n")
+        _T("=============================================\n")
+        _T("\n※ 전표 출력이 완료되었습니다."),
+        strSummary, strReqShop);
+
+    pParent->MessageBox(strReceipt, _T("전표 출력기"), MB_OK | MB_ICONINFORMATION);
+}
+
+void COrderDetailManager::ShowDeliveryGuide(CWnd* pParent)
+{
+    if (!pParent) return;
+
+    CString strReqDeli;
+    pParent->GetDlgItemText(IDC_STATIC_REQ_DELIVERY, strReqDeli);
+
+    CString strGuide;
+    strGuide.Format(
+        _T("=============== [ 배달 안내서 ] ===============\n\n")
+        _T(" 📍 배달 목적지: 고객님 주소\n")
+        _T(" 📞 고객 연락처: 050-XXXX-XXXX (안심번호)\n\n")
+        _T("-----------------------------------------------\n")
+        _T(" [라이더님 요청사항]\n  %s\n\n")
+        _T("===============================================\n")
+        _T("\n※ 안전 운전 부탁드립니다."),
+        strReqDeli);
+
+    pParent->MessageBox(strGuide, _T("배달 안내 출력기"), MB_OK | MB_ICONINFORMATION);
 }

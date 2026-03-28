@@ -28,7 +28,6 @@ void Dispatcher::dispatch(Session* session, const PacketHeader& header, const st
 
             case ClientType::OWNER:
                 OwnerHandler::getInstance().process(session, protocol, jsonBody);
-                std::cerr << "[Dispatcher] OWNER 미구현 protocol=" << protocol << std::endl;
                 break;
 
             case ClientType::RIDER:

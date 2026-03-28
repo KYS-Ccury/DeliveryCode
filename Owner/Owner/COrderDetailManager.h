@@ -5,16 +5,19 @@
 class COrderDetailManager
 {
 public:
-    // 상세 영역 전체 초기화 (리스트 헤더, 폰트 적용 등)
     static void InitArea(CWnd* pParent, CFont& font);
+    static void InitMainList(CWnd* pParent);
 
-    // 상세 리스트에 데이터를 채우는 기능 (나중에 클릭 시 호출용)
+    // 🚨 [수정] 데이터 갱신 시 표와 텍스트를 모두 바꾸도록 인자 추가
     static void UpdateList(CWnd* pParent, CString strMenuName = _T(""));
-    static void InitMainList(CWnd* pParent); // 메인 리스트 헤더 세팅
 
     static void AdjustCookTime(CWnd* pParent, int nDelta);
 
+    // 🚨 [추가] 출력 버튼 기능
+    static void ShowPrintReceipt(CWnd* pParent);
+    static void ShowDeliveryGuide(CWnd* pParent);
+
 protected:
-    afx_msg void OnBnClickedBtnTimePlus();  // [+] 버튼용
-    afx_msg void OnBnClickedBtnTimeMinus(); // [-] 버튼용
+    afx_msg void OnBnClickedBtnTimePlus();
+    afx_msg void OnBnClickedBtnTimeMinus();
 };
