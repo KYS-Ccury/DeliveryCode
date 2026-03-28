@@ -450,11 +450,10 @@ void OrderListDlg::OnBnClickedBtnWriteReview()
     }
 
     ReviewWriteDlg dlg(this);
-    // ReviewWriteDlg에 주문 정보 전달 (해당 클래스의 공개 멤버에 맞게 조정)
-    // dlg.m_strOrderID  = CA2T(o.orderID.c_str(), CP_UTF8);
-    // dlg.m_nStoreID    = o.storeID;
+    dlg.m_nStoreID = o.storeID;
+    // ★ 서버 필수값: order_id (정수형으로 변환)
+    try { dlg.m_nOrderID = std::stoi(o.orderID); } catch (...) { dlg.m_nOrderID = 0; }
     if (dlg.DoModal() == IDOK) {
-        AfxMessageBox(_T("리뷰가 등록되었습니다. 감사합니다!"), MB_ICONINFORMATION);
         // 리뷰 작성 후 버튼 비활성화 (중복 방지)
         CWnd* pBtn = GetDlgItem(IDC_BTN_OL_WRITE_REVIEW);
         if (pBtn) pBtn->EnableWindow(FALSE);

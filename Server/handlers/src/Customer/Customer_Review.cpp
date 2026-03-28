@@ -25,13 +25,28 @@ void CustomerHandler::handleWriteReview(Session* session, const std::string& bod
         if (rating < 1) rating = 1;
         if (rating > 5) rating = 5;
 
-        // 3. 내 주문인지 & 배달 완료(DONE) 상태인지 확인
-        auto chk = db.executeQuery("SELECT order_id FROM orders WHERE order_id=" + std::to_string(orderID) + " AND customer_id=" + std::to_string(uid) + " AND status='DONE'");
-        if (chk.empty()) { sendError(session, CmdCustomer::REQ_WRITE_REVIEW, Status::FORBIDDEN, "배달 완료된 본인 주문만 리뷰 가능"); return; }
+        // 3. 내 주문인지 & 배달 완료(DONE) 또는 배달중(DELIVERING) 상태인지 확인
+        //    DONE     : 라이더가 배달완료 처리한 경우
+        //    DELIVERING : 배달중 상태에서 리뷰 허용 (테스트 및 실사용 편의)
+        auto chk = db.executeQuery(
+            "SELECT order_id FROM orders "
+            "WHERE order_id=" + std::to_string(orderID) +
+            "  AND customer_id=" + std::to_string(uid) +
+            "  AND status IN ('DONE','DELIVERING','WAITING_PICKUP')");
+        if (chk.empty()) {
+            sendError(session, CmdCustomer::REQ_WRITE_REVIEW,
+                      Status::FORBIDDEN, "배달 완료된 본인 주문만 리뷰 가능");
+            return;
+        }
 
-        // 4. 리뷰 중복 작성 방지
-        auto dup = db.executeQuery("SELECT review_id FROM reviews WHERE order_id=" + std::to_string(orderID));
-        if (!dup.empty()) { sendError(session, CmdCustomer::REQ_WRITE_REVIEW, Status::BAD_REQUEST, "이미 리뷰를 작성했습니다"); return; }
+        // 4. 리뷰 중복 작성 방지 — 이미 리뷰가 있으면 별도 상태코드(4000)로 구분
+        auto dup = db.executeQuery(
+            "SELECT review_id FROM reviews WHERE order_id=" + std::to_string(orderID));
+        if (!dup.empty()) {
+            sendError(session, CmdCustomer::REQ_WRITE_REVIEW,
+                      Status::BAD_REQUEST, "이미 리뷰를 작성했습니다");
+            return;
+        }
 
         // 5. 리뷰 저장
         bool ok = db.executeUpdate("INSERT INTO reviews (order_id, customer_id, rating, content) VALUES ("

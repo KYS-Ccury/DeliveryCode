@@ -303,9 +303,8 @@ LRESULT LoginDlg::OnLoginResponse(WPARAM, LPARAM lParam)
         std::string id = CT2A(strID, CP_UTF8);
 
         AuthManager::GetInstance().Login(id, "", m_strToken, m_strServerUserID);
-        // ★ 서버에서 주소 목록 전체를 요청 (InitFromLogin 대체)
-        //   응답 콜백은 MainHomeDlg::RegisterNetworkCallback에서 등록됨
-        AddressManager::GetInstance().RequestAddressesFromServer();
+        // 주소 요청은 MainHomeDlg::OnInitDialog 에서 콜백 등록 후 수행
+        // (이 시점에는 WM_ADDR_LIST_RESPONSE 콜백이 없어서 응답이 버려짐)
         SetLoginError(_T(""));
         CDialogEx::OnOK();
 

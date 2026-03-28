@@ -22,6 +22,8 @@ public:
 
     int     m_nStarRating;
     CString m_strReviewText;
+    int     m_nStoreID  = 0;   // 리뷰 대상 가게 ID (ReviewListDlg 경로용)
+    int     m_nOrderID  = 0;   // ★ 서버 필수값: 배달완료 주문 ID (OrderListDlg 경로용)
 
 protected:
     virtual void DoDataExchange(CDataExchange* pDX);

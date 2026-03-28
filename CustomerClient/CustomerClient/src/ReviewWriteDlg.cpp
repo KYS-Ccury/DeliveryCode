@@ -26,7 +26,6 @@
 #include "ReviewWriteDlg.h"
 #include "AuthManager.h"
 #include "NetworkManager.h"
-#include "OrderManager.h"
 #include "common/header/Types.h"
 
 #define WM_REVIEW_RESPONSE (WM_USER + 170)
@@ -133,16 +132,29 @@ void ReviewWriteDlg::OnBnClickedOk()
     SetDlgItemText(IDOK, _T("전송 중..."));
 
     // ── JSON 빌드 후 서버 전송 ────────────────────────────────
-    std::string token   = AuthManager::GetInstance().GetAccessToken();
-    int         storeID = OrderManager::GetInstance().GetCurrentStoreID();
-    std::string contentRaw = CT2A(m_strReviewText, CP_UTF8);
-    std::string content = RVEscape(contentRaw);
+    // 서버는 order_id 를 필수로 요구한다 (Customer_Review.cpp 참조)
+    // m_nOrderID 가 없으면 서버 검증 단계에서 BAD_REQUEST 로 거부된다.
+    std::string token = AuthManager::GetInstance().GetAccessToken();
+    int orderID = m_nOrderID;
 
+    if (orderID <= 0) {
+        m_bWaiting = false;
+        this->GetDlgItem(IDOK)->EnableWindow(TRUE);
+        SetDlgItemText(IDOK, _T("확인"));
+        AfxMessageBox(_T("주문 정보를 찾을 수 없습니다.\n주문 내역에서 배달완료된 주문을 선택 후 리뷰를 작성해 주세요."),
+                      MB_ICONERROR);
+        return;
+    }
+
+    std::string contentRaw = CT2A(m_strReviewText, CP_UTF8);
+    std::string content    = RVEscape(contentRaw);
+
+    // 서버 필수 필드: order_id, rating, content (token 은 인증용)
     std::string json =
-        "{\"token\":\""   + token   + "\","
-        "\"store_id\":"  + std::to_string(storeID) + ","
-        "\"rating\":"    + std::to_string(m_nStarRating) + ","
-        "\"content\":\"" + content  + "\"}";
+        "{\"token\":\""    + token                       + "\","
+        "\"order_id\":"    + std::to_string(orderID)     + ","
+        "\"rating\":"      + std::to_string(m_nStarRating) + ","
+        "\"content\":\""   + content                     + "\"}";
 
     net.SendPacket((uint8_t)ClientType::CUSTOMER,
                    CmdCustomer::REQ_WRITE_REVIEW, json);
@@ -166,8 +178,16 @@ LRESULT ReviewWriteDlg::OnReviewResponse(WPARAM, LPARAM lParam)
     if (status == (int)Status::SUCCESS) {
         AfxMessageBox(_T("리뷰가 등록되었습니다. 감사합니다!"), MB_ICONINFORMATION);
         CDialogEx::OnOK();
+    } else if (status == 4003) {
+        // FORBIDDEN: 배달 완료되지 않은 주문 or 본인 주문 아님
+        AfxMessageBox(_T("배달이 완료된 주문만 리뷰를 작성할 수 있습니다."),
+                      MB_ICONWARNING);
+    } else if (status == 4000) {
+        // BAD_REQUEST: 이미 리뷰 작성됨
+        AfxMessageBox(_T("이미 이 주문에 대한 리뷰를 작성하셨습니다."),
+                      MB_ICONINFORMATION);
     } else {
-        AfxMessageBox(_T("리뷰 등록에 실패했습니다.\n이미 리뷰를 작성했거나 서버 오류입니다."),
+        AfxMessageBox(_T("리뷰 등록 중 오류가 발생했습니다.\n잠시 후 다시 시도해 주세요."),
                       MB_ICONERROR);
     }
     return 0;

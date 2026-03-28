@@ -108,6 +108,11 @@ BOOL ReviewListDlg::OnInitDialog()
 
 void ReviewListDlg::LoadReviews()
 {
+    // m_storeID(StoreListDlg 경로) 와 m_nStoreID 를 통합
+    // StoreListDlg 는 m_storeID 에 설정하므로 m_nStoreID 가 0 이면 m_storeID 를 사용
+    if (m_nStoreID <= 0 && m_storeID > 0)
+        m_nStoreID = m_storeID;
+
     auto& net = NetworkManager::GetInstance();
     if (!net.IsConnected()) {
         // 오프라인 더미 데이터
@@ -133,26 +138,36 @@ LRESULT ReviewListDlg::OnReviewListResponse(WPARAM, LPARAM lParam)
     if (RLJInt(*pBody, "status") == (int)Status::SUCCESS) {
         m_vecReviews.clear();
 
-        double avgRating = RLJDouble(*pBody, "avg_rating");
-        int    total     = RLJInt(*pBody, "total");
-
-        // 평균 별점 표시
-        CWnd* pAvg = this->GetDlgItem(IDC_STATIC_AVG_RATING);
-        if (pAvg) {
-            CString s; s.Format(_T("%.1f점  (%d개)"), avgRating, total);
-            pAvg->SetWindowText(s);
-        }
-
+        // ── 리뷰 목록 파싱 ──────────────────────────────────
+        // 서버 응답 키: id, author, rating, content
+        // (review_id / author_id / created_at 은 서버가 보내지 않음)
         auto objs = RLExtractObjs(*pBody, "reviews");
         for (const auto& obj : objs) {
             ReviewItem rv;
-            rv.reviewID  = RLJInt(obj, "review_id");
-            rv.authorID  = RLJStr(obj, "author_id");
+            rv.reviewID  = RLJInt(obj, "id");
+            rv.authorID  = RLJStr(obj, "author");
             rv.rating    = RLJInt(obj, "rating");
             rv.content   = RLJStr(obj, "content");
-            rv.createdAt = RLJStr(obj, "created_at");
+            rv.createdAt = RLJStr(obj, "created_at"); // 없으면 빈 문자열
             m_vecReviews.push_back(rv);
         }
+
+        // ── 평균 별점 표시 ───────────────────────────────────
+        // 서버가 avg_rating/total 을 보내지 않으면 클라이언트에서 계산
+        CWnd* pAvg = this->GetDlgItem(IDC_STATIC_AVG_RATING);
+        if (pAvg) {
+            if (!m_vecReviews.empty()) {
+                double sum = 0;
+                for (const auto& rv : m_vecReviews) sum += rv.rating;
+                double avg = sum / m_vecReviews.size();
+                CString s;
+                s.Format(_T("%.1f점  (%d개)"), avg, (int)m_vecReviews.size());
+                pAvg->SetWindowText(s);
+            } else {
+                pAvg->SetWindowText(_T("리뷰 없음"));
+            }
+        }
+
         RebuildUI();
     } else {
         m_listReviews.DeleteAllItems();
@@ -199,8 +214,8 @@ void ReviewListDlg::RebuildUI()
 void ReviewListDlg::OnBnClickedWriteMyReview()
 {
     ReviewWriteDlg dlg(this);
+    dlg.m_nStoreID = m_nStoreID;   // ★ 가게 ID 전달
     if (dlg.DoModal() == IDOK) {
-        AfxMessageBox(_T("리뷰가 등록되었습니다!"), MB_ICONINFORMATION);
         // 리뷰 작성 후 목록 새로고침
         m_listReviews.DeleteAllItems();
         m_listReviews.InsertItem(0, _T("새로 고침 중..."));

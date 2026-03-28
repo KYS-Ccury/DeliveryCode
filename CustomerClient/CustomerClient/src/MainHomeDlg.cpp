@@ -158,7 +158,7 @@ BOOL MainHomeDlg::OnInitDialog()
     }
     //m_vecCategories = { _T("전체"),_T("족발/보쌈"),_T("찜/탕"),_T("일식"),
     //                    _T("치킨"),_T("피자"),_T("중식"),_T("양식") };
-    m_vecCategories = { _T("전체"), _T("치킨"), _T("피자"), _T("패스트푸드") };
+    m_vecCategories = { _T("전체"), _T("치킨"), _T("피자") };
     if (m_wndScrollMenu.GetSafeHwnd())
         m_wndScrollMenu.SetMenuItems(m_vecCategories);
 
@@ -167,6 +167,9 @@ BOOL MainHomeDlg::OnInitDialog()
     SetTimer(TIMER_CONN_CHECK, 3000, nullptr);
 
     RegisterNetworkCallback();
+    // 화면 열릴 때마다(최초 로그인 / 재로그인 모두) 서버에서 주소 목록 요청
+    // → 응답 오면 OnAddrListResponse → UpdateAddrLabel 로 버튼 자동 갱신
+    AddressManager::GetInstance().RequestAddressesFromServer();
     UpdateAddrLabel();
     SendStoreListRequest(_T("전체"));
     return TRUE;

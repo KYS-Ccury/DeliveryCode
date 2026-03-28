@@ -67,6 +67,43 @@ void CustomerHandler::handleGetAddresses(Session* session, const std::string& /*
             addresses.push_back(a);
         }
 
+        // ── user_addresses 가 비어있으면 users.address 를 기본 주소로 fallback ──
+        // 회원가입 시 users.address 에만 저장되고 user_addresses 에는 없을 수 있음
+        if (addresses.empty()) {
+            auto uRows = db.executeQuery(
+                "SELECT address FROM users "
+                "WHERE user_id=" + std::to_string(userId) +
+                "  AND address IS NOT NULL AND address != '' LIMIT 1");
+            if (!uRows.empty()) {
+                std::string userAddr = uRows[0].at("address");
+                if (!userAddr.empty()) {
+                    // user_addresses 에 자동 등록 (기본 주소로)
+                    db.executeUpdate(
+                        "INSERT INTO user_addresses "
+                        "(user_id, address, label, is_default) "
+                        "VALUES (" + std::to_string(userId) + ",'" +
+                        CommonDB::getInstance().escape(userAddr) + "','기본주소',1)");
+
+                    // 방금 INSERT 한 address_id 조회
+                    auto newRows = db.executeQuery(
+                        "SELECT address_id FROM user_addresses "
+                        "WHERE user_id=" + std::to_string(userId) +
+                        " ORDER BY address_id DESC LIMIT 1");
+
+                    json a;
+                    a["address_id"] = newRows.empty() ? 0
+                                      : std::stoi(newRows[0].at("address_id"));
+                    a["address"]    = userAddr;
+                    a["label"]      = "기본주소";
+                    a["is_default"] = true;
+                    addresses.push_back(a);
+
+                    std::cout << "[Customer] user_addresses 자동 생성: userId="
+                              << userId << " addr=" << userAddr << "\n";
+                }
+            }
+        }
+
         json res;
         res["status"]    = Status::SUCCESS;
         res["addresses"] = addresses;
