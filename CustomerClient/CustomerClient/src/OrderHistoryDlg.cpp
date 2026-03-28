@@ -299,7 +299,8 @@ void OrderHistoryDlg::PopulateOrderInfo(const OrderInfo& info)
     CString strMethod = info.isDelivery ? _T("배달") : _T("포장(픽업)");
     CString strTime = CA2T(info.orderDateTime.c_str(), CP_UTF8);
     CString strEst;
-    strEst.Format(_T("수령방법: %s  |  주문시간: %s"),
+    //strEst.Format(_T("수령방법: %s  |  주문시간: %s"),
+    strEst.Format(_T("%s  |  주문시간: %s"),
         (LPCTSTR)strMethod, (LPCTSTR)strTime);
     SetDlgItemText(IDC_STATIC_ESTIMATED_TIME, strEst);
 

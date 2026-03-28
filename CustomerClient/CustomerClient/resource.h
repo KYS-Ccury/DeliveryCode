@@ -1,6 +1,6 @@
 ﻿//{{NO_DEPENDENCIES}}
-// Microsoft Visual C++���� ������ ���� �����Դϴ�.
-// CustomerClient.rc���� ���ǰ� �ֽ��ϴ�.
+// Microsoft Visual C++에서 생성한 포함 파일입니다.
+// CustomerClient.rc에서 사용되고 있습니다.
 //
 #define IDD_ABOUTBOX                    100
 #define IDD_CUSTOMERCLIENT_DIALOG       102
@@ -103,6 +103,7 @@
 #define IDC_LIST_ORDER_ITEMS            1804
 #define IDC_STATIC_FINAL_TOTAL          1805
 #define IDC_BTN_CHAT                    1806
+#define IDC_STATIC_SHOP_NAME2           1807
 #define IDC_EDIT_LOGIN_ID               1900
 #define IDC_EDIT_LOGIN_PW               1901
 #define IDC_BTN_GOTO_SIGNUP             1902
@@ -168,10 +169,6 @@
 #define IDC_EDIT_MI_PHONE               2302
 #define IDC_EDIT_MI_ADDR                2303
 #define IDC_EDIT_MI_GRADE               2304
-#define IDC_BTN_ADDR_LABEL              2500
-#define IDC_BTN_ADDR_CHANGE             2501
-
-// IDD_ADDRESS_DLG 관련
 #define IDD_ADDRESS_DLG                 2400
 #define IDC_ADDR_LIST                   2401
 #define IDC_ADDR_EDIT                   2402
@@ -179,6 +176,8 @@
 #define IDC_ADDR_DELETE                 2404
 #define IDC_ADDR_DEFAULT                2405
 #define IDC_ADDR_SELECT                 2406
+#define IDC_BTN_ADDR_LABEL              2500
+#define IDC_BTN_ADDR_CHANGE             2501
 
 // Next default values for new objects
 // 
