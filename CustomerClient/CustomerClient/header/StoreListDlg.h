@@ -64,6 +64,9 @@ private:
     CImageList            m_imgListMenu;
     CStatic               m_storeLogoCtrl; // IDC_STATIC_STORE_IMG 로고 표시 컨트롤
 
+    CString m_strCurrentFilter;  // 현재 선택된 카테고리 필터
+    bool    m_bMenuBarBuilt = false; // 카테고리 버튼 최초 생성 여부
+
     // ★ 메뉴 image_url → ImageList 슬롯 인덱스
     std::unordered_map<std::string, int> m_menuImgUrlToIndex;
 
