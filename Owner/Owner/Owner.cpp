@@ -52,16 +52,15 @@ BOOL COwnerApp::InitInstance()
     // 🚨 [적용된 핵심 로직] 통신 포인터 없이 깔끔하게 처리
     // =========================================================
     CLoginDlg loginDlg;
-    m_pMainWnd = &loginDlg; // 앱의 메인 윈도우를 임시로 로그인창으로 설정
 
     // 로그인 창에서 버튼을 눌렀을 때 내부적으로 CNetClient를 사용함
-    //if (loginDlg.DoModal() == IDOK)
-    //{
+    if (loginDlg.DoModal() == IDOK)
+    {
         // 로그인 성공 시 메인 다이얼로그 실행
         COwnerDlg dlg;
         m_pMainWnd = &dlg; // 메인 윈도우 교체
         dlg.DoModal();
-    //}
+    }
     // =========================================================
 
     if (pShellManager != nullptr) delete pShellManager;

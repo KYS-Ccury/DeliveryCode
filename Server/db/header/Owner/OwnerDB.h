@@ -12,7 +12,7 @@ public:
     
     static nlohmann::json process(uint16_t dbProtocol, const nlohmann::json& reqJson);
     
-    bool insertOwnerProfile(int userId, const std::string& storeName);
+    bool insertOwnerProfile(const nlohmann::json& req);
     
     // 사장님 로그인 시 내 매장 정보 불러오기
     nlohmann::json getStoreInfoByOwnerId(int userId);

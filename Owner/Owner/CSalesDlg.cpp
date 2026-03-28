@@ -5,6 +5,8 @@
 #include "NetClient.h"
 #include "Protocol.h"
 
+extern int g_nOwnerId;
+
 IMPLEMENT_DYNAMIC(CSalesDlg, CDialogEx)
 
 CSalesDlg::CSalesDlg(CWnd* pParent /*=nullptr*/)
@@ -73,7 +75,7 @@ void CSalesDlg::OnBnClickedBtnSearchSales()
 	// 2. 서버로 보낼 JSON 구성
 	json req, res;
 	req["client_type"] = (int)ClientType::OWNER;
-	req["owner_id"] = 1; // 🚨 임시 로그인 ID (실제 연동 시 전역 변수 등으로 교체)
+	req["owner_id"] = g_nOwnerId; // 🚨 임시 로그인 ID (실제 연동 시 전역 변수 등으로 교체)
 	req["start_date"] = std::string(CT2CA(strStart, CP_UTF8));
 	req["end_date"] = std::string(CT2CA(strEnd, CP_UTF8));
 

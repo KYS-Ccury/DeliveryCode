@@ -12,11 +12,10 @@ json OwnerDB::process(uint16_t dbProtocol, const json& reqJson) {
                 int ownerId = reqJson.value("owner_id", -1);
                 return getInstance().getStoreInfoByOwnerId(ownerId);
             }
-            case CmdDBOwner::REQ_DB_UPDATE_STORE: {
+            case CmdDBOwner::REQ_DB_UPDATE_STORE: { // 1301
                 if (reqJson.value("action", "") == "CREATE") {
-                    int ownerId = reqJson.value("owner_id", -1);
-                    std::string storeName = reqJson.value("store_name", "");
-                    bool ok = getInstance().insertOwnerProfile(ownerId, storeName);
+                    // 🚨 (수정) reqJson을 통째로 넘깁니다!
+                    bool ok = getInstance().insertOwnerProfile(reqJson);
                     res["status"] = ok ? Status::SUCCESS : Status::SERVER_ERROR;
                     return res;
                 }

@@ -16,6 +16,8 @@
 #define WM_USER_NEW_ORDER (WM_USER + 100)
 #define TIMER_POLLING_ORDER 1
 
+extern int g_nOwnerId;
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -54,6 +56,8 @@ BEGIN_MESSAGE_MAP(COwnerDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BTN_INQUIRY, &COwnerDlg::OnBnClickedBtnInquiry) 
 	ON_MESSAGE(WM_USER_NEW_ORDER, &COwnerDlg::OnNewOrderReceived)
 	ON_WM_TIMER() // 🚨 [추가] 타이머 이벤트 맵핑
+	ON_BN_CLICKED(IDC_BTN_PRINT_RECEIPT, &COwnerDlg::OnBnClickedBtnPrintReceipt)
+	ON_BN_CLICKED(IDC_BTN_PRINT_DELIVERY, &COwnerDlg::OnBnClickedBtnPrintDelivery)
 
 END_MESSAGE_MAP()
 
@@ -170,9 +174,7 @@ void COwnerDlg::OnBnClickedBtnOrderMgr()
 		// 리스트 비우기
 		pList->DeleteAllItems();
 
-		// [중요] 로그인 성공 시 저장해둔 현재 사장님의 user_id를 넣어야 합니다.
-		// 임시로 1번 사장님이라고 가정하고 넘깁니다.
-		int currentOwnerId = 1;
+		int currentOwnerId = g_nOwnerId;
 
 		// 서버와 통신하여 주문 데이터 가져오기 (대기 시간 발생)
 		std::vector<OrderInfo> data = OrderManager::FetchOrdersFromServer(currentOwnerId);
@@ -227,7 +229,7 @@ void COwnerDlg::OnBnClickedBtnStatus()
 {
 	// 현재 상태의 "반대" 상태로 변경 시도
 	bool bNextStatus = !m_bIsOpen;
-	int currentOwnerId = 1; // 🚨 임시 로그인 ID
+	int currentOwnerId = g_nOwnerId;
 
 	// StoreManager를 통해 백그라운드 서버 통신
 	if (StoreManager::UpdateStoreStatus(currentOwnerId, bNextStatus)) {
@@ -392,38 +394,82 @@ void COwnerDlg::OnBnClickedBtnInquiry()
 	CInquiryManager::HandleInquiryClick(this);
 }
 
-// 🚨 [추가] 백그라운드에서 조용히 리스트를 갱신하는 함수
 void COwnerDlg::RefreshOrderListSilently()
 {
 	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_ORDER);
-	if (!pList || !m_bIsListOpen) return; // 리스트 창이 닫혀있으면 안 함
+	if (!pList || !m_bIsListOpen) return;
 
-	int currentOwnerId = 1; // 임시 ID (실제 로그인 ID로 변경)
+	int currentOwnerId = g_nOwnerId;
 	std::vector<OrderInfo> data = OrderManager::FetchOrdersFromServer(currentOwnerId);
 
-	// 🚨 이전 주문 개수보다 많아졌다면? -> 새 주문 도착!
 	if ((int)data.size() > m_nLastOrderCount) {
-		MessageBeep(MB_ICONINFORMATION); // 띠링! 소리 알림
-		// 원한다면 팝업을 띄워도 됩니다.
-		// MessageBox(_T("새 주문이 들어왔습니다!"), _T("알림"), MB_OK | MB_TOPMOST);
+		MessageBeep(MB_ICONINFORMATION); // 새 주문 알림음
 	}
-	m_nLastOrderCount = (int)data.size(); // 현재 개수로 갱신
+	m_nLastOrderCount = (int)data.size();
 
-	// 리스트 깜빡임을 줄이기 위해 그리기 임시 중지
-	pList->SetRedraw(FALSE);
-	pList->DeleteAllItems();
+	bool bNeedUpdate = false;
+	int currentCount = pList->GetItemCount();
+	int newDataCount = (int)data.size();
 
-	// 새 데이터로 엎어치기
-	for (int i = 0; i < (int)data.size(); ++i) {
+	if (currentCount != newDataCount) {
+		bNeedUpdate = true; // 개수가 다르면 무조건 갱신
+	}
+	else {
+		for (int i = 0; i < newDataCount; ++i) {
+			CString strID;
+			strID.Format(_T("%d"), data[i].nID);
+
+			if (pList->GetItemText(i, 0) != strID ||
+				pList->GetItemText(i, 3) != data[i].strStatus) {
+				bNeedUpdate = true;
+				break;
+			}
+		}
+	}
+
+	if (!bNeedUpdate) return;
+
+	CString strSelectedOrderId = _T("");
+	int nSelectedRow = pList->GetNextItem(-1, LVNI_SELECTED);
+	if (nSelectedRow != -1) {
+		strSelectedOrderId = pList->GetItemText(nSelectedRow, 0);
+	}
+
+	pList->SetRedraw(FALSE); // 그리기 임시 중지
+
+	for (int i = 0; i < newDataCount; ++i) {
 		CString strID;
 		strID.Format(_T("%d"), data[i].nID);
-		int nIdx = pList->InsertItem(i, strID);
-		pList->SetItemText(nIdx, 1, data[i].strMenu);
-		pList->SetItemText(nIdx, 2, data[i].strPrice);
-		pList->SetItemText(nIdx, 3, data[i].strStatus);
+
+		if (i < currentCount) {
+			pList->SetItemText(i, 0, strID);
+			pList->SetItemText(i, 1, data[i].strMenu);
+			pList->SetItemText(i, 2, data[i].strPrice);
+			pList->SetItemText(i, 3, data[i].strStatus);
+		}
+		else {
+			int nIdx = pList->InsertItem(i, strID);
+			pList->SetItemText(nIdx, 1, data[i].strMenu);
+			pList->SetItemText(nIdx, 2, data[i].strPrice);
+			pList->SetItemText(nIdx, 3, data[i].strStatus);
+		}
 	}
 
-	pList->SetRedraw(TRUE); // 다시 그리기 시작
+	for (int i = currentCount - 1; i >= newDataCount; --i) {
+		pList->DeleteItem(i); // 남는 찌꺼기 줄 삭제 (qa 오타 수정됨!)
+	}
+
+	// 아까 선택했던 주문 다시 포커스(파란줄) 주기
+	if (!strSelectedOrderId.IsEmpty()) {
+		for (int i = 0; i < pList->GetItemCount(); ++i) {
+			if (pList->GetItemText(i, 0) == strSelectedOrderId) {
+				pList->SetItemState(i, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+				break;
+			}
+		}
+	}
+
+	pList->SetRedraw(TRUE); // 모든 업데이트가 끝나면 화면 그리기
 }
 
 // 🚨 [추가] 타이머가 돌 때마다 실행되는 함수
@@ -436,4 +482,16 @@ void COwnerDlg::OnTimer(UINT_PTR nIDEvent)
 	}
 
 	CDialogEx::OnTimer(nIDEvent);
+}
+
+void COwnerDlg::OnBnClickedBtnPrintReceipt()
+{
+	// 주문 전표 재출력 버튼 클릭 시
+	COrderDetailManager::ShowPrintReceipt(this);
+}
+
+void COwnerDlg::OnBnClickedBtnPrintDelivery()
+{
+	// 배달 안내 출력 버튼 클릭 시
+	COrderDetailManager::ShowDeliveryGuide(this);
 }
