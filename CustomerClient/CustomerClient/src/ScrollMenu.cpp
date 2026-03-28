@@ -97,8 +97,17 @@ END_MESSAGE_MAP()
 // ─────────────────────────────────────────────
 
 void CScrollMenu::SetMenuItems(const std::vector<CString>& items)
-
 {
+    // ① 실행 중인 타이머 모두 정지 (핵심 수정!)
+    KillTimer(1);
+    KillTimer(2);
+
+    // ② 드래그/애니메이션 상태 초기화
+    m_bDragging = false;
+    m_bIsRealDrag = false;
+    m_nTargetX = m_nLeftMargin;  // 첫 버튼 목표 위치 초기화
+    ReleaseCapture();                // 혹시 남아있는 마우스 캡처 해제
+
     // --- 추가된 기존 버튼 제거 로직 ---
     for (auto pBtn : m_vButtons)
     {
@@ -787,22 +796,6 @@ BOOL CScrollMenu::PreTranslateMessage(MSG* pMsg)
 
 
 
-            // 드래그가 아니었다면 클릭 판정
-
-            if (!bWasRealDrag)
-
-            {
-
-                // 직접 부모에게 클릭 메시지를 던짐
-
-                UINT nID = pTargetWnd->GetDlgCtrlID();
-
-                GetParent()->PostMessage(WM_SCROLL_MENU_CLICKED, nID, 0);
-
-            }
-
-
-
             // ─────────────────────────────────────────────────────────────
 
             // 버튼 클릭 후 파란 테두리 그리지 못하게 하는 대응
@@ -837,7 +830,19 @@ BOOL CScrollMenu::PreTranslateMessage(MSG* pMsg)
 
             // ─────────────────────────────────────────────────────────────
 
+            // 드래그가 아니었다면 클릭 판정
 
+            if (!bWasRealDrag)
+
+            {
+
+                // 직접 부모에게 클릭 메시지를 던짐
+
+                UINT nID = pTargetWnd->GetDlgCtrlID();
+
+                GetParent()->PostMessage(WM_SCROLL_MENU_CLICKED, nID, 0);
+
+            }
 
             // 드래그였든 클릭이었든, 우리가 직접 처리했으므로 
 

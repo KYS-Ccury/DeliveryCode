@@ -125,6 +125,9 @@ BOOL StoreListDlg::OnInitDialog()
     ModifyStyle(WS_CAPTION, 0);
     CenterWindow();
 
+    m_bMenuBarBuilt = false;
+    m_strCurrentFilter = _T("전체");
+
     m_imgListMenu.Create(MENU_THUMB_W, MENU_THUMB_H, ILC_COLOR32, 16, 8);
     m_listMenu.SetImageList(&m_imgListMenu, LVSIL_SMALL);
 
@@ -245,16 +248,33 @@ LRESULT StoreListDlg::OnMenuListResponse(WPARAM, LPARAM lParam)
             MenuInfo m = ParseMenuObj(obj);
             if (m.menuID > 0) m_vecMenuCache.push_back(m);
         }
-        std::vector<CString> cats = { _T("전체") };
-        for (const auto& m : m_vecMenuCache) {
-            CString c = CA2T(m.subCategory.c_str(),CP_UTF8);
-            bool found = false;
-            for (const auto& x : cats) if(x==c){found=true;break;}
-            if (!found && !c.IsEmpty()) cats.push_back(c);
-        }
-        m_vecSubCategories = cats;
-        if (m_wndScrollMenu.GetSafeHwnd())
+        //std::vector<CString> cats = { _T("전체") };
+        //for (const auto& m : m_vecMenuCache) {
+        //    CString c = CA2T(m.subCategory.c_str(),CP_UTF8);
+        //    bool found = false;
+        //    for (const auto& x : cats) if(x==c){found=true;break;}
+        //    if (!found && !c.IsEmpty()) cats.push_back(c);
+        //}
+        //m_vecSubCategories = cats;
+        //if (m_wndScrollMenu.GetSafeHwnd())
+        //    m_wndScrollMenu.SetMenuItems(m_vecSubCategories);
+
+        // ✅ 새 가게 진입 시(최초)에만 카테고리 버튼 재생성
+        if (!m_bMenuBarBuilt) {
+            std::vector<CString> cats = { _T("전체") };
+            for (const auto& m : m_vecMenuCache) {
+                CString c = CA2T(m.subCategory.c_str(), CP_UTF8);
+                bool found = false;
+                for (const auto& x : cats) if (x == c) { found = true; break; }
+                if (!found && !c.IsEmpty()) cats.push_back(c);
+            }
+            m_vecSubCategories = cats;
             m_wndScrollMenu.SetMenuItems(m_vecSubCategories);
+            m_strCurrentFilter = _T("전체");
+            m_bMenuBarBuilt = true;
+        }
+
+
         RebuildMenuListUI(m_vecMenuCache, _T("전체"));
     } else {
         m_listMenu.DeleteAllItems();
@@ -415,8 +435,13 @@ void StoreListDlg::UpdateMenuListUI(CString subCat)
 LRESULT StoreListDlg::OnScrollMenuClicked(WPARAM wParam, LPARAM)
 {
     int n = (UINT)wParam - SCROLL_MENU_BTN_ID;
-    if (n >= 0 && n < (int)m_vecSubCategories.size())
-        SendMenuListRequest(m_vecSubCategories[n]);
+    //if (n >= 0 && n < (int)m_vecSubCategories.size())
+    //    SendMenuListRequest(m_vecSubCategories[n]);
+    if (n >= 0 && n < (int)m_vecSubCategories.size()) {
+        m_strCurrentFilter = m_vecSubCategories[n]; // 선택 카테고리 저장
+        RebuildMenuListUI(m_vecMenuCache, m_strCurrentFilter);
+    }
+
     return 0;
 }
 
