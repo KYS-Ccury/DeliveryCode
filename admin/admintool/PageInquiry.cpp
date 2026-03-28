@@ -2,11 +2,10 @@
  * PageInquiry.cpp
  * ============================================================
  * ★ 수정사항:
- *   1) CChatRoomList 중복정의 제거 → 크래시 해결
- *   2) UTF-8 → CString 변환 (Utf8ToCString) → 한글 깨짐 해결
- *   3) 비동기 수신 스레드 제거 → 소켓 경합 크래시 해결
- *   4) std::wstring → CString으로 통일
- *   5) SendMessageToServer에서 전송 후 응답 수신 추가 (동기)
+ *   1) 소켓 Lock/Unlock 추가 (폴링 스레드와 경합 방지)
+ *   2) 방 선택 시 SetPollingRoomId() 호출 (폴링 대상 방 설정)
+ *   3) OnPollRefreshChat() 추가 (폴링 새 메시지 수신 시 호출)
+ *   4) 기존 채팅 UI / 서버 연동 로직 100% 유지
  * ============================================================
  */
 
@@ -266,6 +265,11 @@ void PageInquiry::InitRoomList()
             {
                 m_strCurrentRoomId = pRoom->orderId;
                 RefreshChatFromServer(m_strCurrentRoomId);
+
+                // ★ 폴링 대상 방 ID 설정
+                CClientSocket& sock = GetSocket();
+                std::string roomIdUtf8 = CStringToUtf8(m_strCurrentRoomId);
+                sock.SetPollingRoomId(roomIdUtf8);
             }
         };
 }
@@ -319,7 +323,7 @@ void PageInquiry::UpdateLayout()
 
 // ============================================================
 // ★ 서버에서 채팅방 목록 로드 (CMD_ROOM_LIST = 603)
-//    UTF-8 변환 적용
+//    Lock/Unlock 추가
 // ============================================================
 void PageInquiry::LoadChatRoomsFromServer()
 {
@@ -330,14 +334,20 @@ void PageInquiry::LoadChatRoomsFromServer()
         return;
     }
 
+    sock.Lock();  // ★
+
     json reqBody;
     if (!sock.SendAdminPacket(CMD_ROOM_LIST, reqBody))
     {
+        sock.Unlock();
         m_roomList.ClearRooms();
         return;
     }
 
     RecvResult res = sock.RecvPacket();
+
+    sock.Unlock();  // ★
+
     if (!res.success)
     {
         m_roomList.ClearRooms();
@@ -351,23 +361,23 @@ void PageInquiry::LoadChatRoomsFromServer()
         for (auto& room : res.body["rooms"])
         {
             ChatRoomItem item;
-            // ★ UTF-8 → CString 변환 (한글 깨짐 해결)
             item.orderId = Utf8ToCString(room.value("room_id", ""));
             item.lastMessage = Utf8ToCString(room.value("last_message", ""));
             item.isSelected = false;
 
-            // room_type으로 역할 표시
             std::string roomType = room.value("room_type", "");
+
+            // ★ 사장↔고객 1:1 채팅방은 관리자에게 표시하지 않음
+            if (roomType == "CUSTOMER_OWNER")
+                continue;
+
             if (roomType == "CUSTOMER_ADMIN")
                 item.role = _T("고객문의");
             else if (roomType == "RIDER_ADMIN")
                 item.role = _T("라이더문의");
-            else if (roomType == "CUSTOMER_OWNER")
-                item.role = _T("고객-가게");
             else
                 item.role = Utf8ToCString(roomType);
 
-            // customer_name이 있으면 표시용으로 활용
             std::string custName = room.value("customer_name", "");
             if (!custName.empty())
             {
@@ -384,7 +394,7 @@ void PageInquiry::LoadChatRoomsFromServer()
 
 // ============================================================
 // ★ 서버에서 특정 채팅방 메시지 조회 (CMD_GET_MSGS = 602)
-//    UTF-8 변환 적용
+//    Lock/Unlock 추가
 // ============================================================
 void PageInquiry::RefreshChatFromServer(const CString& strRoomId)
 {
@@ -393,16 +403,23 @@ void PageInquiry::RefreshChatFromServer(const CString& strRoomId)
     CClientSocket& sock = GetSocket();
     if (!sock.IsConnected()) return;
 
-    // ★ CString → UTF-8 변환
     std::string roomIdUtf8 = CStringToUtf8(strRoomId);
+
+    sock.Lock();  // ★
 
     json reqBody;
     reqBody["room_id"] = roomIdUtf8;
 
     if (!sock.SendAdminPacket(CMD_GET_MSGS, reqBody))
+    {
+        sock.Unlock();
         return;
+    }
 
     RecvResult res = sock.RecvPacket();
+
+    sock.Unlock();  // ★
+
     if (!res.success) return;
 
     if (res.body.contains("messages") && res.body["messages"].is_array())
@@ -410,7 +427,6 @@ void PageInquiry::RefreshChatFromServer(const CString& strRoomId)
         for (auto& msg : res.body["messages"])
         {
             ChatMessage chatMsg;
-            // ★ UTF-8 → CString 변환
             chatMsg.text = Utf8ToCString(msg.value("text", ""));
             chatMsg.isAdmin = msg.value("is_admin", false);
             m_chatPanel.AddMessage(chatMsg);
@@ -420,16 +436,17 @@ void PageInquiry::RefreshChatFromServer(const CString& strRoomId)
 
 // ============================================================
 // ★ 서버로 메시지 전송 (CMD_SEND_MSG = 601)
-//    전송 후 응답 수신 (동기)
+//    Lock/Unlock 추가
 // ============================================================
 void PageInquiry::SendMessageToServer(const CString& strRoomId, const CString& strMsg)
 {
     CClientSocket& sock = GetSocket();
     if (!sock.IsConnected()) return;
 
-    // ★ CString → UTF-8 변환
     std::string roomIdUtf8 = CStringToUtf8(strRoomId);
     std::string msgUtf8 = CStringToUtf8(strMsg);
+
+    sock.Lock();  // ★
 
     json reqBody;
     reqBody["room_id"] = roomIdUtf8;
@@ -437,21 +454,22 @@ void PageInquiry::SendMessageToServer(const CString& strRoomId, const CString& s
 
     if (!sock.SendAdminPacket(CMD_SEND_MSG, reqBody))
     {
+        sock.Unlock();
         AfxMessageBox(_T("메시지 전송 실패"));
         return;
     }
 
-    // 응답 수신 (동기)
     RecvResult res = sock.RecvPacket();
+
+    sock.Unlock();  // ★
+
     if (res.success)
     {
-        // 전송 성공 → 로컬 UI에 추가
         ChatMessage chatMsg;
         chatMsg.text = strMsg;
         chatMsg.isAdmin = true;
         m_chatPanel.AddMessage(chatMsg);
 
-        // 채팅방 목록의 마지막 메시지 갱신
         int nSel = m_roomList.GetSelectedIndex();
         if (nSel >= 0)
             m_roomList.UpdateLastMessage(nSel, strMsg);
@@ -463,6 +481,17 @@ void PageInquiry::SendMessageToServer(const CString& strRoomId, const CString& s
 }
 
 // ============================================================
+// ★ 폴링에서 새 메시지 도착 시 호출 (MainDialog → 여기)
+// ============================================================
+void PageInquiry::OnPollRefreshChat()
+{
+    if (!m_strCurrentRoomId.IsEmpty())
+    {
+        RefreshChatFromServer(m_strCurrentRoomId);
+    }
+}
+
+// ============================================================
 // LoadData: 페이지 진입 시
 // ============================================================
 void PageInquiry::LoadData()
@@ -470,6 +499,10 @@ void PageInquiry::LoadData()
     m_strCurrentRoomId.Empty();
     if (IsWindow(m_chatPanel.GetSafeHwnd()))
         m_chatPanel.ClearMessages();
+
+    // ★ 폴링 방 ID 초기화
+    CClientSocket& sock = GetSocket();
+    sock.SetPollingRoomId("");
 
     LoadChatRoomsFromServer();
 }

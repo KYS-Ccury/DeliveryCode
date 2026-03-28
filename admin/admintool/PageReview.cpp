@@ -1,21 +1,19 @@
 ﻿/**
  * PageReview.cpp
  * ============================================================
- * ★ 수정사항: InsertDummyData() → 서버 요청(520)으로 교체
- *   520: 리뷰 관리 (서버는 520 하나로 통합)
- *   삭제 버튼 → 서버에 삭제 요청
- *   상태 토글(보이기/숨김) → 서버에 상태 변경 요청
+ * ★ 수정사항:
+ *   1) 서버 요청(520)으로 리뷰 CRUD
+ *   2) ★ 소켓 Lock/Unlock 추가 (폴링 스레드와 경합 방지)
  * ============================================================
  */
 
 #include "pch.h"
 #include "PageReview.h"
-#include "admintool.h"      // ★ 추가
-#include "PacketDef.h"      // ★ 추가
+#include "admintool.h"
+#include "PacketDef.h"
 
 IMPLEMENT_DYNAMIC(PageReview, PageBase)
 
-// ★ 헬퍼
 static CClientSocket& GetSocket()
 {
     return ((CAdminToolApp*)AfxGetApp())->GetSocket();
@@ -95,7 +93,7 @@ void PageReview::RepositionList()
 }
 
 // ============================================================
-// ★ 서버에서 리뷰 목록 로드 (CMD_MANAGE_REVIEW = 520)
+// ★ 서버에서 리뷰 목록 로드 (Lock/Unlock 추가)
 // ============================================================
 void PageReview::LoadDataFromServer()
 {
@@ -106,17 +104,22 @@ void PageReview::LoadDataFromServer()
         return;
     }
 
-    // 리뷰 목록 요청 (action=list)
+    sock.Lock();  // ★
+
     json reqBody;
-    reqBody["action"] = "list";   // TODO: 서버 AdminDB.cpp 확인 후 수정
+    reqBody["action"] = "list";
 
     if (!sock.SendAdminPacket(CMD_MANAGE_REVIEW, reqBody))
     {
+        sock.Unlock();
         AfxMessageBox(_T("리뷰 목록 요청 실패"));
         return;
     }
 
     RecvResult res = sock.RecvPacket();
+
+    sock.Unlock();  // ★
+
     if (!res.success)
     {
         CString msg;
@@ -124,9 +127,6 @@ void PageReview::LoadDataFromServer()
         AfxMessageBox(msg);
         return;
     }
-
-    // ★ TODO: 서버 응답 JSON 스키마 확인 후 수정
-    // 예상: { "status": 2000, "reviews": [ { "review_id": 1, "user_id": "user001", "content": "...", "visible": true }, ... ] }
 
     m_listReview.DeleteAllItems();
 
@@ -150,29 +150,35 @@ void PageReview::LoadDataFromServer()
 }
 
 // ============================================================
-// ★ 리뷰 삭제 요청 (520, action=delete)
+// ★ 리뷰 삭제 요청 (Lock/Unlock 추가)
 // ============================================================
 void PageReview::RequestDeleteReview(int reviewId)
 {
     CClientSocket& sock = GetSocket();
     if (!sock.IsConnected()) return;
 
+    sock.Lock();  // ★
+
     json reqBody;
-    reqBody["action"] = "delete";   // TODO: 서버 확인
+    reqBody["action"] = "delete";
     reqBody["review_id"] = reviewId;
 
     if (!sock.SendAdminPacket(CMD_MANAGE_REVIEW, reqBody))
     {
+        sock.Unlock();
         AfxMessageBox(_T("리뷰 삭제 요청 실패"));
         return;
     }
 
     RecvResult res = sock.RecvPacket();
+
+    sock.Unlock();  // ★
+
     if (res.success && res.body.contains("status")
         && res.body["status"].get<int>() == STATUS_SUCCESS)
     {
         AfxMessageBox(_T("리뷰 삭제 완료"));
-        LoadDataFromServer();  // 새로고침
+        LoadDataFromServer();
     }
     else
     {
@@ -180,13 +186,10 @@ void PageReview::RequestDeleteReview(int reviewId)
     }
 }
 
-// ============================================================
-// LoadData: 페이지 진입 시 (더미 → 서버)
-// ============================================================
 void PageReview::LoadData()
 {
     RepositionList();
-    LoadDataFromServer();   // ★ 더미 → 서버
+    LoadDataFromServer();
 }
 
 void PageReview::SaveData() { AfxMessageBox(_T("Review Saved")); }
@@ -197,7 +200,6 @@ void PageReview::OnSize(UINT nType, int cx, int cy)
     RepositionList();
 }
 
-// ★ 삭제 버튼 → 서버에 삭제 요청
 void PageReview::OnBtnReviewDel()
 {
     int nSel = m_listReview.GetNextItem(-1, LVNI_SELECTED);
@@ -214,7 +216,6 @@ void PageReview::OnBtnReviewDel()
     RequestDeleteReview(reviewId);
 }
 
-// 상태 클릭 → 보이기/숨김 토글
 void PageReview::OnListItemClick(NMHDR* pNMHDR, LRESULT* pResult)
 {
     LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
@@ -244,7 +245,6 @@ void PageReview::OnListItemClick(NMHDR* pNMHDR, LRESULT* pResult)
     //    sock.SendAdminPacket(CMD_MANAGE_REVIEW, reqBody);
 }
 
-// 커스텀 드로우 (기존 동일)
 void PageReview::OnCustomDrawReview(NMHDR* pNMHDR, LRESULT* pResult)
 {
     NMLVCUSTOMDRAW* pLVCD = reinterpret_cast<NMLVCUSTOMDRAW*>(pNMHDR);

@@ -4,7 +4,8 @@
  * ★ 수정사항:
  *   1) OnLButtonDown → 카드/미니리스트 클릭 시 페이지 이동
  *   2) 미니 리스트(최근 주문/리뷰) 표시
- *   3) ★ UTF-8 → CString 변환 (Utf8ToCString) 적용
+ *   3) UTF-8 → CString 변환 (Utf8ToCString) 적용
+ *   4) ★ 소켓 Lock/Unlock 추가 (폴링 스레드와 경합 방지)
  * ============================================================
  */
 
@@ -12,7 +13,7 @@
 #include "PageHome.h"
 #include "admintool.h"
 #include "PacketDef.h"
-#include "PageInquiry.h"    // ★ Utf8ToCString 헬퍼 사용
+#include "PageInquiry.h"    // Utf8ToCString 헬퍼 사용
 
 IMPLEMENT_DYNAMIC(PageHome, PageBase)
 
@@ -195,7 +196,7 @@ void PageHome::OnLButtonDown(UINT nFlags, CPoint point)
 {
     if (m_rcCardOrder.PtInRect(point) || m_rcMiniOrders.PtInRect(point))
     {
-        if (m_fnGoDispatch)  // 주문 카드 → 배차 페이지
+        if (m_fnGoDispatch)
             m_fnGoDispatch();
         return;
     }
@@ -221,7 +222,7 @@ void PageHome::OnSize(UINT nType, int cx, int cy)
 }
 
 // ============================================================
-// ★ 서버에서 대시보드 데이터 로드 (UTF-8 변환 적용)
+// ★ 서버에서 대시보드 데이터 로드 (Lock/Unlock 추가)
 // ============================================================
 void PageHome::LoadDataFromServer()
 {
@@ -236,10 +237,15 @@ void PageHome::LoadDataFromServer()
 
     // --- 주문 모니터링 (510) ---
     {
+        sock.Lock();  // ★
+
         json reqBody;
         if (sock.SendAdminPacket(CMD_ORDER_MONITOR, reqBody))
         {
             RecvResult res = sock.RecvPacket();
+
+            sock.Unlock();  // ★
+
             if (res.success && res.body.contains("orders") && res.body["orders"].is_array())
             {
                 auto& orders = res.body["orders"];
@@ -247,7 +253,6 @@ void PageHome::LoadDataFromServer()
                 int nMax = (nOrderCount > 5) ? 5 : nOrderCount;
                 for (int i = 0; i < nMax; ++i)
                 {
-                    // ★ UTF-8 변환
                     CString strId = Utf8ToCString(orders[i].value("order_id", ""));
                     CString strRest = Utf8ToCString(orders[i].value("restaurant_name", ""));
                     CString strStatus = Utf8ToCString(orders[i].value("status", ""));
@@ -259,28 +264,46 @@ void PageHome::LoadDataFromServer()
                 }
             }
         }
+        else
+        {
+            sock.Unlock();  // ★ Send 실패 시에도 Unlock
+        }
     }
 
     // --- 라이더 현황 (511) ---
     {
+        sock.Lock();  // ★
+
         json reqBody;
         if (sock.SendAdminPacket(CMD_RIDER_STATUS, reqBody))
         {
             RecvResult res = sock.RecvPacket();
+
+            sock.Unlock();  // ★
+
             if (res.success && res.body.contains("riders") && res.body["riders"].is_array())
             {
                 nDispatchCount = static_cast<int>(res.body["riders"].size());
             }
         }
+        else
+        {
+            sock.Unlock();  // ★
+        }
     }
 
     // --- 리뷰 관리 (520) ---
     {
+        sock.Lock();  // ★
+
         json reqBody;
         reqBody["action"] = "list";
         if (sock.SendAdminPacket(CMD_MANAGE_REVIEW, reqBody))
         {
             RecvResult res = sock.RecvPacket();
+
+            sock.Unlock();  // ★
+
             if (res.success && res.body.contains("reviews") && res.body["reviews"].is_array())
             {
                 auto& reviews = res.body["reviews"];
@@ -288,10 +311,8 @@ void PageHome::LoadDataFromServer()
                 int nMax = (nReviewCount > 5) ? 5 : nReviewCount;
                 for (int i = 0; i < nMax; ++i)
                 {
-                    // ★ UTF-8 변환
                     CString strUser = Utf8ToCString(reviews[i].value("customer_name", ""));
                     CString strContent = Utf8ToCString(reviews[i].value("content", ""));
-                    // 내용 30자 제한
                     if (strContent.GetLength() > 30)
                         strContent = strContent.Left(30) + _T("...");
                     CString strItem;
@@ -299,6 +320,10 @@ void PageHome::LoadDataFromServer()
                     m_recentReviews.push_back(strItem);
                 }
             }
+        }
+        else
+        {
+            sock.Unlock();  // ★
         }
     }
 

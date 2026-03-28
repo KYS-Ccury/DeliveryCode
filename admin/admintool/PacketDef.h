@@ -7,6 +7,10 @@
  *   [0]    clientType  : 1 byte
  *   [1~2]  protocol    : 2 bytes
  *   [3~6]  bodyLength  : 4 bytes
+ *
+ * ★ 수정사항:
+ *   1) [200번대] 하트비트 프로토콜 추가
+ *   2) WM_POLL_xxx 커스텀 메시지 정의 (폴링 → UI 전달용)
  * ============================================================
  */
 
@@ -47,6 +51,12 @@ constexpr uint16_t CMD_GET_PROFILE = 104;
 constexpr uint16_t CMD_WITHDRAW = 105;
 
 // ============================================================
+// [200번대] 하트비트 (서버 CmdHeartbeat)  ★ 추가
+// ============================================================
+constexpr uint16_t CMD_HEARTBEAT_REQ = 200;   // 클라 → 서버 (살아있어?)
+constexpr uint16_t CMD_HEARTBEAT_RES = 201;   // 서버 → 클라 (살아있다)
+
+// ============================================================
 // [500번대] 관리자 (서버 CmdAdmin)
 // ============================================================
 constexpr uint16_t CMD_SETTLEMENT_LIST = 500;
@@ -82,3 +92,12 @@ struct PacketHeader
 
 static_assert(sizeof(PacketHeader) == HEADER_SIZE,
     "PacketHeader must be 7 bytes (matching server Struct.h)");
+
+// ============================================================
+// ★ 폴링 → UI 전달용 커스텀 윈도우 메시지
+//    WPARAM / LPARAM 사용법은 각 핸들러 주석 참조
+// ============================================================
+constexpr UINT WM_POLL_HEARTBEAT_OK = WM_APP + 100;  // 하트비트 응답 성공
+constexpr UINT WM_POLL_HEARTBEAT_FAIL = WM_APP + 101;  // 하트비트 응답 실패 (연결 끊김)
+constexpr UINT WM_POLL_NEW_MESSAGES = WM_APP + 102;  // 새 채팅 메시지 도착
+constexpr UINT WM_POLL_ROOM_UPDATED = WM_APP + 103;  // 채팅방 목록 갱신됨
