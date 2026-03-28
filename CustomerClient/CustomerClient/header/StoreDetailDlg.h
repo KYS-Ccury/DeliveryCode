@@ -27,6 +27,9 @@ public:
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 지원입니다.
+	virtual BOOL OnInitDialog();
+
+	afx_msg void OnBnClickedOk();
 
 	DECLARE_MESSAGE_MAP()
 };

@@ -166,6 +166,8 @@ BOOL MainHomeDlg::OnInitDialog()
     SetTimer(TIMER_CONN_CHECK, 3000, nullptr);
 
     RegisterNetworkCallback();
+    // 로그인 직후 서버에서 주소 목록을 받아 기본 주소를 버튼에 표시
+    AddressManager::GetInstance().RequestAddressesFromServer();
     UpdateAddrLabel();
     SendStoreListRequest(_T("전체"));
     return TRUE;

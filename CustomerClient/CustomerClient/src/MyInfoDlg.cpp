@@ -7,6 +7,7 @@
 #include "MyInfoDlg.h"
 #include "NetworkManager.h"
 #include "AuthManager.h"
+#include "AddressManager.h"
 #include "common/header/Types.h"
 
 static std::string MIJStr(const std::string& j, const std::string& k)
@@ -112,8 +113,17 @@ void MyInfoDlg::FillFields(const std::string& body)
     };
     set(IDC_EDIT_MI_NAME,  "name");
     set(IDC_EDIT_MI_PHONE, "phone");
-    set(IDC_EDIT_MI_ADDR,  "address");
     set(IDC_EDIT_MI_GRADE, "grade");
+
+    // 주소: AddressManager의 현재 기본 주소를 표시
+    // (기본 주소를 변경했을 때 내 정보에도 반영되어야 함)
+    std::string defaultAddr = AddressManager::GetInstance().GetDefaultAddress();
+    if (defaultAddr.empty()) {
+        // AddressManager에 주소가 없으면 서버 응답값 사용
+        defaultAddr = MIJStr(body, "address");
+    }
+    SetDlgItemText(IDC_EDIT_MI_ADDR,
+        CA2T(defaultAddr.empty() ? "-" : defaultAddr.c_str(), CP_UTF8));
 }
 
 void MyInfoDlg::OnBnClickedBtnBack()
